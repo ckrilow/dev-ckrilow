@@ -1,0 +1,19 @@
+{
+    # default settings for slurmm job submission
+    "__default__" :
+    {
+        #"group"    : "",
+        #"queue"    : "",
+        "memory"    : 15, # total memory in Gb. default to 15 in Gb
+        "threads"   : 1, # total memory is automatically split per thread
+        "name"      : "snk.{rule}.{wildcards}",
+        "output"    : "logs/{rule}/snk.{wildcards}.o",
+        "error"     : "logs/{rule}/snk.{wildcards}.e"
+    },
+
+    # settings for a specific rule
+    "my_rule_name" :
+    {
+        "memory"   : 35
+    }
+}

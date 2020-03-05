@@ -1,0 +1,13 @@
+{
+    "use_relative_output_paths" : true,
+    "default_runtime_attributes" : {
+        "docker" : "ubuntu:latest",
+        "zones" : "us-west1-b us-west1-a",
+        "failOnStderr" : false,
+        "continueOnReturnCode" : 0,
+        "preemptible" : 0,
+        "cpu" : 1,
+        "bootDiskSizeGb": 10,
+        "disks" : "local-disk 10 SSD"
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "workflow_failure_mode": "ContinueWhilePossible",
+    "use_relative_output_paths": "false",
+    "default_runtime_attributes": {
+        "queue": "standard"
+    }
+}
