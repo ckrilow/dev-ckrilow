@@ -5,6 +5,10 @@ The methods used in this module are described in `docs/methods.pdf`.
 Insert brief description of module. This is a Cromwell workflow example.
 
 
+qc -> exploration -> mtproportions -> filtering -> downsample -> normalization
+qc -> filtering -> normalization
+
+
 
 # Quickstart
 

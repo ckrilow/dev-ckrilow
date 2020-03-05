@@ -348,10 +348,11 @@ command_line_interface <- function() {
     )
 
     # merge the data into a seurat data object
+    store_genes_as_ensembl_ids <- FALSE
     sc_df <- load_10x_data_seurat(
         files = files,
         metadata_df = metadata_df,
-        store_genes_as_ensembl_ids = FALSE,
+        store_genes_as_ensembl_ids = store_genes_as_ensembl_ids,
         min_avg_counts = 0,
         min_n_cells_exprsing_gene = 0,
         seurat_min_cells = 0,
@@ -396,9 +397,9 @@ command_line_interface <- function() {
     # TODO run scrublet and annotate cells with likelihood of >1 cells being
     # present.
 
-    # save final un-normalized dataframe
+    # save final un-normalized dataframe\
     saveRDS(
-        dat,
+        sc_df,
         file = paste0(param[["out_file"]], ".rds.gz"),
         compress = TRUE
     )
