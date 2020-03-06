@@ -49,6 +49,10 @@ if (params.help){
     file_metadata                 : ${params.file_metadata}
     output_dir (output folder)    : ${params.output_dir}
     """.stripIndent()
+    // a dictionary way to accomplish the text above
+    // def summary = [:]
+    // summary['file_paths_10x'] = params.file_paths_10x
+    // log.info summary.collect { k,v -> "${k.padRight(20)} : $v" }.join("\n")
 }
 
 
