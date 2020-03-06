@@ -285,11 +285,11 @@ command_line_interface <- function() {
 
         optparse::make_option(c("--out_file"),
             type = "character",
-            default = "sc_dat",
+            default = "sc_df",
             help = paste0(
                 "Name (and possibly path) of output file. Will have rds.gz",
                 " appended to it. ",
-                " [default %default]"
+                " [default: %default]"
             )
         ),
 
@@ -299,7 +299,7 @@ command_line_interface <- function() {
             default = FALSE,
             help = paste0(
                 "Verbose mode (write extra info to std.err).",
-                " [default %default]"
+                " [default: %default]"
             )
         )
     )
