@@ -2,10 +2,10 @@
 
 SCRIPT_NAME <- "make_seurat_obj_from_10x_files.R"
 
-suppressPackageStartupMessages(library(optparse))
-suppressPackageStartupMessages(library(chron))
-suppressPackageStartupMessages(library(Matrix))
-suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library("optparse"))
+suppressPackageStartupMessages(library("chron"))
+suppressPackageStartupMessages(library("Matrix"))
+suppressPackageStartupMessages(library("Seurat"))
 
 
 #' Reads a list of files into a Seurat object
