@@ -23,6 +23,8 @@ options(future.globals.maxSize = 100000 * 1024^2)
 #' @param method String.
 #'     Normalization method. Valid options: LogNormalize or SCT. 
 #'     Default = LogNormalize.
+#' @param verbose Logical.
+#'     Write extra output to std.out. Default = TRUE.
 #'     
 #' @return List of Seurat objects.
 #'     List of Seurat objects with normalization performed.
@@ -119,6 +121,8 @@ normalize_seurat_obj_list <- function(
 #' @param n_integration_pcs Integer.
 #'     Number of PCs to use for integration.
 #'     Default = 30.
+#' @param verbose Logical.
+#'     Write extra output to std.out. Default = TRUE.
 #'
 #' @return List of Seurat objects.
 #'     List of Seurat objects with normalization performed.
@@ -278,6 +282,28 @@ integrate_seurat_obj_list <- function(
 
 
 
+#' Normalizes a list of Seurat objects
+#'
+#' \code{integrate_seurat_obj_list} takes a list of Seurat objects and 
+#' performs Seurat 3 integration
+#'
+#' @param seurat_list List of Seurat objects.
+#'     List of Seurat objects that have been normalized.
+#' @param verbose Logical.
+#'     Write extra output to std.out. Default = TRUE.
+#'
+#' @return List of Seurat objects.
+#'     List of Seurat objects with normalization performed.
+#'
+#' @export
+merge_seurat_obj_list <- function(
+        seurat_list,
+        verbose = TRUE
+    ) {
+    
+    return(seurat_list)
+}
+
 #' Command line interface wrapper
 #'
 #' @importFrom optparse make_option
@@ -398,6 +424,9 @@ command_line_interface <- function() {
             verbose = TRUE
         )
     } else {
+        # sc_df <- merge_seurat_obj_list(
+        #     seurat_list
+        # )
         stop()
     }
     

@@ -36,6 +36,8 @@ suppressPackageStartupMessages(library("Seurat"))
 #' @param seurat_min_features Numeric.
 #'     For each sample, include cells where at least this many features are
 #'     detected. Passed to Seurat::CreateSeuratObject for each sample.
+#' @param verbose Logical.
+#'     Write extra output to std.out. Default = TRUE.
 #'
 #' @return Seurat data object.
 #'     Merged Seurat data object.
