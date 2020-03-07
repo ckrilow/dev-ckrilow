@@ -2,10 +2,10 @@
 
 SCRIPT_NAME <- "make_seurat_obj_from_10x_files.R"
 
-suppressPackageStartupMessages(library(optparse))
-suppressPackageStartupMessages(library(chron))
-suppressPackageStartupMessages(library(Matrix))
-suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library("optparse"))
+suppressPackageStartupMessages(library("chron"))
+suppressPackageStartupMessages(library("Matrix"))
+suppressPackageStartupMessages(library("Seurat"))
 
 
 #' Reads a list of files into a Seurat object
@@ -36,6 +36,8 @@ suppressPackageStartupMessages(library(Seurat))
 #' @param seurat_min_features Numeric.
 #'     For each sample, include cells where at least this many features are
 #'     detected. Passed to Seurat::CreateSeuratObject for each sample.
+#' @param verbose Logical.
+#'     Write extra output to std.out. Default = TRUE.
 #'
 #' @return Seurat data object.
 #'     Merged Seurat data object.
@@ -285,11 +287,11 @@ command_line_interface <- function() {
 
         optparse::make_option(c("--out_file"),
             type = "character",
-            default = "sc_dat",
+            default = "sc_df",
             help = paste0(
                 "Name (and possibly path) of output file. Will have rds.gz",
                 " appended to it. ",
-                " [default %default]"
+                " [default: %default]"
             )
         ),
 
@@ -299,7 +301,7 @@ command_line_interface <- function() {
             default = FALSE,
             help = paste0(
                 "Verbose mode (write extra info to std.err).",
-                " [default %default]"
+                " [default: %default]"
             )
         )
     )
@@ -348,10 +350,11 @@ command_line_interface <- function() {
     )
 
     # merge the data into a seurat data object
+    store_genes_as_ensembl_ids <- FALSE
     sc_df <- load_10x_data_seurat(
         files = files,
         metadata_df = metadata_df,
-        store_genes_as_ensembl_ids = FALSE,
+        store_genes_as_ensembl_ids = store_genes_as_ensembl_ids,
         min_avg_counts = 0,
         min_n_cells_exprsing_gene = 0,
         seurat_min_cells = 0,
@@ -396,9 +399,9 @@ command_line_interface <- function() {
     # TODO run scrublet and annotate cells with likelihood of >1 cells being
     # present.
 
-    # save final un-normalized dataframe
+    # save final un-normalized dataframe\
     saveRDS(
-        dat,
+        sc_df,
         file = paste0(param[["out_file"]], ".rds.gz"),
         compress = TRUE
     )

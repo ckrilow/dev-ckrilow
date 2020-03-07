@@ -5,6 +5,20 @@ The methods used in this module are described in `docs/methods.pdf`.
 Insert brief description of module. This is a Cromwell workflow example.
 
 
+# Notes to clean up
+
+export default -G parameter for lsf
+export LSB_DEFAULTGROUP=team152
+
+export default -g parameter for lsf
+https://www.ibm.com/support/knowledgecenter/SSETD4_9.1.3/lsf_config_ref/lsb.params.default_jobgroup.5.html
+bgadd -L 500 /lt9/nf
+export LSB_DEFAULT_JOBGROUP='/lt9/nf'
+
+qc -> exploration -> mtproportions -> filtering -> downsample -> normalization
+qc -> filtering -> normalization
+
+
 
 # Quickstart
 

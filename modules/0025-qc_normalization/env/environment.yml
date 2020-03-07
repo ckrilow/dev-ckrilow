@@ -1,0 +1,10 @@
+channels:
+  - conda-forge
+  - bioconda
+  - r
+  - defaults
+dependencies:
+  - bioawk=1.0
+  - yaml=0.1.7
+  - r=3.6
+  - r-base=3.6.2
