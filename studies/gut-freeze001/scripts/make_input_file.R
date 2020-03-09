@@ -23,13 +23,23 @@ dat$file_path <- paste0(
     dat$sanger_sample_id,
     "/filtered_feature_bc_matrix"
 )
-
+dat_cd <- subset(dat, disease_status_original %in% c("cd"))
 
 dat <- dat %>% dplyr::select(experiment_id, sanger_sample_id, file_path)
-
 write.table(
     dat,
     "input_sample_files.tsv",
+    row.names = FALSE,
+    col.names = TRUE,
+    quote = TRUE,
+    sep = "\t",
+    na = ""
+)
+
+dat_cd <- dat_cd %>% dplyr::select(experiment_id, sanger_sample_id, file_path)
+write.table(
+    dat_cd,
+    "input_sample_files-cd.tsv",
     row.names = FALSE,
     col.names = TRUE,
     quote = TRUE,
