@@ -254,13 +254,15 @@ integrate_seurat_obj_list <- function(
     ) {
 
     if (!(method_norm %in% c("LogNormalize", "SCTransform"))) {
-        stop("ERROR in method_norm")
+        stop("[integrate_seurat_obj_list]:\tERROR in method_norm")
     }
     if (!(method_integrate %in% c("seurat", "harmony", "seurat-harmony"))) {
-        stop("ERROR in method_integrate.")
+        stop("[integrate_seurat_obj_list]:\tERROR in method_integrate.")
     }
-    if (length(harmony_covariates) == 0) {
-        stop("ERROR specify harmony_covariates.")
+    if ((method_integrate %in% c("harmony", "seurat-harmony") &
+        length(harmony_covariates) == 0)
+    ) {
+        stop("[integrate_seurat_obj_list]:\tERROR specify harmony_covariates.")
     }
 
     # init the assay id that will be used
@@ -325,7 +327,9 @@ integrate_seurat_obj_list <- function(
 
     } else if (method_integrate %in% c("seurat", "seurat-harmony")) {
         if (verbose) {
-            cat("integrating data using seurat.\n")
+            cat("[integrate_seurat_obj_list]:\t",
+                "integrating data using seurat.\n"
+            )
         }
 
         if (method_norm == "SCTransform") {
@@ -340,7 +344,7 @@ integrate_seurat_obj_list <- function(
         } else if (method_norm == "LogNormalize") {
             integrate_method_norm <- "LogNormalize"
         } else {
-            stop("ERROR method_norm")
+            stop("[integrate_seurat_obj_list]:\tERROR method_norm")
         } # end if (method_norm == "SCTransform") {
 
         # Identify anchors
@@ -354,7 +358,9 @@ integrate_seurat_obj_list <- function(
             verbose = verbose
         )
         if (verbose) {
-            cat("completed Seurat::FindIntegrationAnchor.\n")
+            cat("[integrate_seurat_obj_list]:\t",
+                "completed Seurat::FindIntegrationAnchor.\n"
+            )
         }
 
         # Integrate samples
@@ -366,7 +372,9 @@ integrate_seurat_obj_list <- function(
             verbose = verbose
         )
         if (verbose) {
-            cat("completed Seurat::IntegrateData.\n")
+            cat("[integrate_seurat_obj_list]:\t",
+                "completed Seurat::IntegrateData.\n"
+            )
         }
 
         # After running Seurat::IntegrateData, the assay defaults to integrated
@@ -388,7 +396,7 @@ integrate_seurat_obj_list <- function(
             )
         }
     } else {
-      stop("ERROR invalid method_integrate")
+        stop("[integrate_seurat_obj_list]:\tERROR invalid method_integrate")
     }# end if (method_integrate == "harmony") {
 
     # for max n_pcs of integrated use 10% of total cells
@@ -399,7 +407,9 @@ integrate_seurat_obj_list <- function(
         n_pcs_dim_reduction <- 200
     }
     if (verbose) {
-        cat("n_pcs_dim_reduction:\t", n_pcs_dim_reduction, "\n")
+        cat("[integrate_seurat_obj_list]:\t",
+            "n_pcs_dim_reduction = ", n_pcs_dim_reduction, "\n"
+        )
     }
 
     # PCA
@@ -417,7 +427,7 @@ integrate_seurat_obj_list <- function(
 
     if (run_jackstraw) {
         if (verbose) {
-            cat("running jackstraw\n")
+            cat("[integrate_seurat_obj_list]:\trunning jackstraw\n")
         }
         seurat_df <- Seurat::JackStraw(
             object = seurat_df,
@@ -436,7 +446,7 @@ integrate_seurat_obj_list <- function(
             ] < 0.05
         )
         if (verbose) {
-            cat("n_sig_pcs (jackstraw):\t",
+            cat("[integrate_seurat_obj_list]:\tn_sig_pcs (jackstraw) = ",
                 n_sig_pcs,
                 "\n"
             )
@@ -446,11 +456,15 @@ integrate_seurat_obj_list <- function(
     # if harmony, then we need to update the PC embeddings
     if (method_integrate %in% c("harmony", "seurat-harmony")) {
         if (verbose) {
-            cat("integrating data using harmony.\n")
+            cat("[integrate_seurat_obj_list]:\t",
+                "integrating data using harmony.\n"
+            )
         }
         if ((length(harmony_covariates) > 0) &
             (ncol(harmony_theta) != length(harmony_covariates))) {
-            cat("setting harmony_theta to 2 for all covariates.\n")
+            cat("[integrate_seurat_obj_list]:\t",
+                "setting harmony_theta to 2 for all covariates.\n"
+            )
             # set harmony_theta to default value of 2
             harmony_theta <- data.frame(
                 t(rep(2, length(harmony_covariates)))
@@ -461,7 +475,8 @@ integrate_seurat_obj_list <- function(
             return(x %in% colnames(harmony_theta))
         }))
         if (!all(col_check)) {
-            stop("ERROR: harmony covariate names and columns of theta matrix",
+            stop("[integrate_seurat_obj_list]:\t",
+                "ERROR: harmony covariate names and columns of theta matrix",
                  " do not match."
             )
         }
@@ -477,7 +492,9 @@ integrate_seurat_obj_list <- function(
             )
             reduction_id <- paste0(reduction_id_1, reduction_id)
             if (verbose) {
-                cat("harmony:\t", reduction_id, "\n")
+                cat("[integrate_seurat_obj_list]:",
+                    "harmony:\t", reduction_id, "\n"
+                )
             }
             seurat_df <- harmony::RunHarmony(
                 object = seurat_df,
@@ -666,6 +683,8 @@ command_line_interface <- function() {
     # Either integrate the final data using
     # * Seurat 3 integration
     # * perform no integration - just concatenating data across samples (merge)
+    #
+    # Note this also runs PC calculation
     if (param[["integrate"]]) {
         sc_df <- integrate_seurat_obj_list(
             seurat_list,
@@ -904,8 +923,8 @@ dev <- function() {
     df_dev@meta.data[["sample_id"]] <- df_dev@meta.data[["orig.ident"]]
 
 
-    method_norm <- "SCTransform" # SCTransform or LogNormalize
-    seurat_list <- Seurat::SplitObject(sc_df, split.by = "sample_id")
+    method_norm <- "LogNormalize" # SCTransform or LogNormalize
+    seurat_list <- Seurat::SplitObject(df_dev, split.by = "sample_id")
     seurat_list <- normalize_seurat_obj_list(
         seurat_list,
         filter_variable_genes_regex = "^HLA-|^IG[HJKL]|^RNA|^MT|^RP",
@@ -932,7 +951,7 @@ dev <- function() {
         verbose = TRUE
     )
     print(names(df_dev3@reductions))
-    n_pcs_max <- ncol(df_dev3@reductions[["pca"]]@cell.embeddings)
+    n_pcs_max <- ncol(df_dev3@reductions[["seurat3__pca"]]@cell.embeddings)
 
     plt_list <- list()
     plt_i <- 1
@@ -941,10 +960,10 @@ dev <- function() {
     # add pca plots
     plts <- plot_umap_devonly(
         df_dev3,
-        reduction_id = "pca",
+        reduction_id = "seurat3__pca",
         factor_ids = c("sample_id"),
         numeric_ids = c(),
-        title = "pca"
+        title = "seurat3__pca"
     )
     for (i in 1:length(plts)) {
         print(plts[[i]])
