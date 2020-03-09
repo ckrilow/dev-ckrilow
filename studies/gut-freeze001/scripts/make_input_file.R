@@ -9,11 +9,15 @@ dat <- subset(dat, sample_status == "Sequenced + Cell Ranger")
 dat <- subset(dat, biopsy_type_original %in% c("ti", "neoti"))
 #dat <- subset(dat, disease_status_original %in% c("cd"))
 dat <- subset(dat, protocol %in% c("tissue_v2", "blood_final"))
+dat$experiment_id <- paste0(
+    paste0(dat$biopsy_type_original, "_", dat$disease_status_original),
+    ".",
+    dat$sanger_sample_id
+)
 
 table(dat[c("biopsy_type", "disease_status")])
 
 
-dat$experiment_id <- dat$sanger_sample_id
 dat$file_path <- paste0(
     "/home/ubuntu/data/scrna_cellranger/results/iget_cellranger/full_data/",
     dat$biopsy_type_original,
