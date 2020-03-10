@@ -597,10 +597,10 @@
     },
     "foreign": {
       "Package": "foreign",
-      "Version": "0.8-76",
+      "Version": "0.8-75",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "649b9c7a979d50d869578c73fed072cd"
+      "Hash": "9a7efaa7320b9f327a904d1e615b0b46"
     },
     "formatR": {
       "Package": "formatR",
@@ -903,10 +903,10 @@
     },
     "lattice": {
       "Package": "lattice",
-      "Version": "0.20-40",
+      "Version": "0.20-38",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "61339152c288b871facca5f68f401f89"
+      "Hash": "848f8c593fd1050371042d18d152e3d7"
     },
     "lazyeval": {
       "Package": "lazyeval",
@@ -1056,17 +1056,17 @@
     },
     "nlme": {
       "Package": "nlme",
-      "Version": "3.1-145",
+      "Version": "3.1-144",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "0ed9365684dc39cdd0bb5bd2f316dc67"
+      "Hash": "e80d41932d3cc235ccbbbb9732ae162e"
     },
     "nnet": {
       "Package": "nnet",
-      "Version": "7.3-13",
+      "Version": "7.3-12",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "aaeb5c7cae85223cc6d282f295dff295"
+      "Hash": "68287aec1f476c41d16ce1ace445800c"
     },
     "npsurv": {
       "Package": "npsurv",
@@ -1467,10 +1467,10 @@
     },
     "survival": {
       "Package": "survival",
-      "Version": "3.1-11",
+      "Version": "3.1-8",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "39c2135ecd56295df599417e034bb7a6"
+      "Hash": "ad25122f95d04988f6f79d69aaadd53d"
     },
     "sys": {
       "Package": "sys",
