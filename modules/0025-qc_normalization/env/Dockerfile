@@ -1,4 +1,4 @@
-FROM buildpack-deps:curl
+FROM rocker/r-ver:3.6.2
 
 
 ############################ Setup: OS #########################################
@@ -26,10 +26,17 @@ RUN apt-get update && \
         bzip2 \
         ca-certificates \
         curl \
-        libcurl4-openssl-dev \
         git \
         zip \
         unzip && \
+    apt-get install --yes \
+        libpng-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libgit2-dev \
+        zlib1g-dev \
+        build-essential && \
     apt-get purge && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -57,7 +64,7 @@ RUN echo "export PATH=${HOME}/conda/bin:$PATH" > /etc/profile.d/conda.sh && \
     wget --quiet ${CONDA_FILE} -O /tmp/miniconda.sh && \
     /bin/bash /tmp/miniconda.sh -b -p ${HOME}/conda && \
     rm /tmp/miniconda.sh && \
-    ${HOME}/conda/bin/conda clean -tipsy
+    ${HOME}/conda/bin/conda clean -atipy
 ENV PATH ${HOME}/conda/bin:$PATH
 
 
@@ -90,13 +97,13 @@ USER ${NB_USER}
 COPY environment.yml ${HOME}/tmp/environment.yml
 
 # install conda environment
-# NOTE: conda clean -tipsy
+# NOTE: conda clean -atipy
 #   removes everything w/o confirmation (leaves all environments functional).
 RUN conda config --set always_yes yes --set changeps1 no && \
     conda update conda --yes && \
     conda env update -v -n root --file ${HOME}/tmp/environment.yml && \
     conda list --name root && \
-    conda clean -tipsy && \
+    conda clean -atipy && \
     rm ${HOME}/tmp/environment.yml
 
 # export the conda path to force container_env since .bashrc necessarily
@@ -125,7 +132,6 @@ RUN Rscript ${HOME}/tmp/run.R
 USER root
 RUN rm -rf ${HOME}/tmp
 RUN rm -rf /tmp/*
-RUN find /etc/ -iname "*" -type f -print0 | xargs -0 grep -H "docker"
 ################################################################################
 
 
