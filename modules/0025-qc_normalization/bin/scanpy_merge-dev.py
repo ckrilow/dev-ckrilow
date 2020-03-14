@@ -180,8 +180,12 @@ def scanpy_merge(
         adata_merged.n_vars
     ))
 
-    output_file = output_dir + "/adata"
-    adata_merged.write(output_file, compression='gzip')
+    # output_file = output_dir + "/adata"
+    adata_merged.write(output_file+".h5", compression='gzip')
+    # adata_merged.write_csvs(output_file)
+    # adata_merged.write_loom(output_file+".loom")
+
+    return(output_file)
 
 
 def main():
@@ -203,11 +207,9 @@ def main():
         action='store',
         dest='sf',
         required=True,
-        help=(
-            'File with the following headers: sanger_sample_id, file_path.'
-            # 'Input yaml config file that lists the samples to merge as well',
-            # ' as filters to apply to each file.'
-        )
+        help='File with the following headers: sanger_sample_id, file_path.'
+        # 'Input yaml config file that lists the samples to merge as well',
+        # ' as filters to apply to each file.'
     )
 
     parser.add_argument(
@@ -215,10 +217,8 @@ def main():
         action='store',
         dest='mf',
         required=True,
-        help=(
-            'File with metadata on samples matching sanger_sample_id in',
-            ' samplesheetdata_file.'
-        )
+        help='File with metadata on samples matching sanger_sample_id in\
+            samplesheetdata_file.'
     )
 
     parser.add_argument(
@@ -226,10 +226,8 @@ def main():
         action='store',
         dest='od',
         default=os.getcwd(),
-        help=(
-            'Directory to write output anndata file.',
-            ' (default: %(default)s)'
-        )
+        help='Directory to write output anndata file.\
+            (default: %(default)s)'
     )
 
     options = parser.parse_args()
@@ -257,7 +255,7 @@ def main():
     })
 
     # load the metadata
-    # mf = "/home/ubuntu/repo/scrna_cellranger/sync_status/samples_metainfo.tsv"
+    # f = "/home/ubuntu/repo/scrna_cellranger/sync_status/samples_metainfo.tsv"
     metadata_column_delete = ["sample_status", "study", "study_id"]
     metadata = pd.read_csv(options.mf, sep="\t")
     metadata.columns = metadata.columns.str.strip(
@@ -267,7 +265,7 @@ def main():
     out_file = scanpy_merge(
         samplesheetdata,
         metadata,
-        output_file=options.od.strip("/") + "adata"
+        output_file=options.od.rstrip("/") + "/adata"
     )
     print(out_file)
 
