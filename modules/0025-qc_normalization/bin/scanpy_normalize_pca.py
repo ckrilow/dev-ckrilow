@@ -9,6 +9,7 @@ import argparse
 import os
 import pandas as pd
 import scanpy as sc
+import csv
 
 # Set scanpy settings
 # sc verbosity: errors (0), warnings (1), info (2), hints (3)
@@ -108,7 +109,7 @@ def scanpy_normalize_and_pca(
     # calculate PCs
     sc.tl.pca(
         adata,
-        n_comps=200,
+        n_comps=min(200, adata.var['highly_variable'].sum()),
         zero_center=None,
         svd_solver='auto',
         use_highly_variable=True,
@@ -124,19 +125,22 @@ def scanpy_normalize_and_pca(
         ]
     )
     pca_df.to_csv(
-        output_file+'-pcs.csv.gz',
-        sep=',',
+        output_file+'-pcs.tsv.gz',
+        sep='\t',
         index=True,
         index_label='cell_barcode',
+        na_rep='',
         compression='gzip'
     )
 
     # Save the metadata to a seperate file for Harmony.
     adata.obs.to_csv(
-        output_file+'-metadata.csv.gz',
-        sep=',',
+        output_file+'-metadata.tsv.gz',
+        sep='\t',
         index=True,
+        quoting=csv.QUOTE_NONNUMERIC,
         index_label='cell_barcode',
+        na_rep='',
         compression='gzip'
     )
 
