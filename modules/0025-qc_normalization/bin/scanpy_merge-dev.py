@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 
-__author__ = "Leland Taylor"
-__date__ = "2020-03-13"
+__author__ = 'Leland Taylor'
+__date__ = '2020-03-13'
 __version__ = '0.0.1'
 
 import argparse
@@ -11,6 +11,11 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 # import yaml
+
+# sc verbosity: errors (0), warnings (1), info (2), hints (3)
+# sc.settings.verbosity = 3
+# sc.logging.print_versions()
+# sc.settings.set_figure_params(dpi=80)
 
 
 def check_adata(adata, adata_id):
@@ -41,8 +46,7 @@ def scanpy_merge(
     samplesheetdata,
     metadata,
     output_file,
-    sample_id_metadata_column="sanger_sample_id",
-    output_dir=os.getcwd()
+    sample_id_metadata_column="sanger_sample_id"
 ):
     """Merge 10x data.
 
@@ -57,8 +61,6 @@ def scanpy_merge(
     sample_id_metadata_column : string
         Description of parameter `sample_id_metadata_column`
         (the default is "sanger_sample_id").
-    output_dir : string
-        Description of parameter `output_dir` (the default is os.getcwd()).
 
     Returns
     -------
@@ -104,7 +106,7 @@ def scanpy_merge(
         # label mitochondrial genes
         # mito_gene_list = sc.queries.mitochondrial_genes() # another query
         adata.var['mito_gene'] = [
-            x.startswith('MT-') for x in adata.var["gene_symbols"]
+            x.startswith('MT-') for x in adata.var['gene_symbols']
         ]
         # use this if var_names='gene_symbols' in sc.read_10x_mtx
         # adata.var['mito_gene'] = [
@@ -175,13 +177,17 @@ def scanpy_merge(
     adata_merged = adatasets[0].concatenate(*adatasets[1:])
     adata_merged = check_adata(adata_merged, 'adata_merged')
 
+    # possible additional basic filtering on the full dataset
+    # sc.pp.filter_cells(adata, min_genes=200)
+    # sc.pp.filter_genes(adata, min_cells=3)
+
     print('[adata_merged] {} obs, {} vars'.format(
         adata_merged.n_obs,
         adata_merged.n_vars
     ))
 
     # output_file = output_dir + "/adata"
-    adata_merged.write(output_file+".h5", compression='gzip')
+    adata_merged.write(output_file+'.h5', compression='gzip')
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
 
@@ -247,17 +253,17 @@ def main():
 
     # load a file of the samples to analyse
     # sf = "/home/ubuntu/studies/TaylorDL/freeze001/final_samples.tsv"
-    samplesheetdata = pd.read_csv(options.sf, sep="\t")
-    # samplesheetdata = samplesheetdata.drop(["experiment_id"], axis=1)
+    samplesheetdata = pd.read_csv(options.sf, sep='\t')
+    # samplesheetdata = samplesheetdata.drop(['experiment_id'], axis=1)
     samplesheetdata = samplesheetdata.rename(columns={
-        "sanger_sample_id": "sample_id",
-        "file_path": "data_path_10x_format"
+        'sanger_sample_id': 'sample_id',
+        'file_path': 'data_path_10x_format'
     })
 
     # load the metadata
     # f = "/home/ubuntu/repo/scrna_cellranger/sync_status/samples_metainfo.tsv"
-    metadata_column_delete = ["sample_status", "study", "study_id"]
-    metadata = pd.read_csv(options.mf, sep="\t")
+    metadata_column_delete = ['sample_status', 'study', 'study_id']
+    metadata = pd.read_csv(options.mf, sep='\t')
     metadata.columns = metadata.columns.str.strip(
         ).str.replace(' ', '_').str.lower()
     metadata = metadata.drop(metadata_column_delete, axis=1)
@@ -265,7 +271,7 @@ def main():
     out_file = scanpy_merge(
         samplesheetdata,
         metadata,
-        output_file=options.od.rstrip("/") + "/adata"
+        output_file=options.od.rstrip('/') + '/adata'
     )
     print(out_file)
 
