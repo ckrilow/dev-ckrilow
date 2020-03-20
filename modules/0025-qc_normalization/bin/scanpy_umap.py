@@ -15,7 +15,7 @@ def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read anndata object and PCs file. Generates UMAP.
+            Read AnnData object and PCs file. Generates UMAP.
             """
     )
 
