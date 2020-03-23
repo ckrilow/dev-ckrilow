@@ -151,6 +151,7 @@ def main():
         adata,
         use_rep='X_pca',
         n_pcs=n_pcs,
+        # n_neighbors=10,
         copy=False
     )
 

@@ -125,7 +125,7 @@ def scanpy_normalize_and_pca(
         ]
     )
     pca_df.to_csv(
-        output_file+'-pcs.tsv.gz',
+        '{}-pcs.tsv.gz'.format(output_file),
         sep='\t',
         index=True,
         index_label='cell_barcode',
@@ -135,7 +135,7 @@ def scanpy_normalize_and_pca(
 
     # Save the metadata to a seperate file for Harmony.
     adata.obs.to_csv(
-        output_file+'-metadata.tsv.gz',
+        '{}-metadata.tsv.gz'.format(output_file),
         sep='\t',
         index=True,
         quoting=csv.QUOTE_NONNUMERIC,
@@ -157,7 +157,7 @@ def scanpy_normalize_and_pca(
     # sc.pl.pca_variance_ratio(adata, log=False)
 
     # Save the data.
-    adata.write(output_file+'-normalized_pca.h5', compression='gzip')
+    adata.write('{}-normalized_pca.h5'.format(output_file), compression='gzip')
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
 
@@ -201,7 +201,7 @@ def main():
         '-of', '--output_file',
         action='store',
         dest='of',
-        default=os.getcwd()+'/adata',
+        default='{}/adata'.format(os.getcwd()),
         help='Directory and basename of output files.\
             (default: %(default)s)'
     )

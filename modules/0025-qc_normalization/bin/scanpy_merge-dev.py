@@ -187,7 +187,7 @@ def scanpy_merge(
     ))
 
     # output_file = output_dir + "/adata"
-    adata_merged.write(output_file+'.h5', compression='gzip')
+    adata_merged.write('{}.h5'.format(output_file), compression='gzip')
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
 
