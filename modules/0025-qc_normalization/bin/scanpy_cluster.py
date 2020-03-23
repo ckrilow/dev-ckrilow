@@ -8,7 +8,7 @@ __version__ = '0.0.1'
 import argparse
 import pandas as pd
 import scanpy as sc
-import matplotlib.pyplot as plt
+import csv
 
 
 def main():
@@ -45,21 +45,12 @@ def main():
     )
 
     parser.add_argument(
-        '-cq', '--colors_quantitative',
+        '-cm', '--cluster_method',
         action='store',
-        dest='cq',
-        default='',
-        help='Comma seperated list of quantitative variable names for colors.\
-            (default: "")'
-    )
-
-    parser.add_argument(
-        '-cc', '--colors_categorical',
-        action='store',
-        dest='cc',
-        default='',
-        help='Comma seperated list of categorical variable names for colors.\
-            (default: "")'
+        dest='cm',
+        default='leiden',
+        help='Clustering method. Valid options: [leiden|_].\
+            (default: %(default)s)'
     )
 
     parser.add_argument(
@@ -70,6 +61,16 @@ def main():
         type=int,
         help='Number of PCs to use.\
             (default: maximum number in tsv_pcs file)'
+    )
+
+    parser.add_argument(
+        '-r', '--resolution',
+        action='store',
+        dest='r',
+        default=1,
+        type=int,
+        help='Resolution.\
+            (default: %(default)s)'
     )
 
     parser.add_argument(
@@ -124,116 +125,152 @@ def main():
     # Add the reduced dimensions to the AnnData object.
     adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
 
-    # Parse the color variables.
-    colors_quantitative = []
-    if options.cq != '':
-        colors_quantitative = options.cq.split(',')
-
-    colors_categorical = []
-    if options.cc != '':
-        colors_categorical = options.cc.split(',')
-
-    if len(colors_quantitative) == 0 and len(colors_categorical) == 0:
-        raise Exception('Specify a color value.')
-
-    # Nice large palette.
-    colors_large_palette = [
-        '#0F4A9C', '#3F84AA', '#C9EBFB', '#8DB5CE', '#C594BF', '#DFCDE4',
-        '#B51D8D', '#6f347a', '#683612', '#B3793B', '#357A6F', '#989898',
-        '#CE778D', '#7F6874', '#E09D37', '#FACB12', '#2B6823', '#A0CC47',
-        '#77783C', '#EF4E22', '#AF1F26'
-    ]
-    # Add colors_large_palette to adata.uns.
-    # adata.uns["annotation_colors"] = colors_large_palette
-
     # Calculate neighbors for on the specified PCs.
     sc.pp.neighbors(
         adata,
         use_rep='X_pca',
+        # n_neighbors=10,
         n_pcs=n_pcs,
         copy=False
     )
 
-    sc.tl.leiden(adata)
+    # Run the clustering, choosing either leiden or louvain algorithms
+    cluster_method = options.cm
+    cluster_resolution = options.r
+    if cluster_method == 'leiden':
+        sc.tl.leiden(
+            adata,
+            resolution=cluster_resolution,
+            key_added=cluster_method,
+            copy=False
+        )
+    elif cluster_method == 'louvain':
+        sc.tl.louvain(
+            adata,
+            flavor='vtraag',
+            resolution=cluster_resolution,
+            key_added=cluster_method,
+            copy=False
+        )
+    else:
+        raise Exception(
+            'Invalid --cluster_method: {}.'.format(
+                cluster_method
+            )
+        )
 
-    # from steaton
-    sc.pp.neighbors(adata, n_neighbors=10)
-    sc.tl.louvain(adata, flavor='vtraag',resolution=resolution)
-    print('{} clusters identified'.format(adata.obs['louvain'].drop_duplicates().shape[0]))
-
-
-    cell_clustering_df = adata.obs[['louvain']]
-    cell_clustering_df.to_csv(cluster_outfile, sep='\t')
-
-    # Wilcoxon is recommended over t-test in thie paper:
-    # https://www.nature.com/articles/nmeth.4612.
-    sc.tl.rank_genes_groups(adata, 'leiden', method='wilcoxon')
-    sc.pl.rank_genes_groups(adata, n_genes=25, sharey=False)
-
-    # Other options MAST, limma, DESeq2, diffxpy
-
-    # Rank genes by logistic regression (multi-variate appraoch), suggested by:
-    # https://doi.org/10.1101/258566
-    # sc.tl.rank_genes_groups(adata, 'leiden', method='logreg')
-    # sc.pl.rank_genes_groups(adata, n_genes=25, sharey=False)
-
-    ax = sc.pl.dotplot(adata, marker_genes, groupby='leiden')
-
-
-
-
-    # UMAP
-    sc.tl.umap(adata)
+    # Print the final number of clustered discrovered
+    if verbose:
+        print('{} clusters identified'.format(
+            adata.obs[cluster_method].drop_duplicates().shape[0]
+        ))
 
     # Get the out file base.
     out_file_base = options.of
     if out_file_base == '':
-        out_file_base = '{}-{}-umap'.format(
+        out_file_base = '{}-{}-clustered'.format(
             options.h5.rstrip('.h5'),
             options.pc.rstrip('.tsv.gz')
         )
+    # Save the clustered data to a data frame.
+    cell_clustering_df = adata.obs[[cluster_method]].copy()
+    cell_clustering_df.columns = ['cluster']
+    cell_clustering_df['cluster_method'] = cluster_method
+    cell_clustering_df['cluster_resolution'] = cluster_resolution
+    cell_clustering_df.to_csv(
+        '{}.tsv.gz'.format(out_file_base),
+        sep='\t',
+        index=True,
+        quoting=csv.QUOTE_NONNUMERIC,
+        index_label='cell_barcode',
+        na_rep='',
+        compression='gzip'
+    )
 
-    # For each variable, loop over and set color accordingly. Save
-    # the results.
-    for var in colors_quantitative:
-        fig = sc.pl.umap(
-            adata,
-            color=var,
-            alpha=0.25,
-            return_fig=True
-        )
-        fig.savefig(
-            '{}-{}.png'.format(out_file_base, var),
-            dpi=300,
-            bbox_inches='tight'
-        )
-    for var in colors_categorical:
-        n_categories = len(adata.obs[var].cat.categories)
-        color_palette = None
-        if n_categories <= len(plt.get_cmap('Dark2').colors):
-            color_palette = 'Dark2'
-        elif n_categories <= len(colors_large_palette):
-            color_palette = colors_large_palette
-        fig = sc.pl.umap(
-            adata,
-            color=var,
-            palette=color_palette,
-            alpha=0.25,
-            return_fig=True
-        )
-        fig.savefig(
-            '{}-{}.png'.format(out_file_base, var),
-            dpi=300,
-            bbox_inches='tight'
-        )
+    adata.write('{}.h5'.format(out_file_base), compression='gzip')
 
-    # In some ocassions, you might still observe disconnected clusters and
-    # similar connectivity violations. They can usually be remedied by running:
-    # sc.tl.paga(adata)
-    # From below, remove `plot=False` if you want to see the coarse-grained
-    # graph
-    # sc.pl.paga(adata, plot=False)
-    # sc.tl.umap(adata, init_pos='paga')
+    # # Identify cell type makers.
+    # # Wilcoxon is recommended over t-test in this paper:
+    # # https://www.nature.com/articles/nmeth.4612.
+    # # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
+    # #       'scores', 'names', 'logfoldchanges', 'pvals', 'pvals_adj']
+    # sc.tl.rank_genes_groups(
+    #     adata,
+    #     groupby=cluster_method,
+    #     groups='all',
+    #     reference='rest',
+    #     method='wilcoxon',
+    #     n_genes=100,
+    #     corr_method='bonferroni'
+    # )
+    #
+    # # Other options for cell type marker identification:
+    # # MAST, limma, DESeq2, diffxpy, logreg
+    #
+    # # Rank genes by logistic regression (multi-variate appraoch), suggested by:
+    # # https://doi.org/10.1101/258566
+    # # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
+    # #       'scores', 'names']
+    # # sc.tl.rank_genes_groups(
+    # #     adata,
+    # #     groupby=cluster_method,
+    # #     groups='all',
+    # #     reference='rest',
+    # #     method='logreg'
+    # # )
+    #
+    # # Save the ranks.
+    # results_dict = dict()
+    # for cluster_i in adata.uns['rank_genes_groups']['names'].dtype.names:
+    #     # print(cluster_i)
+    #     # Get keys that we want from the dataframe.
+    #     data_keys = list(
+    #         set(['names', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj']) &
+    #         set(adata.uns['rank_genes_groups'].keys())
+    #     )
+    #     # Build a table using these keys.
+    #     key_i = data_keys.pop()
+    #     results_dict[cluster_i] = pd.DataFrame(
+    #         row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
+    #     )
+    #     results_dict[cluster_i].columns = [key_i]
+    #     for key_i in data_keys:
+    #         results_dict[cluster_i][key_i] = [
+    #             row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
+    #         ]
+    #     results_dict[cluster_i]['cluster'] = cluster_i
+    # marker_df = pd.concat(results_dict, ignore_index=True)
+    #
+    # # TODO: Clean up naming.
+    #
+    # # TODO: Add hgnc symbols.
+    #
+    # # TODO: Save the marker dataframe.
+    #
+    # # Plot cell type makers.
+    # sc.pl.rank_genes_groups(
+    #     adata,
+    #     gene_symbols='gene_symbols',
+    #     n_genes=25,
+    #     sharey=False,
+    #     show=False,
+    #     save='{}-{}.pdf'.format(out_file_base, 'cluster_marker_genes')
+    # )
+    #
+    # # Sort by scores: same order as p-values except most methods return scores.
+    # marker_df = marker_df.sort_values(by=['scores'], ascending=False)
+    # # Make dataframe of the top 5 markers per cluster
+    # marker_df_plt = marker_df.groupby('cluster').head(3)
+    #
+    # # Plot cell type markers in dotplot
+    # sc.pl.dotplot(
+    #     adata,
+    #     marker_df_plt['names'].to_list(),
+    #     gene_symbols='gene_symbols',
+    #     groupby=cluster_method,
+    #     show=False,
+    #     save='{}-{}.pdf'.format(out_file_base, 'cluster_marker_genes-dotplot')
+    # )
 
 
 if __name__ == '__main__':
