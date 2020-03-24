@@ -6,7 +6,7 @@ VERSION = "0.0.1" // do not edit, controlled by bumpversion
 // set default parameters
 params.output_dir    = "nf-qc_normalization"
 params.help          = false
-
+params.scale_vars_to_regress = ['', 'total_counts,age'] // ['', 'total_counts,age']
 
 // startup messge - either with help message or the parameters supplied
 def help_message() {
@@ -18,7 +18,7 @@ def help_message() {
     Runs basic single cell qc and normalization
 
     Usage:
-    nextflow run main.nf -profile <local|lsf> [options]
+    nextflow run main.nf -profile <local|lsf> -params-file params.yaml [options]
 
     Options:
         --file_paths_10x   Tab-delimited file containing experiment_id and
@@ -34,8 +34,13 @@ def help_message() {
         lsf                lsf cluster execution
         local_singularity  local execution with singularity [TODO]
         lsf_singularity    lsf cluster execution with singularity [TODO]
+
+    Params file:
+        Additional parameters for runtime maybe passed via a yaml file. See
+        example in example_runtime_setup/params.yml
     """.stripIndent()
 }
+
 
 if (params.help){
     help_message()
@@ -61,6 +66,9 @@ if (params.help){
 // Channel
 //     .fromPath( params.file_paths_10x )
 //     .println()
+Channel
+    .fromList( params.scale_vars_to_regress )
+    .set { scale_vars_to_regress }
 
 // label 'big_mem' - NOTE to self.
 
@@ -77,16 +85,16 @@ process merge_10x_samples {
     cpus 1             // cpu requirements
     //memory '50 GB'   // memory requirements
 
-    publishDir path: "${params.output_dir}/sc_df",
-               mode: "copy",
-               overwrite: "true"
+    publishDir  path: "${params.output_dir}",
+                mode: "copy",
+                overwrite: "true"
 
     input:
     file(params.file_paths_10x)
     file(params.file_metadata)
 
     output:
-    file("adata.h5") into results_merge_10x_samples
+    file("adata.h5") into merge_10x_samples_anndata
 
     script:
     """
@@ -116,23 +124,44 @@ process normalize_and_pca {
     cpus 16            // cpu requirements
     //memory '50 GB'   // memory requirements
 
-    publishDir path: "${params.output_dir}/sc_df",
-               mode: "copy",
-               overwrite: "true"
+    // Publish the adata to dir the specifies the parameters used
+    // Publish the PCs to a sub-directory
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("pcs.tsv.gz")) {
+                       "reduced_dims-pca/${filename}"
+                    } else {
+                        "${filename}"
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
 
     input:
-    file(in_file) from results_merge_10x_samples
+    file(in_file) from merge_10x_samples_anndata
+    each vars_to_regress from scale_vars_to_regress
 
     output:
-    file("adata-normalized_pca.h5") into normalize_and_pca_andata_file
+    val outdir into normalize_and_pca_outdir
+    file("adata-normalized_pca.h5") into normalize_and_pca_anndata_file
     file("adata-metadata.tsv.gz") into normalize_and_pca_metadata_file
     file("adata-pcs.tsv.gz") into normalize_and_pca_pc_file
 
     script:
-    """
-    scanpy_normalize_pca.py \
-        --h5_anndata ${in_file}
-    """
+    if(vars_to_regress == "") {
+        outdir = "${params.output_dir}/normalize.total_count-scale.vars_to_regress=none"
+        """
+        scanpy_normalize_pca.py \
+            --h5_anndata ${in_file}
+        """
+    } else {
+        outdir = "${params.output_dir}/normalize.total_count-scale.vars_to_regress=${vars_to_regress}"
+        """
+        scanpy_normalize_pca.py \
+            --h5_anndata ${in_file} \
+            --vars_to_regress ${vars_to_regress}
+        """
+    }
     // """
     // normalize_seurat_obj.R \
     //     --file ${in_file} \
@@ -156,18 +185,21 @@ process harmony {
     cpus 16            // cpu requirements
     //memory '50 GB'   // memory requirements
 
-    publishDir path: "${params.output_dir}/sc_df",
-               mode: "copy",
-               overwrite: "true"
+    publishDir  path: "${outdir}",
+                mode: "copy",
+                overwrite: "true"
 
     input:
+    val outdir_prev from normalize_and_pca_outdir
     file(in_file_pcs) from normalize_and_pca_pc_file
     file(in_file_meta) from normalize_and_pca_metadata_file
 
     output:
+    val outdir into harmony_outdir
     file("adata-pcs-harmony.tsv.gz") into harmony_file
 
     script:
+    outdir = "${outdir_prev}/reduced_dims-harmony"
     """
     harmony_process_pcs.R \
         --pca_file ${in_file_pcs} \
@@ -176,6 +208,84 @@ process harmony {
         --n_pcs 15
     """
 }
+
+
+process cluster {
+    // Takes PCs (rows = cell barcodes) and metadata (rows = cell barcodes),
+    // runs Harmony
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+    cpus 16            // cpu requirements
+    //memory '50 GB'   // memory requirements
+
+    publishDir  path: "${outdir}",
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+    val outdir_prev from harmony_outdir
+    file(in_file_anndata) from normalize_and_pca_anndata_file
+    file(in_file_pcs) from harmony_file
+
+    output:
+    val outdir into cluster_outdir
+    file("test-clustered.tsv.gz") into cluster_file
+    file("test-clustered.h5") into cluster_anndata
+    file("*.pdf") into cluster_plots
+
+    script:
+    outdir = "${outdir_prev}/cluster"
+    """
+    scanpy_cluster.py \
+        --h5_anndata ${in_file_anndata} \
+        --tsv_pcs ${in_file_pcs} \
+        --cluster_method leiden \
+        --number_pcs 15 \
+        --resolution 1 \
+        --output_file test-clustered
+    """
+    // --output_file
+}
+
+
+// process umap {
+//     // Takes PCs (rows = cell barcodes) and metadata (rows = cell barcodes),
+//     // runs Harmony
+//     // ------------------------------------------------------------------------
+//     //tag { output_dir }
+//     //cache false        // cache results from run
+//     scratch false      // use tmp directory
+//     echo true          // echo output from script
+//     cpus 16            // cpu requirements
+//     //memory '50 GB'   // memory requirements
+//
+//     publishDir  path: "${outdir}",
+//                 mode: "copy",
+//                 overwrite: "true"
+//
+//     input:
+//     val outdir_prev from cluster_outdir
+//     file(in_file_anndata) from cluster_anndata
+//     file(in_file_pcs) from harmony_file
+//
+//     output:
+//     file("*.png") into umap_plots
+//
+//     script:
+//     outdir = "${outdir_prev}"
+//     """
+//     scanpy_umap.py \
+//         --h5_anndata ${in_file_anndata} \
+//         --tsv_pcs ${in_file_pcs} \
+//         --colors_quantitative age \
+//         --colors_categorical sanger_sample_id,sex,leiden \
+//         --number_pcs 15
+//     """
+//     // --output_file
+// }
 
 
 workflow.onComplete {

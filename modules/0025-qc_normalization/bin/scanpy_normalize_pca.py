@@ -83,20 +83,27 @@ def scanpy_normalize_and_pca(
         inplace=True
     )
     if verbose:
-        print('number of variable genes detected across batches:\t{}'.format(
+        print('Number of variable genes detected across batches:\t{}'.format(
             adata.var['highly_variable_intersection'].sum()
         ))
     # Fix bug in PCA when we have set batch_key. More below:
     # https://github.com/theislab/scanpy/issues/1032
     adata.var['highly_variable'] = adata.var['highly_variable_intersection']
 
-    # Tegress out any continuous variables.
+    # Regress out any continuous variables.
     if (len(vars_to_regress) > 0):
-        sc.pp.regress_out(
-            adata,
-            keys=vars_to_regress,
-            copy=False
-        )
+        # NOTE: if the same value is repeated (e.g., 0) for all cells this will
+        #       fail. https://github.com/theislab/scanpy/issues/230
+        if verbose:
+            print('For regress_out, calling {}'.format(
+                'pp.filter_genes(adata, min_cells=1)'
+            ))
+        sc.pp.filter_genes(adata, min_cells=1)
+        # sc.pp.regress_out(
+        #     adata,
+        #     keys=vars_to_regress,
+        #     copy=False
+        # )
 
     # Scale the data to unit variance.
     # This effectively weights each gene evenly.
@@ -196,6 +203,18 @@ def main():
             calculating PCs. Example: mito_gene,n_count\
             (default: %(default)s)'
     )
+
+    parser.add_argument(
+        '-c', '--cores',
+        action='store',
+        dest='c',
+        default=1,
+        type=int,
+        help='Cores available for analysis. TOTO:implement.\
+            (default: %(default)s)'
+    )
+    # TODO: see documentation for regress out on how to set number of cores
+    # available for scanpy
 
     parser.add_argument(
         '-of', '--output_file',

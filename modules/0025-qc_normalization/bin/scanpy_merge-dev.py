@@ -133,9 +133,9 @@ def scanpy_merge(
         # TODO
         # apply subsampling if specified in the config
         config_dict = dict()
-        # config_dict['cell_qc'] = [
-        #     'pct_counts_mito_gene < 80'
-        # ]
+        config_dict['cell_qc'] = [
+            'pct_counts_mito_gene < 80'
+        ]
         if 'subsample_cells' in config_dict.keys():
             sc.pp.subsample(adata, fraction=config_dict['subsample_cells'])
         if 'subsample_feature_counts' in config_dict.keys():
@@ -179,7 +179,7 @@ def scanpy_merge(
 
     # possible additional basic filtering on the full dataset
     # sc.pp.filter_cells(adata, min_genes=200)
-    # sc.pp.filter_genes(adata, min_cells=3)
+    # sc.pp.filter_genes(adata, min_cells=1)
 
     print('[adata_merged] {} obs, {} vars'.format(
         adata_merged.n_obs,
