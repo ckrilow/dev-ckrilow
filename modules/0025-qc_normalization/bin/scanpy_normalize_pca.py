@@ -83,20 +83,27 @@ def scanpy_normalize_and_pca(
         inplace=True
     )
     if verbose:
-        print('number of variable genes detected across batches:\t{}'.format(
+        print('Number of variable genes detected across batches:\t{}'.format(
             adata.var['highly_variable_intersection'].sum()
         ))
     # Fix bug in PCA when we have set batch_key. More below:
     # https://github.com/theislab/scanpy/issues/1032
     adata.var['highly_variable'] = adata.var['highly_variable_intersection']
 
-    # Tegress out any continuous variables.
+    # Regress out any continuous variables.
     if (len(vars_to_regress) > 0):
-        sc.pp.regress_out(
-            adata,
-            keys=vars_to_regress,
-            copy=False
-        )
+        # NOTE: if the same value is repeated (e.g., 0) for all cells this will
+        #       fail. https://github.com/theislab/scanpy/issues/230
+        if verbose:
+            print('For regress_out, calling {}'.format(
+                'pp.filter_genes(adata, min_cells=1)'
+            ))
+        sc.pp.filter_genes(adata, min_cells=1)
+        # sc.pp.regress_out(
+        #     adata,
+        #     keys=vars_to_regress,
+        #     copy=False
+        # )
 
     # Scale the data to unit variance.
     # This effectively weights each gene evenly.
@@ -125,7 +132,7 @@ def scanpy_normalize_and_pca(
         ]
     )
     pca_df.to_csv(
-        output_file+'-pcs.tsv.gz',
+        '{}-pcs.tsv.gz'.format(output_file),
         sep='\t',
         index=True,
         index_label='cell_barcode',
@@ -135,7 +142,7 @@ def scanpy_normalize_and_pca(
 
     # Save the metadata to a seperate file for Harmony.
     adata.obs.to_csv(
-        output_file+'-metadata.tsv.gz',
+        '{}-metadata.tsv.gz'.format(output_file),
         sep='\t',
         index=True,
         quoting=csv.QUOTE_NONNUMERIC,
@@ -157,7 +164,7 @@ def scanpy_normalize_and_pca(
     # sc.pl.pca_variance_ratio(adata, log=False)
 
     # Save the data.
-    adata.write(output_file+'-normalized_pca.h5', compression='gzip')
+    adata.write('{}-normalized_pca.h5'.format(output_file), compression='gzip')
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
 
@@ -198,10 +205,22 @@ def main():
     )
 
     parser.add_argument(
+        '-c', '--cores',
+        action='store',
+        dest='c',
+        default=1,
+        type=int,
+        help='Cores available for analysis. TOTO:implement.\
+            (default: %(default)s)'
+    )
+    # TODO: see documentation for regress out on how to set number of cores
+    # available for scanpy
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
-        default=os.getcwd()+'/adata',
+        default='{}/adata'.format(os.getcwd()),
         help='Directory and basename of output files.\
             (default: %(default)s)'
     )

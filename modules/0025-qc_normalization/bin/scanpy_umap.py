@@ -6,16 +6,23 @@ __date__ = '2020-03-13'
 __version__ = '0.0.1'
 
 import argparse
+import os
 import pandas as pd
 import scanpy as sc
 import matplotlib.pyplot as plt
+
+# Silence NumbaPerformanceWarning in umap. See below:
+# https://github.com/lmcinnes/umap/issues/252
+import warnings
+from numba.errors import NumbaPerformanceWarning
+warnings.filterwarnings('ignore', category=NumbaPerformanceWarning)
 
 
 def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read anndata object and PCs file. Generates UMAP.
+            Read AnnData object and PCs file. Generates UMAP.
             """
     )
 
@@ -77,13 +84,25 @@ def main():
         action='store',
         dest='of',
         default='',
-        help='Directory and basename of output files.\
+        help='Basename of output files, assuming output in current working \
+            directory.\
             (default: <h5_anndata>-<tsv_pcs>-umap)'
     )
 
     options = parser.parse_args()
 
+    # Fixed settings.
     verbose = True
+
+    # Get the out file base.
+    out_file_base = options.of
+    if out_file_base == '':
+        out_file_base = '{}-{}-umap'.format(
+            os.path.basename(options.h5.rstrip('.h5')),
+            os.path.basename(options.pc.rstrip('.tsv.gz'))
+        )
+    # Set the figure output directory to match the base.
+    sc.settings.figdir = os.getcwd()
 
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=options.h5)
@@ -151,19 +170,12 @@ def main():
         adata,
         use_rep='X_pca',
         n_pcs=n_pcs,
+        # n_neighbors=10,
         copy=False
     )
 
     # UMAP
     sc.tl.umap(adata)
-
-    # Get the out file base.
-    out_file_base = options.of
-    if out_file_base == '':
-        out_file_base = '{}-{}-umap'.format(
-            options.h5.rstrip('.h5'),
-            options.pc.rstrip('.tsv.gz')
-        )
 
     # For each variable, loop over and set color accordingly. Save
     # the results.
@@ -180,6 +192,7 @@ def main():
             bbox_inches='tight'
         )
     for var in colors_categorical:
+        print(var)
         n_categories = len(adata.obs[var].cat.categories)
         color_palette = None
         if n_categories <= len(plt.get_cmap('Dark2').colors):

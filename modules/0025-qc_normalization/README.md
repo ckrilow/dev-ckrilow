@@ -1,8 +1,11 @@
 
 # Description
+
 The methods used in this module are described in `docs/methods.pdf`.
 
-Insert brief description of module. This is a Cromwell workflow example.
+TODO: add `docs/methods.pdf` file.
+TODO: add brief description of module.
+
 
 
 # Notes to clean up
@@ -12,8 +15,7 @@ export LSB_DEFAULTGROUP=team152
 
 export default -g parameter for lsf
 https://www.ibm.com/support/knowledgecenter/SSETD4_9.1.3/lsf_config_ref/lsb.params.default_jobgroup.5.html
-bgadd -L 500 /lt9/nf
-export LSB_DEFAULT_JOBGROUP='/lt9/nf'
+
 
 qc -> exploration -> mtproportions -> filtering -> downsample -> normalization
 qc -> filtering -> normalization
@@ -24,6 +26,7 @@ qc -> filtering -> normalization
 
 Quickstart for deploying this pipeline on a local cluster.
 
+
 ## 1. Set up the environment
 
 Install most of the packages via conda:
@@ -32,13 +35,18 @@ Install most of the packages via conda:
 REPO_MODULE="${HOME}/repo/path/to/this/module"
 
 # install environment using Conda
-conda env create --name example_module_1 --file ${REPO_MODULE}/environment.yml
+conda env create --name sc_qc_normalization_cluster --file ${REPO_MODULE}/environment.yml
 
 # activate the new Conda environment
-source activate example_module_1
+source activate sc_qc_normalization_cluster
 
 # to update environment file:
 #conda env export --no-builds | grep -v prefix | grep -v name > environment.yml
+```
+
+Conda does not work well for R packages. Install R packages via renv:
+```bash
+TODO
 ```
 
 
@@ -54,18 +62,48 @@ python "${REPO_MODULE}/scripts/prepare_file1_script.py" \
     --input_file input-file1.tsv > input-file1.tsv
 ```
 
-## 3. Set up and run Cromwell
 
-* **Note**: When scattering for many jobs without a MySQL backend, you will likely an out of memory error for Java (java.lang.OutOfMemoryError: Java heap space). To set up a MySQL ask your systems administrator to make a GCP MySQL instance.
-* **Note:** If Cromwell does not shutdown gracefully and you are using a MySQL database for logging, you may need to delete and rebuild MySQL database.
-* **Note**: If Cromwell ever stalls at the MySQL access stage, it is likely because the underlying Cromwell database (e.g., cromwell_db) within MySQL is corrupt. Delete the Cromwell database within MySQL. Create a new Cromwell database within MySQL. Re-run Cromwell.
-
+## 3. Set up and run Nextflow
 
 Change to a temporary runtime dir:
 ```bash
 mkdir -p /tmp/${USER}/example_module_1
 cd /tmp/${USER}/example_module_1
 ```
+
+
+Run Nexflow locally:
+```bash
+# NOTE: all input file paths should be full paths.
+nextflow run "${REPO_MODULE}/main.nf" \
+    -profile "local" \
+    --file_paths_10x "/home/ubuntu/studies/TaylorDL/freeze001-dev/final_samples2.tsv" \
+    --file_metadata "/home/ubuntu/repo/scrna_cellranger/sync_status/samples_metainfo.tsv"
+```
+
+
+Run Nextflow using LSF on a local cluster. More on bgroups [here](https://www.ibm.com/support/knowledgecenter/SSETD4_9.1.3/lsf_config_ref/lsb.params.default_jobgroup.5.html):
+```bash
+# Set up a group to submit jobs to.
+bgadd -L 500"/${USER}/nf"
+export LSB_DEFAULT_JOBGROUP="/${USER}/nf"
+
+# Depending on LSF setup, you may want to export a default -G parameter.
+#export LSB_DEFAULTGROUP="team152"
+
+# NOTE: if you want to resume a previous workflow, add -resume to the flags
+nextflow run "${REPO_MODULE}/main.nf" \
+    -profile "local" \
+    --file_paths_10x "/home/ubuntu/studies/TaylorDL/freeze001-dev/final_samples2.tsv" \
+    --file_metadata "/home/ubuntu/repo/scrna_cellranger/sync_status/samples_metainfo.tsv"
+```
+
+
+
+
+
+
+
 
 Set up Cromwell:
 ```bash
