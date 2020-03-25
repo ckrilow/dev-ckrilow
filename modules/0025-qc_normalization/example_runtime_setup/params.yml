@@ -1,0 +1,5 @@
+{
+    "example_module_1.my_input_file": "/my_data_dir/path_to_input_file/input.tsv.gz",
+    "coloc_swarm.threads": "16",
+    "coloc_swarm.temp_dir": "/tmp"
+}

@@ -4,18 +4,21 @@ VERSION = "0.0.1" // do not edit, controlled by bumpversion
 
 
 // set default parameters
-params.output_dir    = "nf-qc_normalization"
+params.output_dir    = "nf-qc_cluster"
 params.help          = false
-params.scale_vars_to_regress = ['', 'total_counts,age'] // ['', 'total_counts,age']
+params.scale_vars_to_regress = ['', 'total_counts,age']
+params.umap_colors_quantitative = ['age']
+params.colors_categorical = ['sanger_sample_id,sex,leiden']
+
 
 // startup messge - either with help message or the parameters supplied
 def help_message() {
     log.info """
     ============================================================================
-     single cell qc and normalization ~ v${VERSION}
+     single cell qc and clustering ~ v${VERSION}
     ============================================================================
 
-    Runs basic single cell qc and normalization
+    Runs basic single cell qc and clustering
 
     Usage:
     nextflow run main.nf -profile <local|lsf> -params-file params.yaml [options]
@@ -27,7 +30,7 @@ def help_message() {
         --file_metadata    Tab-delimited file containing sample metadata.
 
         --output_dir       Directory name to save results to. (Defaults to
-                           'nf-qc_normalization')
+                           'nf-qc_cluster')
 
     Profiles:
         local              local execution
@@ -48,7 +51,7 @@ if (params.help){
 } else {
     log.info """
     ============================================================================
-     single cell qc and normalization ~ v${VERSION}
+     single cell qc and clustering ~ v${VERSION}
     ============================================================================
     file_paths_10x                : ${params.file_paths_10x}
     file_metadata                 : ${params.file_metadata}
@@ -66,9 +69,12 @@ if (params.help){
 // Channel
 //     .fromPath( params.file_paths_10x )
 //     .println()
+
+// Channel: variables to regress out prior to scaling.
 Channel
     .fromList( params.scale_vars_to_regress )
-    .set { scale_vars_to_regress }
+    .set { scale__vars2regress }
+
 
 // label 'big_mem' - NOTE to self.
 
@@ -85,7 +91,7 @@ process merge_10x_samples {
     cpus 1             // cpu requirements
     //memory '50 GB'   // memory requirements
 
-    publishDir  path: "${params.output_dir}",
+    publishDir  path: "${outdir}",
                 mode: "copy",
                 overwrite: "true"
 
@@ -94,9 +100,11 @@ process merge_10x_samples {
     file(params.file_metadata)
 
     output:
-    file("adata.h5") into merge_10x_samples_anndata
+    val(outdir) into merge__outDir
+    file("adata.h5") into merge__annData
 
     script:
+    outdir = "${params.output_dir}"
     """
     scanpy_merge-dev.py \
         --samplesheetdata_file ${params.file_paths_10x} \
@@ -113,7 +121,7 @@ process merge_10x_samples {
 
 
 process normalize_and_pca {
-    // Takes AnnData object and nomalizes across samples.
+    // Takes annData object and nomalizes across samples.
     // NOTE: once normalization is set, it would be faster to normalize per
     //     sample and then merge
     // ------------------------------------------------------------------------
@@ -138,33 +146,40 @@ process normalize_and_pca {
                 overwrite: "true"
 
     input:
-    file(in_file) from merge_10x_samples_anndata
-    each vars_to_regress from scale_vars_to_regress
+    val(outdir_prev) from merge__outDir
+    file(infile) from merge__annData
+    each vars2regress from scale__vars2regress
 
     output:
-    val outdir into normalize_and_pca_outdir
-    file("adata-normalized_pca.h5") into normalize_and_pca_anndata_file
-    file("adata-metadata.tsv.gz") into normalize_and_pca_metadata_file
-    file("adata-pcs.tsv.gz") into normalize_and_pca_pc_file
+    tuple(
+        val(outdir),
+        file("adata-pcs.tsv.gz"),
+        file("adata-normalized_pca.h5"),
+        file("adata-metadata.tsv.gz")
+    ) into normalize__results
+    file("adata-normalized_pca.h5") into normalize__annData
+    file("adata-metadata.tsv.gz") into normalize__metaData
+    // file("adata-metadata.tsv.gz") into normalize__metaData
 
     script:
-    if(vars_to_regress == "") {
-        outdir = "${params.output_dir}/normalize.total_count-scale.vars_to_regress=none"
+    outdir = "${outdir_prev}/normalize.total_count"
+    if (vars2regress == "") {
+        outdir = "${outdir}-scale.vars_to_regress=none"
         """
         scanpy_normalize_pca.py \
-            --h5_anndata ${in_file}
+            --h5_anndata ${infile}
         """
     } else {
-        outdir = "${params.output_dir}/normalize.total_count-scale.vars_to_regress=${vars_to_regress}"
+        outdir = "${outdir}-scale.vars_to_regress=${vars2regress}"
         """
         scanpy_normalize_pca.py \
-            --h5_anndata ${in_file} \
-            --vars_to_regress ${vars_to_regress}
+            --h5_anndata ${infile} \
+            --vars_to_regress ${vars2regress}
         """
     }
     // """
     // normalize_seurat_obj.R \
-    //     --file ${in_file} \
+    //     --file ${infile} \
     //     --metadata_split_column sanger_sample_id \
     //     --normalization_method LogNormalize \
     //     --out_file sc_df \
@@ -190,20 +205,28 @@ process harmony {
                 overwrite: "true"
 
     input:
-    val outdir_prev from normalize_and_pca_outdir
-    file(in_file_pcs) from normalize_and_pca_pc_file
-    file(in_file_meta) from normalize_and_pca_metadata_file
+    tuple(
+        val(outdir_prev),
+        file(infile_reducedDims),
+        file(ignore_0),
+        file(infile__metaData)
+    ) from normalize__results
+    file(test) from normalize__annData
 
     output:
-    val outdir into harmony_outdir
-    file("adata-pcs-harmony.tsv.gz") into harmony_file
+    tuple(
+        val(outdir),
+        file("adata-pcs-harmony.tsv.gz")
+    ) into harmony__results
+    // val(outdir) into harmony__outDir
+    // file("adata-pcs-harmony.tsv.gz") into harmony__results
 
     script:
     outdir = "${outdir_prev}/reduced_dims-harmony"
     """
     harmony_process_pcs.R \
-        --pca_file ${in_file_pcs} \
-        --metadata_file ${in_file_meta} \
+        --pca_file ${infile_reducedDims} \
+        --metadata_file ${infile__metaData} \
         --metadata_columns sanger_sample_id \
         --n_pcs 15
     """
@@ -226,22 +249,30 @@ process cluster {
                 overwrite: "true"
 
     input:
-    val outdir_prev from harmony_outdir
-    file(in_file_anndata) from normalize_and_pca_anndata_file
-    file(in_file_pcs) from harmony_file
+    tuple(
+        val(outdir_prev),
+        file(infile_reducedDims),
+    ) from harmony__results
+    file(infile_annData) from normalize__annData
+    // tuple(
+    //     val(ignore_0),
+    //     file(ignore_1),
+    //     file(infile_annData),
+    //     file(ignore_2)
+    // ) from normalize__results
 
     output:
-    val outdir into cluster_outdir
-    file("test-clustered.tsv.gz") into cluster_file
-    file("test-clustered.h5") into cluster_anndata
-    file("*.pdf") into cluster_plots
+    tuple val(outdir), file("test-clustered.tsv.gz") into cluster__results
+    tuple val(outdir), file("test-clustered.h5") into cluster__annData
+    file("*.pdf") optional true
+    file("*.png") optional true
 
     script:
     outdir = "${outdir_prev}/cluster"
     """
     scanpy_cluster.py \
-        --h5_anndata ${in_file_anndata} \
-        --tsv_pcs ${in_file_pcs} \
+        --h5_anndata ${infile_annData} \
+        --tsv_pcs ${infile_reducedDims} \
         --cluster_method leiden \
         --number_pcs 15 \
         --resolution 1 \
@@ -251,6 +282,11 @@ process cluster {
 }
 
 
+// Channel: variables to regress out prior to scaling.
+// Channel
+//     .fromList( normalize__pcs, harmony__results )
+//     .set { umap__reducedDims }
+//
 // process umap {
 //     // Takes PCs (rows = cell barcodes) and metadata (rows = cell barcodes),
 //     // runs Harmony
@@ -267,9 +303,9 @@ process cluster {
 //                 overwrite: "true"
 //
 //     input:
-//     val outdir_prev from cluster_outdir
-//     file(in_file_anndata) from cluster_anndata
-//     file(in_file_pcs) from harmony_file
+//     val(outdir_prev) from cluster__outDir
+//     file(infile_annData) from cluster__annData
+//     each file(infile_reducedDims) from umap__reducedDims
 //
 //     output:
 //     file("*.png") into umap_plots
@@ -278,8 +314,8 @@ process cluster {
 //     outdir = "${outdir_prev}"
 //     """
 //     scanpy_umap.py \
-//         --h5_anndata ${in_file_anndata} \
-//         --tsv_pcs ${in_file_pcs} \
+//         --h5_anndata ${infile_annData} \
+//         --tsv_pcs ${infile_reducedDims} \
 //         --colors_quantitative age \
 //         --colors_categorical sanger_sample_id,sex,leiden \
 //         --number_pcs 15
