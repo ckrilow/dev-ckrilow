@@ -5,24 +5,33 @@ nextflow.preview.dsl=2
 VERSION = "0.0.1" // do not edit, controlled by bumpversion
 
 
-// include any modules
+// include modules
 include {
     merge_samples;
     normalize_and_pca;
+    subset_pcs;
     harmony;
 } from "./modules/core.nf"
 include {
-    wf_cluster;
-    wf_cluster as wf_cluster2;
+    umap;
+    umap as umap__harmony;
+    wf__cluster;
+    wf__cluster as wf__cluster_harmony;
 } from "./modules/cluster.nf"
 
 
 // set default parameters
 params.output_dir    = "nf-qc_cluster"
 params.help          = false
-params.scale__vars_to_regress = ['', 'total_counts,age']
-params.umap__colors_quantitative = ['age']
-params.umap__colors_categorical = ['sanger_sample_id,sex,leiden']
+params.reduced_dims__vars_to_regress = ['', 'total_counts,age']
+params.reduced_dims__n_pcs = [3, 15]
+// params.harmony__metadata_columns = ['sanger_sample_id', 'sanger_sample_id,bead_version']
+// params.harmony__thetas = ['0.5', '1,0.5']
+params.harmony__metadata_columns = ['sanger_sample_id,bead_version']
+params.harmony__thetas = ['1,0.5']
+params.cluster__resolutions = [1.0]
+params.umap__colors_quantitative = 'age'
+params.umap__colors_categorical = 'sanger_sample_id,sex'
 
 
 // startup messge - either with help message or the parameters supplied
@@ -79,16 +88,13 @@ if (params.help){
 
 
 // Initalize Channels.
-// example Channel init
+// Channel: example init
 // Channel
 //     .fromPath( params.file_paths_10x )
 //     .println()
-
 // Channel: variables to regress out prior to scaling.
-scale__vars_to_regress = Channel
-    .fromList(params.scale__vars_to_regress)
-
-// label 'big_mem' - NOTE to self.
+reduced_dims__vars_to_regress = Channel
+    .fromList(params.reduced_dims__vars_to_regress)
 
 
 // Run the workflow
@@ -104,27 +110,59 @@ workflow {
         normalize_and_pca(
             params.output_dir,
             merge_samples.out.anndata,
-            scale__vars_to_regress
+            reduced_dims__vars_to_regress
+        )
+        // Subset PCs to those for anlaysis
+        subset_pcs(
+            normalize_and_pca.out.outdir,
+            normalize_and_pca.out.anndata,
+            normalize_and_pca.out.metadata,
+            normalize_and_pca.out.pcs,
+            params.reduced_dims__n_pcs
         )
         // "Correct" PCs using Harmony
         harmony(
             normalize_and_pca.out.outdir,
+            normalize_and_pca.out.anndata,
             normalize_and_pca.out.metadata,
-            normalize_and_pca.out.pcs
+            normalize_and_pca.out.pcs,
+            params.reduced_dims__n_pcs,
+            params.harmony__metadata_columns,
+            params.harmony__thetas
+        )
+        // Make UMAPs of the reduced dimensions
+        umap(
+            subset_pcs.out.outdir,
+            subset_pcs.out.anndata,
+            subset_pcs.out.reduced_dims,
+            params.umap__colors_quantitative,
+            params.umap__colors_categorical
+        )
+        umap__harmony(
+            harmony.out.outdir,
+            harmony.out.anndata,
+            harmony.out.reduced_dims,
+            params.umap__colors_quantitative,
+            params.umap__colors_categorical
         )
         // Cluster the results, varying the resolution.
         // Also, generate UMAPs of the results.
-        wf_cluster(
-            normalize_and_pca.out.outdir_pca,
-            normalize_and_pca.out.anndata,
-            normalize_and_pca.out.pcs
+        wf__cluster(
+            subset_pcs.out.outdir,
+            subset_pcs.out.anndata,
+            subset_pcs.out.metadata,
+            subset_pcs.out.pcs,
+            subset_pcs.out.reduced_dims,
+            params.cluster__resolutions
         )
-        wf_cluster2(
+        wf__cluster_harmony(
             harmony.out.outdir,
-            normalize_and_pca.out.anndata,
-            harmony.out.reduced_dims
+            harmony.out.anndata,
+            harmony.out.metadata,
+            harmony.out.pcs,
+            harmony.out.reduced_dims,
+            params.cluster__resolutions
         )
-
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
     //       depending on the input data call. Therefore, we use publishDir
