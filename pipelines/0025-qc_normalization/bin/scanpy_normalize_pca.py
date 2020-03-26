@@ -10,6 +10,8 @@ import os
 import pandas as pd
 import scanpy as sc
 import csv
+import time
+from datetime import timedelta
 
 # Set scanpy settings
 # sc verbosity: errors (0), warnings (1), info (2), hints (3)
@@ -205,16 +207,15 @@ def main():
     )
 
     parser.add_argument(
-        '-c', '--cores',
+        '-ncpu', '--number_cpu',
         action='store',
-        dest='c',
-        default=1,
+        dest='ncpu',
+        default=4,
         type=int,
-        help='Cores available for analysis. TOTO:implement.\
+        help='Number of CPUs to use.\
             (default: %(default)s)'
     )
-    # TODO: see documentation for regress out on how to set number of cores
-    # available for scanpy
+    # sc.pp.regress_out out should default to sc.settings.n_jobs
 
     parser.add_argument(
         '-of', '--output_file',
@@ -227,6 +228,12 @@ def main():
 
     options = parser.parse_args()
 
+    # Scanpy settings
+    sc.settings.figdir = os.getcwd()  # figure output directory to match base.
+    sc.settings.n_jobs = options.ncpu  # number CPUs
+    # sc.settings.max_memory = 500  # in Gb
+    # sc.set_figure_params(dpi_save = 300)
+
     # Load the AnnData file
     adata = sc.read_h5ad(filename=options.h5)
 
@@ -235,6 +242,7 @@ def main():
     if options.vr != '':
         vars_to_regress = options.vr.split(',')
 
+    start_time = time.time()
     out_file = scanpy_normalize_and_pca(
         adata,
         output_file=options.of,
@@ -242,7 +250,11 @@ def main():
         sample_id_metadata_column='sanger_sample_id',
         verbose=True
     )
-    print(out_file)
+    execution_summary = "Analysis execution time [{}]:\t{}".format(
+        "scanpy_normalize_and_pca.py",
+        str(timedelta(seconds=time.time()-start_time))
+    )
+    print(execution_summary)
 
 
 if __name__ == '__main__':

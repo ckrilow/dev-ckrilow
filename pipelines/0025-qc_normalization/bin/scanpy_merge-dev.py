@@ -113,10 +113,7 @@ def scanpy_merge(
         #     x.startswith('MT-') for x in adata.var_names
         # ]
 
-        # calculate basic qc metrics
-        sc.pp.calculate_qc_metrics(adata, qc_vars=['mito_gene'], inplace=True)
-
-        # add in sample metadata
+        # Add in sample metadata.
         # NOTE: it would be more memory efficient to stash this in
         #       unstructured dict-like annotation (adata.uns)
         metadata_smpl = metadata[
@@ -125,7 +122,11 @@ def scanpy_merge(
         for col in metadata_smpl.columns:
             adata.obs[col] = np.repeat(metadata_smpl[col].values, adata.n_obs)
 
-        # apply cell filter
+        # Calculate basic qc metrics for this sample.
+        vars_prior_metrics = adata.var_keys()
+        sc.pp.calculate_qc_metrics(adata, qc_vars=['mito_gene'], inplace=True)
+
+        # Apply cell filter.
         # adata = adata[selected_cells, :]
         # apply gene filter
         # adata = adata[:, selected_genes]
@@ -137,7 +138,11 @@ def scanpy_merge(
             'pct_counts_mito_gene < 80'
         ]
         if 'subsample_cells' in config_dict.keys():
-            sc.pp.subsample(adata, fraction=config_dict['subsample_cells'])
+            sc.pp.subsample(
+                adata,
+                fraction=config_dict['subsample_cells'],
+                copy=False
+            )
         if 'subsample_feature_counts' in config_dict.keys():
             fraction = config_dict['subsample_feature_counts']
             target_counts_per_cell = adata.obs['total_counts'].apply(
@@ -161,23 +166,41 @@ def scanpy_merge(
                 n_cells_start - adata.n_obs
             ))
 
-        # print the number of cells and genes for this sample
+        # Print the number of cells and genes for this sample.
         print('[{}] {} obs (cells), {} vars (genes)'.format(
             row['sample_id'],
             adata.n_obs,
             adata.n_vars
         ))
 
-        # if we still have cells after filters, add to our list of data
+        # Comment code below to keep the vars (gene) output from
+        # calculate_qc_metrics *per sample*. If we do this, then in
+        # adata_merged.var, we will have duplicated # measures according to
+        # each sample (e.g., n_cells_by_counts-0, # n_cells_by_counts-1,
+        # n_cells_by_counts-3).
+        #
+        # Code below removes such output.
+        adata.var = adata.var[vars_prior_metrics]
+
+        # If we still have cells after filters, add to our list of data.
         if adata.n_obs > 0:
             adatasets.append(adata)
             n_adatasets += 1
 
-    # merge all of the data together
+    # Merge all of the data together.
     adata_merged = adatasets[0].concatenate(*adatasets[1:])
     adata_merged = check_adata(adata_merged, 'adata_merged')
 
-    # possible additional basic filtering on the full dataset
+    # Re-calculate basic qc metrics for the whole dataset.
+    obs_prior = adata_merged.obs.copy()
+    sc.pp.calculate_qc_metrics(
+        adata_merged,
+        qc_vars=['mito_gene'],
+        inplace=True
+    )
+    adata_merged.obs = obs_prior
+
+    # Possible additional basic filtering on the full dataset.
     # sc.pp.filter_cells(adata, min_genes=200)
     # sc.pp.filter_genes(adata, min_cells=1)
 
@@ -228,15 +251,32 @@ def main():
     )
 
     parser.add_argument(
-        '-od', '--output_dir',
+        '-ncpu', '--number_cpu',
         action='store',
-        dest='od',
-        default=os.getcwd(),
-        help='Directory to write output anndata file.\
+        dest='ncpu',
+        default=2,
+        type=int,
+        help='Number of CPUs to use.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-of', '--output_file',
+        action='store',
+        dest='of',
+        default='adata',
+        help='Basename of output anndata file, assuming output in current working \
+            directory. Will have .h5 appended.\
             (default: %(default)s)'
     )
 
     options = parser.parse_args()
+
+    # Scanpy settings
+    sc.settings.figdir = os.getcwd()  # figure output directory to match base.
+    sc.settings.n_jobs = options.ncpu  # number CPUs
+    # sc.settings.max_memory = 500  # in Gb
+    # sc.set_figure_params(dpi_save = 300)
 
     # requirements:
     # - reads yaml config file with a list per sample and the filters one
@@ -271,7 +311,7 @@ def main():
     out_file = scanpy_merge(
         samplesheetdata,
         metadata,
-        output_file=options.od.rstrip('/') + '/adata'
+        output_file=options.of
     )
     print(out_file)
 

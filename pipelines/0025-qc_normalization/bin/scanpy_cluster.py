@@ -16,7 +16,9 @@ def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read AnnData object and PCs file. Clusters the data.
+            Read AnnData object and PCs file. Clusters the data. Saves an
+            AnnData object with clusters in the clusters slot, a clusters
+            file, and QC plots.
             """
     )
 
@@ -68,9 +70,19 @@ def main():
         '-r', '--resolution',
         action='store',
         dest='r',
-        default=1,
-        type=int,
+        default=1.0,
+        type=float,
         help='Resolution.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-ncpu', '--number_cpu',
+        action='store',
+        dest='ncpu',
+        default=4,
+        type=int,
+        help='Number of CPUs to use.\
             (default: %(default)s)'
     )
 
@@ -89,6 +101,12 @@ def main():
     # Fixed settings.
     verbose = True
 
+    # Scanpy settings
+    sc.settings.figdir = os.getcwd()  # figure output directory to match base.
+    sc.settings.n_jobs = options.ncpu  # number CPUs
+    # sc.settings.max_memory = 500  # in Gb
+    # sc.set_figure_params(dpi_save = 300)
+
     # Get the out file base.
     out_file_base = options.of
     if out_file_base == '':
@@ -96,8 +114,6 @@ def main():
             os.path.basename(options.h5.rstrip('.h5')),
             os.path.basename(options.pc.rstrip('.tsv.gz'))
         )
-    # Set the figure output directory to match the base.
-    sc.settings.figdir = os.getcwd()
 
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=options.h5)
@@ -165,6 +181,10 @@ def main():
                 cluster_method
             )
         )
+    # Also save the clusters to the same spot so we know where they will be.
+    adata.uns['cluster'] = adata.uns[cluster_method]
+    adata.uns['cluster']['params']['method'] = cluster_method
+    adata.obs['cluster'] = adata.obs[cluster_method]
 
     # Print the final number of clustered discrovered
     if verbose:
@@ -192,6 +212,8 @@ def main():
     if verbose:
         print('Finished clustering and saved clustered AnnData.')
 
+    # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
+    #
     # Identify cell type makers.
     # Wilcoxon is recommended over t-test in this paper:
     # https://www.nature.com/articles/nmeth.4612.
@@ -199,7 +221,7 @@ def main():
     #       'scores', 'names', 'logfoldchanges', 'pvals', 'pvals_adj']
     sc.tl.rank_genes_groups(
         adata,
-        groupby=cluster_method,
+        groupby='cluster',
         groups='all',
         reference='rest',
         method='wilcoxon',
@@ -272,34 +294,45 @@ def main():
         compression='gzip'
     )
 
+    # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
     # Plot cell type makers.
+    # Annoyingly, prefix hardcoded as rank_genes_groups_<cluster_id>.
     sc.pl.rank_genes_groups(
         adata,
         gene_symbols='gene_symbols',
         n_genes=25,
         sharey=False,
         show=False,
-        save='{}-{}.pdf'.format(out_file_base, 'cluster_marker_genes')
+        save='-{}.pdf'.format(out_file_base)
     )
+
+    # Plot cell type markers in dotplot.
+    # Annoyingly, prefix hardcoded as dotplot.
+    # sc.pl.rank_genes_groups_dotplot(
+    #     adata,
+    #     n_genes=25,
+    #     sharey=False,
+    #     show=False,
+    #     save='-{}.pdf'.format(out_file_base)
+    # )
 
     # Sort by scores: same order as p-values except most methods return scores.
     marker_df = marker_df.sort_values(by=['scores'], ascending=False)
     # Make dataframe of the top 5 markers per cluster
     marker_df_plt = marker_df.groupby('cluster').head(3)
 
-    # Plot cell type markers in dotplot
+    # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
+    # Plot cell type markers in dotplot.
+    # Annoyingly, prefix hardcoded as dotplot.
     sc.pl.dotplot(
         adata,
         marker_df_plt['ensembl_gene_id'].to_list(),
-        groupby=cluster_method,
+        groupby='cluster',
         dendrogram=True,
         # gene_symbols='gene_symbols',
         use_raw=True,
         show=False,
-        save='{}-{}.pdf'.format(
-            out_file_base,
-            'cluster_marker_genes-dotplot_ensemblids'
-        )
+        save='_ensembl-{}.pdf'.format(out_file_base)
     )
 
 
