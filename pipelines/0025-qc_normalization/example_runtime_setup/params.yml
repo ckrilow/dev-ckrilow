@@ -21,7 +21,7 @@ reduced_dims:
         description: 'Number of dimensions to use for calculating PCs,
             harmony corrected PCs, and clusters.'
         value:
-            - 15
+            - 3
             - 30
 harmony:
     description: 'Parameters for harmony.'
