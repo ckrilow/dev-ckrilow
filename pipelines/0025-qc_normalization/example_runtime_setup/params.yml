@@ -16,7 +16,7 @@ reduced_dims:
             indicate no regssion is to be performed.'
         value:
             - ''
-            - 'total_counts,age'
+            - 'total_counts,lane'
     n_dims:
         description: 'Number of dimensions to use for calculating PCs,
             harmony corrected PCs, and clusters.'
@@ -30,7 +30,7 @@ harmony:
         value:
             - variable: 'sanger_sample_id'
               theta: '1.0'
-            - variable: 'sanger_sample_id,bead_version'
+            - variable: 'sanger_sample_id,ack_lysis_buffer'
               theta: '1.0,0.2'
 cluster:
     description: 'Parmaters for clustering. All pairwise combinations of
@@ -50,8 +50,8 @@ umap:
     colors_quantitative:
         description: 'Comma seperated string of quantitative variables that
             will be used to color points.'
-        value: 'age'
+        value: 'total_reads'
     colors_categorical:
         description: 'Comma seperated string of categorical variables that
             will be used to color points.'
-        value: 'sanger_sample_id,sex'
+        value: 'sanger_sample_id,ack_lysis_buffer'
