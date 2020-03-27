@@ -39,6 +39,7 @@ cluster:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
             - 'leiden'
+            - 'louvain'
     resolutions:
         description: 'Clustering resolution.'
         value:
