@@ -76,7 +76,7 @@ cd "/tmp/${USER}/nf"
 ```
 
 
-Run Nexflow locally:
+Run Nexflow locally (NOTE: if running on a vm you may need to set `export QT_QPA_PLATFORM='offscreen'` for scanpy as described [here](https://github.com/ipython/ipython/issues/10627)):
 ```bash
 # NOTE: all input file paths should be full paths.
 nextflow run "${REPO_MODULE}/main.nf" \
@@ -87,7 +87,7 @@ nextflow run "${REPO_MODULE}/main.nf" \
 ```
 
 
-Run Nextflow using LSF on a local cluster. More on bgroups [here](https://www.ibm.com/support/knowledgecenter/SSETD4_9.1.3/lsf_config_ref/lsb.params.default_jobgroup.5.html):
+Run Nextflow using LSF on a compute cluster. More on bgroups [here](https://www.ibm.com/support/knowledgecenter/SSETD4_9.1.3/lsf_config_ref/lsb.params.default_jobgroup.5.html):
 ```bash
 # Set up a group to submit jobs to (export a default -g parameter).
 bgadd -L 500"/${USER}/nf"
