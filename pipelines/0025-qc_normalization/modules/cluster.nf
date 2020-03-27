@@ -40,6 +40,7 @@ process cluster {
         path(file__metadata)
         path(file__pcs)
         path(file__reduced_dims)
+        each method
         each resolution
         // tuple(val(outdir_prev), path(file__reduced_dims))
 
@@ -57,6 +58,7 @@ process cluster {
         runid = random_hex(16)
         resolution_str = "${resolution}" //.replaceAll("\\.", "pt")
         outdir = "${outdir_prev}/cluster"
+        outdir = "${outdir}-method=${method}"
         outdir = "${outdir}-resolution=${resolution_str}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
@@ -66,7 +68,7 @@ process cluster {
         scanpy_cluster.py \
             --h5_anndata ${file__anndata} \
             --tsv_pcs ${file__reduced_dims} \
-            --cluster_method leiden \
+            --cluster_method ${method} \
             --resolution ${resolution} \
             --number_cpu 16 \
             --output_file ${runid}-${outfile}-clustered
@@ -136,6 +138,7 @@ workflow wf__cluster {
         metadata
         pcs
         reduced_dims
+        cluster__methods
         cluster__resolutions
     main:
         // Cluster the results, varying the resolution.
@@ -145,6 +148,7 @@ workflow wf__cluster {
             metadata,
             pcs,
             reduced_dims,
+            cluster__methods,
             cluster__resolutions
         )
         // Generate UMAPs of the results.

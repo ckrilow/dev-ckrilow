@@ -265,8 +265,8 @@ def main():
         action='store',
         dest='of',
         default='adata',
-        help='Basename of output anndata file, assuming output in current working \
-            directory. Will have .h5 appended.\
+        help='Basename of output anndata file, assuming output in current \
+            working directory. Will have .h5 appended.\
             (default: %(default)s)'
     )
 

@@ -9,9 +9,7 @@ def random_hex(n) {
 
 
 process merge_samples {
-    // Takes a list of raw 10x files and merges them into one Seurat object.
-    // NOTE: once normalization is set, it would be faster to normalize per
-    //     sample and then merge
+    // Takes a list of raw 10x files and merges them into one anndata object.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache true        // cache results from run
@@ -50,9 +48,9 @@ process merge_samples {
 
 
 process normalize_and_pca {
-    // Takes annData object and nomalizes across samples.
-    // NOTE: once normalization is set, it would be faster to normalize per
-    //     sample and then merge
+    // Takes annData object, nomalizes across samples, calculates PCs.
+    // NOTE: Once normalization is set, it would be faster to normalize per
+    //       sample and then merge.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
@@ -76,13 +74,13 @@ process normalize_and_pca {
         path("${runid}-adata-normalized_pca.h5", emit: anndata)
         path("${runid}-adata-metadata.tsv.gz", emit: metadata)
         path("${runid}-adata-pcs.tsv.gz", emit: pcs)
-        tuple(
-            val(outdir),
-            path("${runid}-adata-normalized_pca.h5"),
-            path("${runid}-adata-metadata.tsv.gz"),
-            path("${runid}-adata-pcs.tsv.gz"),
-            emit: results
-        )
+        // tuple(
+        //     val(outdir),
+        //     path("${runid}-adata-normalized_pca.h5"),
+        //     path("${runid}-adata-metadata.tsv.gz"),
+        //     path("${runid}-adata-pcs.tsv.gz"),
+        //     emit: results
+        // )
 
     script:
         runid = random_hex(16)
@@ -198,8 +196,7 @@ process harmony {
         path(file__metadata)
         path(file__pcs)
         each n_pcs
-        each metadata_columns
-        each thetas
+        each variables_and_thetas
 
     output:
         val(outdir, emit: outdir)
@@ -219,15 +216,15 @@ process harmony {
         runid = random_hex(16)
         outdir = "${outdir_prev}/reduced_dims-harmony"
         outdir = "${outdir}-n_pcs=${n_pcs}"
-        outdir = "${outdir}-metadata_columns=${metadata_columns}"
-        outdir = "${outdir}-thetas=${thetas}"
+        outdir = "${outdir}-variables=${variables_and_thetas.variable}"
+        outdir = "${outdir}-thetas=${variables_and_thetas.theta}"
         """
         echo "harmony:${runid}"
         harmony_process_pcs.R \
             --pca_file ${file__pcs} \
             --metadata_file ${file__metadata} \
-            --metadata_columns ${metadata_columns} \
-            --theta ${thetas} \
+            --metadata_columns ${variables_and_thetas.variable} \
+            --theta ${variables_and_thetas.theta} \
             --n_pcs ${n_pcs} \
             --out_file ${runid}-reduced_dims
         """
