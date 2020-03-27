@@ -59,7 +59,7 @@ def scanpy_merge(
     output_file : string
         Description of parameter `output_file`.
     sample_id_metadata_column : string
-        Description of parameter `sample_id_metadata_column`
+        Column in metadata that matches the "sample_id" column in samplesheetdata.
         (the default is "sanger_sample_id").
 
     Returns

@@ -30,6 +30,7 @@ nf-qc_normalize_cluster
 * Add `docs/methods.pdf` file.
 * Add brief description of module.
 * `scanpy_merge-dev.py`: Implement per sample filtering for scanpy merge.
+* `scanpy_merge-dev.py`: If it were important to have a per sample filter, merge could be re-designed to accomodate this. 
 * `scanpy_normalize_pca.py`: Enable regress out.
 * `scanpy_normalize_pca.py`: Enable layers.
 * `scanpy_cluster.py`: Choose proper data normalization for marker identification and plots (right now I think it uses the same data used for dimensionality reduction).
