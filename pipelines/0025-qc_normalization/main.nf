@@ -23,15 +23,6 @@ include {
 // Set default parameters.
 params.output_dir    = "nf-qc_cluster"
 params.help          = false
-// params.reduced_dims__vars_to_regress = ['', 'total_counts,age']
-// params.reduced_dims__n_dims = [3, 15]
-// // params.harmony__metadata_columns = ['sanger_sample_id', 'sanger_sample_id,bead_version']
-// // params.harmony__thetas = ['0.5', '1,0.5']
-// params.harmony__metadata_columns = ['sanger_sample_id,bead_version']
-// params.harmony__thetas = ['1,0.5']
-// params.cluster__resolutions = [1.0]
-// params.umap__colors_quantitative = 'age'
-// params.umap__colors_categorical = 'sanger_sample_id,sex'
 // NOTE: The default parameters below were chosen to show the flexiblity of
 //       this pipeline. They were not chosen because these are the values one
 //       should use for final analysis.
