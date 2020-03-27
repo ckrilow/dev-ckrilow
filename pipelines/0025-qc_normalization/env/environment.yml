@@ -1,11 +1,12 @@
 channels:
+  - letaylor
   - conda-forge
   - bioconda
   - r
   - defaults
 dependencies:
-  - bioawk=1.0
   - yaml=0.1.7
-  - r=3.6
-  - r-base=3.6.2
+  - scanpy=1.4.6
+  - leidenalg=0.7.0
+  - r-harmony=1.0
   - r-renv=0.9.3
