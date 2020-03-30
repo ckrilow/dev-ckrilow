@@ -7,6 +7,18 @@ sample_qc:
             - 'pct_counts_in_top_100_genes < 50'
             - 'pct_counts_mito < 80'
             - 'n_genes_by_counts > 2000'
+    downsample_cells_fraction:
+        description: 'Downsample to this fraction of the number of
+            observations (sc.pp.subsample). Use "" to indicate no downsampling.'
+        value: ''
+    downsample_cells_n:
+        description: 'Downsample to this number of observations
+            (sc.pp.subsample). Use "" to indicate no downsampling.'
+        value: ''
+    downsample_feature_counts:
+        description: 'Downsample the number of feature counts by this fraction.
+            Use "" to indicate no downsampling.'
+        value: ''
 reduced_dims:
     description: 'Parameters for dimensionality reduction (principal component
         and harmony calculations). All pairwise combinations of

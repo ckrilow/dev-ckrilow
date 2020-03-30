@@ -133,18 +133,35 @@ def scanpy_merge(
 
         # TODO
         # apply subsampling if specified in the config
-        config_dict = dict()
-        config_dict['cell_qc'] = [
+        params_dict = dict()
+        params_dict['cell_qc'] = [
             'pct_counts_mito_gene < 80'
         ]
-        if 'subsample_cells' in config_dict.keys():
+        param_filters_check = [
+            'downsample_cells_fraction',
+            'downsample_cells_n'
+        ]
+        if all(params_dict[k] != '' for k in param_filters_check):
+            raise Exception(
+                'Error check the params. Both {} and {} are set.'.format(
+                    'downsample_cells_fraction',
+                    'downsample_cells_n'
+                )
+            )
+        if params_dict['downsample_cells_fraction'] != '':
             sc.pp.subsample(
                 adata,
-                fraction=config_dict['subsample_cells'],
+                fraction=params_dict['downsample_cells_fraction'],
                 copy=False
             )
-        if 'subsample_feature_counts' in config_dict.keys():
-            fraction = config_dict['subsample_feature_counts']
+        elif params_dict['downsample_cells_n'] != '':
+            sc.pp.subsample(
+                adata,
+                n_obs=params_dict['downsample_cells_n'],
+                copy=False
+            )
+        if params_dict['downsample_feature_counts'] != '':
+            fraction = params_dict['downsample_feature_counts']
             target_counts_per_cell = adata.obs['total_counts'].apply(
                 lambda x: int(x * fraction)
             ).values
@@ -152,9 +169,9 @@ def scanpy_merge(
                 adata,
                 counts_per_cell=target_counts_per_cell
             )
-        if 'cell_qc' in config_dict.keys():
+        if 'cell_qc' in params_dict.keys():
             n_cells_start = adata.n_obs
-            for filter_query in config_dict['cell_qc']:
+            for filter_query in params_dict['cell_qc']:
                 adata = adata[adata.obs.query(filter_query).index, :]
                 print('[{}] cell QC applied "{}": {} cells dropped'.format(
                     row['sample_id'],
@@ -261,6 +278,18 @@ def main():
     )
 
     parser.add_argument(
+        '-pyml', '--params_yanl',
+        action='store',
+        dest='pyml',
+        default='',
+        required=False,
+        help='YAML file containing cell filtering and downsampling (e.g.,\
+            of total number of cells or reads per cell) parameters.\
+            If file is not provided, no filtering or downsampling is\
+            performed.'
+    )
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
@@ -289,7 +318,7 @@ def main():
     #   at the end the dataframe is written out - Q: possible to not hold all
     #   dataset in memory by writing to loom file one at a time?
     # with open(config_file, 'r') as f:
-    #     config_dict = yaml.safe_load(f)
+    #     params_dict = yaml.safe_load(f)
 
     # load a file of the samples to analyse
     # sf = "/home/ubuntu/studies/TaylorDL/freeze001/final_samples.tsv"
@@ -306,7 +335,7 @@ def main():
     metadata = pd.read_csv(options.mf, sep='\t')
     metadata.columns = metadata.columns.str.strip(
         ).str.replace(' ', '_').str.lower()
-    metadata = metadata.drop(metadata_column_delete, axis=1)
+    #metadata = metadata.drop(metadata_column_delete, axis=1)
 
     out_file = scanpy_merge(
         samplesheetdata,
