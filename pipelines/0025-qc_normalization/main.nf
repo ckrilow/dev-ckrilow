@@ -44,7 +44,7 @@ params.cluster = [
     resolutions: [value: [1.0, 3.0]],
 ]
 // Default parameters for cluster marker gene calculations.
-params.cluster = [
+params.cluster_marker = [
     methods: [value: ["wilcoxon", "logreg"]]
 ]
 // Default parameters for umap calculations.
