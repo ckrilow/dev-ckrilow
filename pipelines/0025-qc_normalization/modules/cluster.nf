@@ -13,8 +13,6 @@ process cluster {
     //cache false        // cache results from run
     scratch false      // use tmp directory
     echo true          // echo output from script
-    cpus 16            // cpu requirements
-    //memory '50 GB'   // memory requirements
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -63,14 +61,17 @@ process cluster {
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "cluster:${runid}"
+        echo "cluster: ${process_info}"
         scanpy_cluster.py \
             --h5_anndata ${file__anndata} \
             --tsv_pcs ${file__reduced_dims} \
             --cluster_method ${method} \
             --resolution ${resolution} \
-            --number_cpu 16 \
+            --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}-clustered
         """
 }
@@ -83,8 +84,6 @@ process umap {
     //cache false        // cache results from run
     scratch false      // use tmp directory
     echo true          // echo output from script
-    cpus 16            // cpu requirements
-    //memory '50 GB'   // memory requirements
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -118,14 +117,17 @@ process umap {
         if (colors_categorical != "") {
             cmd__colors_cat = "--colors_categorical ${colors_categorical}"
         }
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "umap:${runid}"
+        echo "umap: ${process_info}"
         scanpy_umap.py \
             --h5_anndata ${file__anndata} \
             --tsv_pcs ${file__reduced_dims} \
             ${cmd__colors_quant} \
             ${cmd__colors_cat} \
-            --number_cpu 16 \
+            --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}
         """
 }

@@ -15,8 +15,6 @@ process merge_samples {
     //cache true        // cache results from run
     scratch false      // use tmp directory
     echo true          // echo output from script
-    cpus 2             // cpu requirements
-    //memory '50 GB'   // memory requirements
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -36,12 +34,15 @@ process merge_samples {
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "merge_samples:${runid}"
+        echo "merge_samples: ${process_info}"
         scanpy_merge-dev.py \
             --samplesheetdata_file ${file_paths_10x} \
             --metadata_file ${file_metadata} \
-            --number_cpu 2 \
+            --number_cpu ${task.cpus} \
             --output_file ${runid}-adata
         """
 }
@@ -56,8 +57,6 @@ process normalize_and_pca {
     //cache false        // cache results from run
     scratch false      // use tmp directory
     echo true          // echo output from script
-    cpus 16            // cpu requirements
-    //memory '50 GB'   // memory requirements
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -93,12 +92,15 @@ process normalize_and_pca {
             cmd__vars_to_regress = "--vars_to_regress ${vars_to_regress}"
         }
         //outdir_pca = "${outdir}/reduced_dims-pca"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "normalize_pca:${runid}"
+        echo "normalize_pca: ${process_info}"
         scanpy_normalize_pca.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-adata \
-            --number_cpu 16 \
+            --number_cpu ${task.cpus} \
             ${cmd__vars_to_regress}
         """
 }
@@ -111,8 +113,6 @@ process subset_pcs {
     //cache false        // cache results from run
     scratch false      // use tmp directory
     echo true          // echo output from script
-    cpus 1             // cpu requirements
-    //memory '50 GB'   // memory requirements
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -154,8 +154,11 @@ process subset_pcs {
         runid = random_hex(16)
         outdir = "${outdir_prev}/reduced_dims-pca"
         outdir = "${outdir}-n_pcs=${n_pcs}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "subset_pcs:${runid}"
+        echo "subset_pcs: ${process_info}"
         subset_pca_file.py \
             --tsv_pcs ${file__pcs} \
             --number_pcs ${n_pcs} \
@@ -172,8 +175,6 @@ process harmony {
     //cache false        // cache results from run
     scratch false      // use tmp directory
     echo true          // echo output from script
-    cpus 4             // cpu requirements
-    //memory '50 GB'   // memory requirements
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
@@ -218,8 +219,11 @@ process harmony {
         outdir = "${outdir}-n_pcs=${n_pcs}"
         outdir = "${outdir}-variables=${variables_and_thetas.variable}"
         outdir = "${outdir}-thetas=${variables_and_thetas.theta}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "harmony:${runid}"
+        echo "harmony: ${process_info}"
         harmony_process_pcs.R \
             --pca_file ${file__pcs} \
             --metadata_file ${file__metadata} \
