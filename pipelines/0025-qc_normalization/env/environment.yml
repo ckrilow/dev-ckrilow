@@ -9,5 +9,6 @@ dependencies:
   - scanpy=1.4.6
   - leidenalg=0.7.0
   - louvain=0.6.1
+  - harmonypy=0.0.4
   - r-base=3.6.2
   - r-renv=0.9.3
