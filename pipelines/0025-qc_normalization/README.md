@@ -81,7 +81,7 @@ source activate sc_qc_cluster
 Generate and/or edit input files for the pipeline.
 
 The pipeline takes as input:
-1. **file_paths_10x**:  Tab-delimited file containing experiment_id and path_data_10xformat columns. Reqired.
+1. **file_paths_10x**:  Tab-delimited file containing experiment_id and data_path_10x_format columns. Reqired.
 2. **file_metadata**:  Tab-delimited file containing sample metadata. Reqired.
 3. **file_sample_qc**:  YAML file containing sample qc and filtering parameters. Required. NOTE: in the example config file, this is part of the YAML file for item 4.
 4. **params-file**:  YAML file containing analysis parameters. Optional.

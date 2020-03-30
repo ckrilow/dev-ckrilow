@@ -1,4 +1,4 @@
-"experiment_id"	"path_data_10xformat"
+"experiment_id"	"data_path_10x_format"
 "5892STDY8039553"	"/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/neoti/cd/5892STDY8039553/filtered_feature_bc_matrix"
 "5892STDY8039649"	"/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8039649/filtered_feature_bc_matrix"
 "5892STDY8039745"	"/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8039745/filtered_feature_bc_matrix"
