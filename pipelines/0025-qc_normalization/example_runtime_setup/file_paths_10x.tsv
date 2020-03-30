@@ -1,3 +1,3 @@
-sample_id	data_path_10x_format
+experiment_id	data_path_10x_format
 5892STDY8039073	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8039073/filtered_feature_bc_matrix
 5892STDY8357647	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8357647/filtered_feature_bc_matrix

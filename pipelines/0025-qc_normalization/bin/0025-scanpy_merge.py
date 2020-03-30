@@ -60,8 +60,8 @@ def scanpy_merge(
     output_file : string
         Description of parameter `output_file`.
     metadata_key : string
-        Column in metadata that matches the "sample_id" column in tenx_data.
-        (the default is "sanger_sample_id").
+        Column in metadata that matches the "experiment_id" column in
+        tenx_data (the default is "sanger_sample_id").
 
     Returns
     -------
@@ -70,13 +70,13 @@ def scanpy_merge(
     """
     # check the tenx_data
     # check for required columns
-    tenx_data_required_cols = set(['sample_id', 'data_path_10x_format'])
+    tenx_data_required_cols = set(['experiment_id', 'data_path_10x_format'])
     if not tenx_data_required_cols.issubset(tenx_data.columns):
         raise Exception('Invalid tenx_data.')
     # check no duplicate sample ids
-    vals, counts = np.unique(tenx_data['sample_id'], return_counts=True)
+    vals, counts = np.unique(tenx_data['experiment_id'], return_counts=True)
     if np.sum(counts > 1):
-        raise Exception('Error {} duplicate sample_ids:\t{}'.format(
+        raise Exception('Error {} duplicate experiment_ids:\t{}'.format(
             np.sum(counts > 1),
             np.array2string(vals[counts > 1])
         ))
@@ -128,7 +128,7 @@ def scanpy_merge(
             make_unique=False
         )
 
-        adata = check_adata(adata, row['sample_id'])
+        adata = check_adata(adata, row['experiment_id'])
 
         # label mitochondrial genes
         # mito_gene_list = sc.queries.mitochondrial_genes() # another query
@@ -144,7 +144,7 @@ def scanpy_merge(
         # NOTE: it would be more memory efficient to stash this in
         #       unstructured dict-like annotation (adata.uns)
         metadata_smpl = metadata[
-            metadata[metadata_key] == row['sample_id']
+            metadata[metadata_key] == row['experiment_id']
         ]
         for col in metadata_smpl.columns:
             adata.obs[col] = np.repeat(metadata_smpl[col].values, adata.n_obs)
@@ -186,18 +186,18 @@ def scanpy_merge(
             for filter_query in params_dict['cell_filters']['value']:
                 adata = adata[adata.obs.query(filter_query).index, :]
                 print('[{}] cell QC applied "{}": {} cells dropped'.format(
-                    row['sample_id'],
+                    row['experiment_id'],
                     filter_query,
                     n_cells_start - adata.n_obs
                 ))
             print('[{}] cell QC applied: {} total cells dropped'.format(
-                row['sample_id'],
+                row['experiment_id'],
                 n_cells_start - adata.n_obs
             ))
 
         # Print the number of cells and genes for this sample.
         print('[{}] {} obs (cells), {} vars (genes)'.format(
-            row['sample_id'],
+            row['experiment_id'],
             adata.n_obs,
             adata.n_vars
         ))
@@ -265,7 +265,8 @@ def main():
         action='store',
         dest='txd',
         required=True,
-        help='File with the following headers: sample_id data_path_10x_format.'
+        help='File with the following headers: experiment_id\
+            data_path_10x_format.'
     )
 
     parser.add_argument(
@@ -293,7 +294,7 @@ def main():
         action='store',
         dest='mk',
         default='sanger_sample_id',
-        help='Key to link metadata to tenxdata_file sample_id column.\
+        help='Key to link metadata to tenxdata_file experiment_id column.\
             (default: %(default)s)'
     )
 
@@ -355,11 +356,11 @@ def main():
     # Load a file of the samples to analyse
     tenx_data = pd.read_csv(options.txd, sep='\t')
     # tenx_data = tenx_data.rename(columns={
-    #     'sanger_sample_id': 'sample_id',
+    #     'sanger_sample_id': 'experiment_id',
     #     'file_path': 'data_path_10x_format'
     # })
     tenx_data_check = [
-        'sample_id',
+        'experiment_id',
         'data_path_10x_format'
     ]
     if not all(k in tenx_data.columns for k in tenx_data_check):
