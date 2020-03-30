@@ -5,15 +5,20 @@ The methods used in this module are described in `docs/methods.pdf`. TODO: `docs
 
 Below is the structure of the results directory. The values that will be listed in `description_of_params` within the directory structure correspond to the various parameters one can set. An example of a paramters file is found in `example_runtime_setup/params.yml`.
 ```bash
-nf-qc_normalize_cluster
+nf-qc_cluster
 ├── normalization_001::description_of_params
 │   ├── [files: data]
 │   ├── reduced_dims-pca::description_of_params
 │   │   ├── [files: data]
 │   │   ├── [plots: umap]
 │   │   ├── cluster_001::description_of_params
-│   │   │   ├── [files: data,cluster_marker_genes]
-│   │   │   └── [plots: umap]
+│   │   │   ├── [files: data,clusters]
+│   │   │   ├── [plots: umap]
+│   │   │   ├── cluster_markers_001::description_of_params
+│   │   │   │   ├── [files: cluster_marker_genes]
+│   │   │   │   └── [plots: marker_genes,marker_genes_dotplot]
+│   │   │   ├── cluster_markers_002::description_of_params
+│   │   │   ... etc. ...
 │   │   ├── cluster_002::description_of_params
 │   │   ... etc. ...
 │   ├── reduced_dims-harmony_001::description_of_params
@@ -29,16 +34,15 @@ nf-qc_normalize_cluster
 
 * Add `docs/methods.pdf` file.
 * Add brief description of module.
-* `scanpy_merge-dev.py`: Implement per sample filtering for scanpy merge.
-* `scanpy_merge-dev.py`: If it were important to have a per sample filter, merge could be re-designed to accomodate this. 
 * `scanpy_normalize_pca.py`: Enable regress out.
 * `scanpy_normalize_pca.py`: Enable layers.
 * `scanpy_cluster.py`: Choose proper data normalization for marker identification and plots (right now I think it uses the same data used for dimensionality reduction).
-* `scanpy_cluster.py`: Currently for clustering, we can change method (leiden or louvain), resolution, and n_pcs. Are there other parameters that need to be scaled over?
 
 
 # Enhancement list
 
+* `scanpy_merge-dev.py`: If it were important to have a per sample filter, merge could be re-designed to accommodate this.
+* `scanpy_cluster.py`: Currently for clustering, we can change method (leiden or louvain), resolution, and n_pcs. Are there other parameters that need to be scaled over?
 * Check phenotypes against predicted sex from gene expression.
 * Add basic QC plots - try to do this in R from anndata frame?
 * Scrublet functionality + add to metadata + cluster distributions
@@ -51,7 +55,7 @@ nf-qc_normalize_cluster
 
 # Quickstart
 
-Quickstart for deploying this pipeline on a local cluster.
+Quickstart for deploying this pipeline locally and on a high performance compute cluster.
 
 
 ## 1. Set up the environment
@@ -79,7 +83,8 @@ Generate and/or edit input files for the pipeline.
 The pipeline takes as input:
 1. **file_paths_10x**:  Tab-delimited file containing experiment_id and path_data_10xformat columns. Reqired.
 2. **file_metadata**:  Tab-delimited file containing sample metadata. Reqired.
-3. **params-file**:  YAML file containing analysis parameters. Optional.
+3. **file_sample_qc**:  YAML file containing sample qc and filtering parameters. Required. NOTE: in the example config file, this is part of the YAML file for item 4.
+4. **params-file**:  YAML file containing analysis parameters. Optional.
 
 Examples of all of these files can be found in `example_runtime_setup/`.
 
@@ -111,7 +116,7 @@ bgadd "/${USER}/logins"
 bsub -q normal -G team152 -g /${USER}/logins -Is -XF -M 8192 -R "select[mem>8192] rusage[mem=8192]" /bin/bash
 
 # Activate the Conda environment (inherited by subsequent jobs).
-source activate sc_qc_cluster
+conda activate sc_qc_cluster
 
 # Set up a group to submit jobs to (export a default -g parameter).
 bgadd -L 500 "/${USER}/nf"
@@ -126,15 +131,12 @@ cd "/tmp/${USER}/nf"
 
 # NOTE: If you want to resume a previous workflow, add -resume to the flag.
 nextflow run "${REPO_MODULE}/main.nf" \
-    -profile "local" \
+    -profile "lsf" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
+    --file_sample_qc "${REPO_MODULE}/example_runtime_setup/params.yml" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml" \
     -resume
-# nextflow run "${REPO_MODULE}/main.nf" \
-#     -profile "lsf" \
-#     --file_paths_10x "/home/ubuntu/studies/TaylorDL/freeze001-dev/final_samples2.tsv" \
-#     --file_metadata "/home/ubuntu/repo/scrna_cellranger/sync_status/samples_metainfo.tsv"
 
 # After completion, clean up the temporary cache.
 rm -r "/tmp/${USER}/nf"

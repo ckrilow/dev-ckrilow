@@ -214,8 +214,8 @@ main <- function() {
         run_time[["elapsed"]]/3600, # proc.time sec to hours
         " hours."
     )
-    message(execution_summary)
-    return(execution_summary)
+    print(execution_summary)
+    #return(execution_summary)
     #return(0) # For nextflow, more meaningful to return execution_summary
 }
 

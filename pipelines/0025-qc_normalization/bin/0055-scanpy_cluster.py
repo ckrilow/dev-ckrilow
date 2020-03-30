@@ -209,131 +209,130 @@ def main():
 
     adata.write('{}.h5'.format(out_file_base), compression='gzip')
 
-    if verbose:
-        print('Finished clustering and saved clustered AnnData.')
-
-    # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
-    #
-    # Identify cell type makers.
-    # Wilcoxon is recommended over t-test in this paper:
-    # https://www.nature.com/articles/nmeth.4612.
-    # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
-    #       'scores', 'names', 'logfoldchanges', 'pvals', 'pvals_adj']
-    sc.tl.rank_genes_groups(
-        adata,
-        groupby='cluster',
-        groups='all',
-        reference='rest',
-        method='wilcoxon',
-        n_genes=100,
-        corr_method='bonferroni'
-    )
-
-    # Other options for cell type marker identification:
-    # MAST, limma, DESeq2, diffxpy, logreg
-
-    # Rank genes by logistic regression (multi-variate appraoch), suggested by:
-    # https://doi.org/10.1101/258566
-    # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
-    #       'scores', 'names']
+    # if verbose:
+    #     print('Finished clustering and saved clustered AnnData.')
+    # # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
+    # #
+    # # Identify cell type makers.
+    # # Wilcoxon is recommended over t-test in this paper:
+    # # https://www.nature.com/articles/nmeth.4612.
+    # # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
+    # #       'scores', 'names', 'logfoldchanges', 'pvals', 'pvals_adj']
     # sc.tl.rank_genes_groups(
     #     adata,
-    #     groupby=cluster_method,
+    #     groupby='cluster',
     #     groups='all',
     #     reference='rest',
-    #     method='logreg'
+    #     method='wilcoxon',
+    #     n_genes=100,
+    #     corr_method='bonferroni'
     # )
-
-    # Save the ranks.
-    results_dict = dict()
-    for cluster_i in adata.uns['rank_genes_groups']['names'].dtype.names:
-        # print(cluster_i)
-        # Get keys that we want from the dataframe.
-        data_keys = list(
-            set(['names', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj']) &
-            set(adata.uns['rank_genes_groups'].keys())
-        )
-        # Build a table using these keys.
-        key_i = data_keys.pop()
-        results_dict[cluster_i] = pd.DataFrame(
-            row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
-        )
-        results_dict[cluster_i].columns = [key_i]
-        for key_i in data_keys:
-            results_dict[cluster_i][key_i] = [
-                row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
-            ]
-        results_dict[cluster_i]['cluster'] = cluster_i
-    marker_df = pd.concat(results_dict, ignore_index=True)
-
-    # Clean up naming.
-    marker_df = marker_df.rename(
-        columns={'names': 'ensembl_gene_id'},
-        inplace=False
-    )
-
-    # Add gene_symbols.
-    marker_df = marker_df.set_index('ensembl_gene_id', inplace=False)
-    marker_df = marker_df.join(
-        adata.var[['gene_symbols']],
-        how='left'
-    )
-    marker_df = marker_df.reset_index(drop=False)
-    marker_df = marker_df.rename(
-        columns={'index': 'ensembl_gene_id'},
-        inplace=False
-    )
-
-    # Save the marker dataframe.
-    marker_df.to_csv(
-        '{}-cluster_markers.tsv.gz'.format(out_file_base),
-        sep='\t',
-        index=True,
-        quoting=csv.QUOTE_NONNUMERIC,
-        na_rep='',
-        compression='gzip'
-    )
-
-    # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
-    # Plot cell type makers.
-    # Annoyingly, prefix hardcoded as rank_genes_groups_<cluster_id>.
-    sc.pl.rank_genes_groups(
-        adata,
-        gene_symbols='gene_symbols',
-        n_genes=25,
-        sharey=False,
-        show=False,
-        save='-{}.pdf'.format(out_file_base)
-    )
-
-    # Plot cell type markers in dotplot.
-    # Annoyingly, prefix hardcoded as dotplot.
-    # sc.pl.rank_genes_groups_dotplot(
+    #
+    # # Other options for cell type marker identification:
+    # # MAST, limma, DESeq2, diffxpy, logreg
+    #
+    # # Rank genes by logistic regression (multi-variate appraoch), suggested by:
+    # # https://doi.org/10.1101/258566
+    # # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
+    # #       'scores', 'names']
+    # # sc.tl.rank_genes_groups(
+    # #     adata,
+    # #     groupby=cluster_method,
+    # #     groups='all',
+    # #     reference='rest',
+    # #     method='logreg'
+    # # )
+    #
+    # # Save the ranks.
+    # results_dict = dict()
+    # for cluster_i in adata.uns['rank_genes_groups']['names'].dtype.names:
+    #     # print(cluster_i)
+    #     # Get keys that we want from the dataframe.
+    #     data_keys = list(
+    #         set(['names', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj']) &
+    #         set(adata.uns['rank_genes_groups'].keys())
+    #     )
+    #     # Build a table using these keys.
+    #     key_i = data_keys.pop()
+    #     results_dict[cluster_i] = pd.DataFrame(
+    #         row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
+    #     )
+    #     results_dict[cluster_i].columns = [key_i]
+    #     for key_i in data_keys:
+    #         results_dict[cluster_i][key_i] = [
+    #             row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
+    #         ]
+    #     results_dict[cluster_i]['cluster'] = cluster_i
+    # marker_df = pd.concat(results_dict, ignore_index=True)
+    #
+    # # Clean up naming.
+    # marker_df = marker_df.rename(
+    #     columns={'names': 'ensembl_gene_id'},
+    #     inplace=False
+    # )
+    #
+    # # Add gene_symbols.
+    # marker_df = marker_df.set_index('ensembl_gene_id', inplace=False)
+    # marker_df = marker_df.join(
+    #     adata.var[['gene_symbols']],
+    #     how='left'
+    # )
+    # marker_df = marker_df.reset_index(drop=False)
+    # marker_df = marker_df.rename(
+    #     columns={'index': 'ensembl_gene_id'},
+    #     inplace=False
+    # )
+    #
+    # # Save the marker dataframe.
+    # marker_df.to_csv(
+    #     '{}-cluster_markers.tsv.gz'.format(out_file_base),
+    #     sep='\t',
+    #     index=True,
+    #     quoting=csv.QUOTE_NONNUMERIC,
+    #     na_rep='',
+    #     compression='gzip'
+    # )
+    #
+    # # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
+    # # Plot cell type makers.
+    # # Annoyingly, prefix hardcoded as rank_genes_groups_<cluster_id>.
+    # sc.pl.rank_genes_groups(
     #     adata,
+    #     gene_symbols='gene_symbols',
     #     n_genes=25,
     #     sharey=False,
     #     show=False,
     #     save='-{}.pdf'.format(out_file_base)
     # )
-
-    # Sort by scores: same order as p-values except most methods return scores.
-    marker_df = marker_df.sort_values(by=['scores'], ascending=False)
-    # Make dataframe of the top 5 markers per cluster
-    marker_df_plt = marker_df.groupby('cluster').head(3)
-
-    # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
-    # Plot cell type markers in dotplot.
-    # Annoyingly, prefix hardcoded as dotplot.
-    sc.pl.dotplot(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
-        groupby='cluster',
-        dendrogram=True,
-        # gene_symbols='gene_symbols',
-        use_raw=True,
-        show=False,
-        save='_ensembl-{}.pdf'.format(out_file_base)
-    )
+    #
+    # # Plot cell type markers in dotplot.
+    # # Annoyingly, prefix hardcoded as dotplot.
+    # # sc.pl.rank_genes_groups_dotplot(
+    # #     adata,
+    # #     n_genes=25,
+    # #     sharey=False,
+    # #     show=False,
+    # #     save='-{}.pdf'.format(out_file_base)
+    # # )
+    #
+    # # Sort by scores: same order as p-values except most methods return scores.
+    # marker_df = marker_df.sort_values(by=['scores'], ascending=False)
+    # # Make dataframe of the top 5 markers per cluster
+    # marker_df_plt = marker_df.groupby('cluster').head(3)
+    #
+    # # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
+    # # Plot cell type markers in dotplot.
+    # # Annoyingly, prefix hardcoded as dotplot.
+    # sc.pl.dotplot(
+    #     adata,
+    #     marker_df_plt['ensembl_gene_id'].to_list(),
+    #     groupby='cluster',
+    #     dendrogram=True,
+    #     # gene_symbols='gene_symbols',
+    #     use_raw=True,
+    #     show=False,
+    #     save='_ensembl-{}.pdf'.format(out_file_base)
+    # )
 
 
 if __name__ == '__main__':

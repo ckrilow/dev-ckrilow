@@ -25,6 +25,7 @@ process merge_samples {
         val(outdir_prev)
         path(file_paths_10x)
         path(file_metadata)
+        path(file_params)
 
     // NOTE: use path here and not file see:
     //       https://github.com/nextflow-io/nextflow/issues/1414
@@ -37,11 +38,16 @@ process merge_samples {
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
+        // String filename = './parameters.yml'
+        // yaml.dump(file_params , new FileWriter(filename))
         """
         echo "merge_samples: ${process_info}"
-        scanpy_merge-dev.py \
-            --samplesheetdata_file ${file_paths_10x} \
+        0025-scanpy_merge.py \
+            --tenxdata_file ${file_paths_10x} \
             --metadata_file ${file_metadata} \
+            --metadata_columns_delete "sample_status,study,study_id" \
+            --metadata_key "sanger_sample_id" \
+            --params_yaml ${file_params} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-adata
         """
@@ -97,7 +103,7 @@ process normalize_and_pca {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "normalize_pca: ${process_info}"
-        scanpy_normalize_pca.py \
+        0035-scanpy_normalize_pca.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-adata \
             --number_cpu ${task.cpus} \
@@ -159,7 +165,7 @@ process subset_pcs {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "subset_pcs: ${process_info}"
-        subset_pca_file.py \
+        0045-subset_pca_file.py \
             --tsv_pcs ${file__pcs} \
             --number_pcs ${n_pcs} \
             --output_file ${runid}-reduced_dims
@@ -224,7 +230,7 @@ process harmony {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "harmony: ${process_info}"
-        harmony_process_pcs.R \
+        0045-harmony_process_pcs.py \
             --pca_file ${file__pcs} \
             --metadata_file ${file__metadata} \
             --metadata_columns ${variables_and_thetas.variable} \
@@ -232,4 +238,11 @@ process harmony {
             --n_pcs ${n_pcs} \
             --out_file ${runid}-reduced_dims
         """
+        // 0045-harmony_process_pcs.R \
+        //     --pca_file ${file__pcs} \
+        //     --metadata_file ${file__metadata} \
+        //     --metadata_columns ${variables_and_thetas.variable} \
+        //     --theta ${variables_and_thetas.theta} \
+        //     --n_pcs ${n_pcs} \
+        //     --out_file ${runid}-reduced_dims
 }

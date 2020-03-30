@@ -28,25 +28,29 @@ params.help          = false
 //       should use for final analysis.
 // Default parameters for reduced dimension calculations.
 params.reduced_dims = [
-    vars_to_regress: [value: ['', 'total_counts,age']],
+    vars_to_regress: [value: ["", "total_counts,age"]],
     n_dims: [value: [15, 30]]
 ]
 // Default parameters for harmony.
 params.harmony = [
     variables_and_thetas: [value: [
-        [variable: 'sanger_sample_id', theta: '1.0'],
-        [variable: 'sanger_sample_id,bead_version', theta: '1.0,0.2']
+        [variable: "sanger_sample_id", theta: "1.0"],
+        [variable: "sanger_sample_id,bead_version", theta: "1.0,0.2"]
     ]]
 ]
 // Default parameters for cluster calculations.
 params.cluster = [
-    methods: [value: ['leiden', 'louvain']],
+    methods: [value: ["leiden", "louvain"]],
     resolutions: [value: [1.0, 3.0]],
+]
+// Default parameters for cluster marker gene calculations.
+params.cluster = [
+    methods: [value: ["wilcoxon", "logreg"]]
 ]
 // Default parameters for umap calculations.
 params.umap = [
-    colors_quantitative: [value: 'age'],
-    colors_categorical: [value: 'sanger_sample_id,sex'],
+    colors_quantitative: [value: "age"],
+    colors_categorical: [value: "sanger_sample_id,sex"],
 ]
 
 
@@ -67,6 +71,9 @@ def help_message() {
                             path_data_10xformat columns.
 
         --file_metadata     Tab-delimited file containing sample metadata.
+
+        --file_sample_qc    YAML file containing sample quality control
+                            filters.
 
     Other arguments:
         --output_dir        Directory name to save results to. (Defaults to
@@ -94,6 +101,7 @@ if (params.help){
     ============================================================================
     file_paths_10x                : ${params.file_paths_10x}
     file_metadata                 : ${params.file_metadata}
+    file_sample_qc                : ${params.file_sample_qc}
     output_dir (output folder)    : ${params.output_dir}
     """.stripIndent()
     // A dictionary way to accomplish the text above.
@@ -122,7 +130,8 @@ workflow {
         merge_samples(
             params.output_dir,
             params.file_paths_10x,
-            params.file_metadata
+            params.file_metadata,
+            params.file_sample_qc
         )
         // Normalize, regress (optional), scale, and calculate PCs
         normalize_and_pca(
@@ -171,7 +180,8 @@ workflow {
             subset_pcs.out.pcs,
             subset_pcs.out.reduced_dims,
             params.cluster.methods.value,
-            params.cluster.resolutions.value
+            params.cluster.resolutions.value,
+            params.cluster_marker.methods.value
         )
         wf__cluster_harmony(
             harmony.out.outdir,
@@ -180,7 +190,8 @@ workflow {
             harmony.out.pcs,
             harmony.out.reduced_dims,
             params.cluster.methods.value,
-            params.cluster.resolutions.value
+            params.cluster.resolutions.value,
+            params.cluster_marker.methods.value
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure

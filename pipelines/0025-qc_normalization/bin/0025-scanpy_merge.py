@@ -7,10 +7,10 @@ __version__ = '0.0.1'
 
 import argparse
 import os
+import yaml
 import numpy as np
 import pandas as pd
 import scanpy as sc
-# import yaml
 
 # sc verbosity: errors (0), warnings (1), info (2), hints (3)
 # sc.settings.verbosity = 3
@@ -43,23 +43,24 @@ def check_adata(adata, adata_id):
 
 
 def scanpy_merge(
-    samplesheetdata,
+    tenx_data,
     metadata,
+    metadata_key,
     output_file,
-    sample_id_metadata_column="sanger_sample_id"
+    params_dict=dict()
 ):
     """Merge 10x data.
 
     Parameters
     ----------
-    samplesheetdata : pandas.DataFrame
-        Description of parameter `samplesheetdata`.
+    tenx_data : pandas.DataFrame
+        Description of parameter `tenx_data`.
     metadata : pandas.DataFrame
         Description of parameter `metadata`.
     output_file : string
         Description of parameter `output_file`.
-    sample_id_metadata_column : string
-        Column in metadata that matches the "sample_id" column in samplesheetdata.
+    metadata_key : string
+        Column in metadata that matches the "sample_id" column in tenx_data.
         (the default is "sanger_sample_id").
 
     Returns
@@ -67,32 +68,58 @@ def scanpy_merge(
     output_file : string
         output_file
     """
-    # check the samplesheetdata
+    # check the tenx_data
     # check for required columns
-    samplesheetdata_required_cols = set(['sample_id', 'data_path_10x_format'])
-    if not samplesheetdata_required_cols.issubset(samplesheetdata.columns):
-        raise Exception('Invalid samplesheetdata.')
+    tenx_data_required_cols = set(['sample_id', 'data_path_10x_format'])
+    if not tenx_data_required_cols.issubset(tenx_data.columns):
+        raise Exception('Invalid tenx_data.')
     # check no duplicate sample ids
-    vals, counts = np.unique(samplesheetdata['sample_id'], return_counts=True)
+    vals, counts = np.unique(tenx_data['sample_id'], return_counts=True)
     if np.sum(counts > 1):
         raise Exception('Error {} duplicate sample_ids:\t{}'.format(
             np.sum(counts > 1),
             np.array2string(vals[counts > 1])
         ))
     # check all files exist
-    filt = samplesheetdata['data_path_10x_format'].apply(
+    filt = tenx_data['data_path_10x_format'].apply(
         lambda x: os.path.exists(x)
     )
     if np.sum(filt > 1):
         raise Exception('Error {} data_path_10x_format missing:\t{}'.format(
             np.sum(filt > 1),
-            np.array2string(samplesheetdata['data_path_10x_format'][filt])
+            np.array2string(tenx_data['data_path_10x_format'][filt])
         ))
+
+    # Init default values for params_dict
+    params_filters_check = [
+        'cell_filters',
+        'downsample_cells_fraction',
+        'downsample_cells_n',
+        'downsample_feature_counts'
+    ]
+    for i in params_filters_check:
+        if i not in params_dict:
+            if i == 'cell_filters':
+                params_dict[i] = {'value': []}
+            else:
+                params_dict[i] = {'value': ''}
+    # Check for validity of filters specified in params_dict
+    param_filters_check = [
+        'downsample_cells_fraction',
+        'downsample_cells_n'
+    ]
+    if all(params_dict[k]['value'] != '' for k in param_filters_check):
+        raise Exception(
+            'Error check the params. Both {} and {} are set.'.format(
+                'downsample_cells_fraction',
+                'downsample_cells_n'
+            )
+        )
 
     # iterate over samples and load data
     adatasets = []
     n_adatasets = 1
-    for idx, row in samplesheetdata.iterrows():
+    for idx, row in tenx_data.iterrows():
         # load the data
         adata = sc.read_10x_mtx(
             path=row['data_path_10x_format'],
@@ -117,7 +144,7 @@ def scanpy_merge(
         # NOTE: it would be more memory efficient to stash this in
         #       unstructured dict-like annotation (adata.uns)
         metadata_smpl = metadata[
-            metadata[sample_id_metadata_column] == row['sample_id']
+            metadata[metadata_key] == row['sample_id']
         ]
         for col in metadata_smpl.columns:
             adata.obs[col] = np.repeat(metadata_smpl[col].values, adata.n_obs)
@@ -131,37 +158,21 @@ def scanpy_merge(
         # apply gene filter
         # adata = adata[:, selected_genes]
 
-        # TODO
-        # apply subsampling if specified in the config
-        params_dict = dict()
-        params_dict['cell_qc'] = [
-            'pct_counts_mito_gene < 80'
-        ]
-        param_filters_check = [
-            'downsample_cells_fraction',
-            'downsample_cells_n'
-        ]
-        if all(params_dict[k] != '' for k in param_filters_check):
-            raise Exception(
-                'Error check the params. Both {} and {} are set.'.format(
-                    'downsample_cells_fraction',
-                    'downsample_cells_n'
-                )
-            )
-        if params_dict['downsample_cells_fraction'] != '':
+        # Apply downsampling if needed.
+        if params_dict['downsample_cells_fraction']['value'] != '':
             sc.pp.subsample(
                 adata,
-                fraction=params_dict['downsample_cells_fraction'],
+                fraction=params_dict['downsample_cells_fraction']['value'],
                 copy=False
             )
-        elif params_dict['downsample_cells_n'] != '':
+        elif params_dict['downsample_cells_fraction']['value'] != '':
             sc.pp.subsample(
                 adata,
-                n_obs=params_dict['downsample_cells_n'],
+                n_obs=params_dict['downsample_cells_n']['value'],
                 copy=False
             )
-        if params_dict['downsample_feature_counts'] != '':
-            fraction = params_dict['downsample_feature_counts']
+        if params_dict['downsample_feature_counts']['value'] != '':
+            fraction = params_dict['downsample_feature_counts']['value']
             target_counts_per_cell = adata.obs['total_counts'].apply(
                 lambda x: int(x * fraction)
             ).values
@@ -169,9 +180,10 @@ def scanpy_merge(
                 adata,
                 counts_per_cell=target_counts_per_cell
             )
-        if 'cell_qc' in params_dict.keys():
+        # Apply cell QC filters.
+        if len(params_dict['cell_filters']['value']) > 0:
             n_cells_start = adata.n_obs
-            for filter_query in params_dict['cell_qc']:
+            for filter_query in params_dict['cell_filters']['value']:
                 adata = adata[adata.obs.query(filter_query).index, :]
                 print('[{}] cell QC applied "{}": {} cells dropped'.format(
                     row['sample_id'],
@@ -238,7 +250,7 @@ def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Filter and merge 10x data. Save to anndata object.
+            Filter and merge 10x data. Save to AnnData object.
             """
     )
 
@@ -249,13 +261,11 @@ def main():
     )
 
     parser.add_argument(
-        '-sf', '--samplesheetdata_file',
+        '-txd', '--tenxdata_file',
         action='store',
-        dest='sf',
+        dest='txd',
         required=True,
-        help='File with the following headers: sanger_sample_id, file_path.'
-        # 'Input yaml config file that lists the samples to merge as well',
-        # ' as filters to apply to each file.'
+        help='File with the following headers: sample_id data_path_10x_format.'
     )
 
     parser.add_argument(
@@ -264,7 +274,27 @@ def main():
         dest='mf',
         required=True,
         help='File with metadata on samples matching sanger_sample_id in\
-            samplesheetdata_file.'
+            tenxdata_file.'
+    )
+
+    parser.add_argument(
+        '-mcd', '--metadata_columns_delete',
+        action='store',
+        dest='mcd',
+        default='sample_status,study,study_id',
+        help='Comma seperated list of columns to delete in metadata_file.\
+            If "" then no columns are deleted. Not whitespace should be\
+            represented with an underscore (_).\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-mk', '--metadata_key',
+        action='store',
+        dest='mk',
+        default='sanger_sample_id',
+        help='Key to link metadata to tenxdata_file sample_id column.\
+            (default: %(default)s)'
     )
 
     parser.add_argument(
@@ -278,15 +308,15 @@ def main():
     )
 
     parser.add_argument(
-        '-pyml', '--params_yanl',
+        '-pyml', '--params_yaml',
         action='store',
         dest='pyml',
         default='',
-        required=False,
         help='YAML file containing cell filtering and downsampling (e.g.,\
             of total number of cells or reads per cell) parameters.\
             If file is not provided, no filtering or downsampling is\
-            performed.'
+            performed.\
+            (default: %(default)s)'
     )
 
     parser.add_argument(
@@ -307,40 +337,60 @@ def main():
     # sc.settings.max_memory = 500  # in Gb
     # sc.set_figure_params(dpi_save = 300)
 
-    # requirements:
-    # - reads yaml config file with a list per sample and the filters one
-    #   wants to use for that sample
-    # - input file can be either 10x dir or a loom object. Use loom object
-    #   to add metadata to samples prior to merge that might be used in
-    #   the filtering.
-    # output:
-    # - each sample file is read in, filtered, and added to a massive dataframe
-    #   at the end the dataframe is written out - Q: possible to not hold all
-    #   dataset in memory by writing to loom file one at a time?
-    # with open(config_file, 'r') as f:
-    #     params_dict = yaml.safe_load(f)
+    # NOTE:
+    # - Could change yaml params file to include a list per sample and the
+    #   filters one wants to use for that sample
+    # - Could allow the input to be either 10x dir or AnnData/loom object.
+    #   Use AnnData/loom object would be useful if we add doublet scores
+    #   or other scores prior to filtering.
 
-    # load a file of the samples to analyse
-    # sf = "/home/ubuntu/studies/TaylorDL/freeze001/final_samples.tsv"
-    samplesheetdata = pd.read_csv(options.sf, sep='\t')
-    # samplesheetdata = samplesheetdata.drop(['experiment_id'], axis=1)
-    samplesheetdata = samplesheetdata.rename(columns={
-        'sanger_sample_id': 'sample_id',
-        'file_path': 'data_path_10x_format'
-    })
+    # Read in the paramerters for downsampling and cell filters.
+    if options.pyml == '':
+        params_dict = {}
+    else:
+        with open(options.pyml, 'r') as f:
+            params_dict = yaml.safe_load(f)
+        params_dict = params_dict['sample_qc']
 
-    # load the metadata
-    # f = "/home/ubuntu/repo/scrna_cellranger/sync_status/samples_metainfo.tsv"
-    metadata_column_delete = ['sample_status', 'study', 'study_id']
+    # Load a file of the samples to analyse
+    tenx_data = pd.read_csv(options.txd, sep='\t')
+    # tenx_data = tenx_data.rename(columns={
+    #     'sanger_sample_id': 'sample_id',
+    #     'file_path': 'data_path_10x_format'
+    # })
+    tenx_data_check = [
+        'sample_id',
+        'data_path_10x_format'
+    ]
+    if not all(k in tenx_data.columns for k in tenx_data_check):
+        raise Exception(
+            'Error invalid tenx_data file. Missing coluns.'
+        )
+
+    # Load the metadata
     metadata = pd.read_csv(options.mf, sep='\t')
     metadata.columns = metadata.columns.str.strip(
         ).str.replace(' ', '_').str.lower()
-    #metadata = metadata.drop(metadata_column_delete, axis=1)
 
+    # Delete the metadata columns that we do not want.
+    if options.mcd != '':
+        for i in options.mcd.split(','):
+            if i in metadata.columns:
+                metadata = metadata.drop(i, axis=1)
+
+    # Make sure the matching key exists.
+    if options.mk not in metadata.columns:
+        raise Exception(
+            'Error cannot find metadata_key in metadata.'
+        )
+
+    # Run the merge function.
     out_file = scanpy_merge(
-        samplesheetdata,
+        tenx_data,
         metadata,
-        output_file=options.of
+        metadata_key=options.mk,
+        output_file=options.of,
+        params_dict=params_dict
     )
     print(out_file)
 

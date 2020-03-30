@@ -1,25 +1,23 @@
 
 # Description
 
-Bits of code from Leland's personal projects.
-
-This repo is pulled from a default template for workflows.
+This README is pulled from a default template for workflows.
 
 # Workflow template setup
 
 ## lib
 
-* The `lib` directory contains general libraries that may be referenced by multiple workflows, for instance cromwell configs and python configs.
+* The `lib` directory contains general libraries that may be referenced by multiple workflows, for instance cromwell configs and python configs. Currently nothing in this directory is used.
 
 
-## modules
+## pipelines
 
 * Each module is a full analysis. Think of it like the heading of a methods section in a paper. For instance if this were genetic summary statistics workflow, a module might be "fine-mapping" that does both conditional and credible set analysis. Another module may be "colocalization".
 
 * Modules may have numbers prior to their name (e.g., `example_module_1` to `0025-example_module_1`). These numbers do not mean anything, but merely used to keep modules in their general order of execution. These are optional.
 
 * A module consists of :
-1. A workflow, for instance Cromwell (see `0025-example_module_1`) or Snakemake (see `0033-example_module_2`).
+1. A workflow.
 2. A `scripts` directory with *all* scripts referenced by that workflow (unless a general lib script is called).
 3. A `docs` directory that contains a documentation of the default parameters written in a style that is publishable as methods in a paper (including citations). Within the `docs` directory there may be a `reference` with any additional reference materials.
 4. An `example_runtime_setup` directory contains files that give an example of actual config files and any other files used to run the pipeline.
@@ -128,4 +126,4 @@ Create a [GitHub Pull Request](https://help.github.com/en/articles/creating-a-pu
 
 Once another developer approves the PR, you have the go-ahead to merge your code! Congrats, you finished your feature!
 
-*Note*: There are some cases where you may just want to push directly to the my_repo fork, thereby avoiding code reviews. For instance, if you're working on a one-off project that you want people to be able to see, but no one else is necessarily working on, you can always push directly to the branches on my_repo fork. Or, you could also still go through the steps of a PR, but simply merge your own code without CR. 
+*Note*: There are some cases where you may just want to push directly to the my_repo fork, thereby avoiding code reviews. For instance, if you're working on a one-off project that you want people to be able to see, but no one else is necessarily working on, you can always push directly to the branches on my_repo fork. Or, you could also still go through the steps of a PR, but simply merge your own code without CR.

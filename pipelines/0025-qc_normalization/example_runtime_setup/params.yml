@@ -5,7 +5,7 @@ sample_qc:
         description: 'Cell filters applied to each sample.'
         value:
             - 'pct_counts_in_top_100_genes < 50'
-            - 'pct_counts_mito < 80'
+            - 'pct_counts_mito_gene < 80'
             - 'n_genes_by_counts > 2000'
     downsample_cells_fraction:
         description: 'Downsample to this fraction of the number of
@@ -45,7 +45,7 @@ harmony:
             - variable: 'sanger_sample_id,ack_lysis_buffer'
               theta: '1.0,0.2'
 cluster:
-    description: 'Parmaters for clustering. All pairwise combinations of
+    description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
@@ -57,6 +57,13 @@ cluster:
         value:
             - 1.0
             - 3.0
+cluster_marker:
+    description: 'Parameters for identifying cluster marker features.'
+    methods:
+        description: 'Method for marker detection.'
+        value:
+            - 'wilcoxon'
+            - 'logreg'
 umap:
     description: 'Parameters for umap.'
     colors_quantitative:
