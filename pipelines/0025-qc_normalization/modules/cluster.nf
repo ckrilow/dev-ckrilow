@@ -96,6 +96,8 @@ process cluster_markers {
                         null
                     } else if(filename.endsWith("reduced_dims.tsv.gz")) {
                         null
+                    } else if(filename.endsWith("clustered.tsv.gz")) {
+                        null
                     } else {
                         filename.replaceAll("${runid}-", "")
                     }

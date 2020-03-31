@@ -160,17 +160,31 @@ def scanpy_merge(
 
         # Apply downsampling if needed.
         if params_dict['downsample_cells_fraction']['value'] != '':
+            n_cells_start = adata.n_obs
             sc.pp.subsample(
                 adata,
-                fraction=params_dict['downsample_cells_fraction']['value'],
+                fraction=float(
+                    params_dict['downsample_cells_fraction']['value']
+                ),
                 copy=False
             )
-        elif params_dict['downsample_cells_fraction']['value'] != '':
+            print('[{}] cell downsample applied: {} dropped {} remain'.format(
+                row['experiment_id'],
+                n_cells_start - adata.n_obs,
+                adata.n_obs
+            ))
+        elif params_dict['downsample_cells_n']['value'] != '':
+            n_cells_start = adata.n_obs
             sc.pp.subsample(
                 adata,
-                n_obs=params_dict['downsample_cells_n']['value'],
+                n_obs=int(params_dict['downsample_cells_n']['value']),
                 copy=False
             )
+            print('[{}] cell downsample applied: {} dropped {} remain'.format(
+                row['experiment_id'],
+                n_cells_start - adata.n_obs,
+                adata.n_obs
+            ))
         if params_dict['downsample_feature_counts']['value'] != '':
             fraction = params_dict['downsample_feature_counts']['value']
             target_counts_per_cell = adata.obs['total_counts'].apply(
@@ -185,14 +199,16 @@ def scanpy_merge(
             n_cells_start = adata.n_obs
             for filter_query in params_dict['cell_filters']['value']:
                 adata = adata[adata.obs.query(filter_query).index, :]
-                print('[{}] cell QC applied "{}": {} cells dropped'.format(
+                print('[{}] cell QC applied "{}": {} dropped {} remain'.format(
                     row['experiment_id'],
                     filter_query,
-                    n_cells_start - adata.n_obs
+                    n_cells_start - adata.n_obs,
+                    adata.n_obs
                 ))
-            print('[{}] cell QC applied: {} total cells dropped'.format(
+            print('[{}] after all cell QC: {} dropped {} remain'.format(
                 row['experiment_id'],
-                n_cells_start - adata.n_obs
+                n_cells_start - adata.n_obs,
+                adata.n_obs
             ))
 
         # Print the number of cells and genes for this sample.
@@ -215,6 +231,10 @@ def scanpy_merge(
         if adata.n_obs > 0:
             adatasets.append(adata)
             n_adatasets += 1
+        else:
+            raise Exception(
+                'Error invalid tenx_data file. Missing coluns.'
+            )
 
     # Merge all of the data together.
     adata_merged = adatasets[0].concatenate(*adatasets[1:])

@@ -26,7 +26,9 @@ def scanpy_normalize_and_pca(
     vars_to_regress,
     variable_feature_batch_key='sanger_sample_id',
     n_variable_features=2000,
-    verbose=True
+    exclude_mito_highly_variable_genes=False,
+    verbose=True,
+    plot=True,
 ):
     """Normalize data and calculate PCs.
 
@@ -51,9 +53,18 @@ def scanpy_normalize_and_pca(
     output_file : string
         output_file
     """
-    # Stash the unprocessed data to the raw slot. Can be deleted later:
-    # del adata.raw
-    adata.raw = adata
+    # Check that any vars to regress occur in adata
+    if len(vars_to_regress) > 0:
+        for i in vars_to_regress:
+            if i not in adata.obs.columns:
+                raise Exception(
+                    '{} in vars_to_regress missing from metadata'.format(
+                        i
+                    )
+                )
+
+    # Add a raw counts layer.
+    adata.layers['counts'] = adata.X.copy()
 
     # NOTE: prior to running normalization, low quality cells should be
     # filtered. Example:
@@ -62,22 +73,51 @@ def scanpy_normalize_and_pca(
     # Only consider genes expressed in more than 0.5% of cells:
     # sc.pp.filter_genes(adata, min_cells=0.005*len(adata.obs.index))
 
-    # Total-count normalize (library-size correct) the data matrix X to 10,000
-    # reads per cell, so that counts become comparable among cells.
+    # Total-count normalize (library-size correct) the data matrix X to
+    # counts per million, so that counts become comparable among cells.
     sc.pp.normalize_total(
         adata,
-        target_sum=1e4,
+        target_sum=1e6,
         exclude_highly_expressed=False,
+        key_added='normalization_factor',  # add to adata.obs
         inplace=True
     )
-    # Logarithmize the data: X = log(X + 1) where log = natural logorithm
+    # Logarithmize the data: X = log(X + 1) where log = natural logorithm.
+    # Numpy has a nice function to undo this np.expm1(adata.X).
     sc.pp.log1p(adata)
+    # Add record of this operation.
+    adata.uns['X'] = {'transformation': 'ln(CPM+1)'}
+    # adata.layers['log1p'] = adata.X.copy()
+    # adata.uns['log1p'] = {'base': 'e'}
 
-    # adata.raw.X.data is still raw count data
-    # adata.X.data is now log normalized data
+    # Stash the unprocessed data in the raw slot.
+    # adata.raw.X.data is now ln(CPM+1).
+    # NOTE: - Layers are not preserved in adata.raw, though obs, var, uns are.
+    #       - If genes are filtered (e.g.,
+    #         sc.pp.filter_genes(adata, min_cells=1)), the full dataset will
+    #         remain in the raw slot.
+    #       - We store in the raw slot because later for UMAP and marker gene
+    #         analysis, we can easily tell scanpy to use the raw slot via the
+    #         use_raw = True flag. Raw was specifically designed for this use
+    #         case of ln(CPM+1),
+    # Can be deleted later: del adata.raw
+    adata.raw = adata
+    # adata_raw = adata.raw.to_adata()
 
-    # Calculate the highly variable genes. Do so for each sample and then
-    # merge - this avoids the selection of batch-specific genes.
+    if plot:
+        # Plot top expressed genes.
+        _ = sc.pl.highest_expr_genes(
+            # adata.raw.to_adata(),  # same as adata at this point.
+            adata,
+            n_top=25,
+            gene_symbols='gene_symbols',
+            show=False,
+            save='-{}.pdf'.format(output_file)
+        )
+
+    # Calculate the highly variable genes on the log1p(norm) data.
+    # Do so for each sample and then merge - this avoids the selection of
+    # batch-specific, highly variable genes.
     sc.pp.highly_variable_genes(
         adata,
         # min_mean=0.0125,
@@ -115,6 +155,37 @@ def scanpy_normalize_and_pca(
     #     ["highly_variable_nbatches"]
     # ]
 
+    if plot:
+        # Plot highly variable genes.
+        _ = sc.pl.highly_variable_genes(
+            adata,
+            log=False,
+            show=False,
+            save='-{}.pdf'.format(output_file)
+        )
+        _ = sc.pl.highly_variable_genes(
+            adata,
+            log=True,
+            show=False,
+            save='-{}-log.pdf'.format(output_file)
+        )
+
+    #
+    if verbose:
+        n_highly_variable_mito = adata.var.loc[
+            adata.var['mito_gene'],
+            ['highly_variable']
+        ].sum()
+        print('Within highly variable genes there are {} mito genes'.format(
+            n_highly_variable_mito
+        ))
+    if exclude_mito_highly_variable_genes:
+        adata.var.loc[
+            adata.var['mito_gene'],
+            ['highly_variable']
+        ] = False
+    # TODO: exclude highly expressed genes (e.g. MATL1)?
+
     # Regress out any continuous variables.
     if (len(vars_to_regress) > 0):
         # NOTE: if the same value is repeated (e.g., 0) for all cells this will
@@ -139,7 +210,7 @@ def scanpy_normalize_and_pca(
         max_value=None
     )
 
-    # calculate PCs
+    # Calculate PCs.
     sc.tl.pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
@@ -177,22 +248,32 @@ def scanpy_normalize_and_pca(
         compression='gzip'
     )
 
-    # Plot top expressed genes.
-    # sc.pl.highest_expr_genes(adata, n_top=20, gene_symbols='gene_symbols')
-    # Plot highly variable genes.
-    # sc.pl.highly_variable_genes(adata, log=False)
-    # Plot the vanilla PCs.
-    # sc.pl.pca(
-    #     adata,
-    #     color='sanger_sample_id',
-    #     components=['1,2', '3,4']
-    # )
-    # sc.pl.pca_variance_ratio(adata, log=False)
-
     # Save the data.
     adata.write('{}-normalized_pca.h5'.format(output_file), compression='gzip')
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
+
+    if plot:
+        # Plot the vanilla PCs.
+        # sc.pl.pca(
+        #     adata,
+        #     color='sanger_sample_id',
+        #     components=['1,2', '3,4']
+        # )
+        _ = sc.pl.pca_variance_ratio(
+            adata,
+            n_pcs=adata.obsm['X_pca'].shape[1],
+            log=False,
+            show=False,
+            save='-{}.pdf'.format(output_file)
+        )
+        _ = sc.pl.pca_variance_ratio(
+            adata,
+            n_pcs=adata.obsm['X_pca'].shape[1],
+            log=True,
+            show=False,
+            save='-{}-log.pdf'.format(output_file)
+        )
 
     return(output_file)
 
@@ -295,6 +376,7 @@ def main():
         vars_to_regress=vars_to_regress,
         variable_feature_batch_key=options.bk,
         n_variable_features=options.nvf,
+        exclude_mito_highly_variable_genes=False,
         verbose=True
     )
     execution_summary = "Analysis execution time [{}]:\t{}".format(

@@ -190,6 +190,10 @@ def main():
     # UMAP
     sc.tl.umap(adata)
 
+    # NOTE: If the color var is a gene, you should color by ln(CPM+1).
+    #       By default these sc.pl.umap uses the .raw attribute of AnnData
+    #       if present which is assumed to be ln(CPM+1).
+
     # For each variable, loop over and set color accordingly. Save
     # the results.
     for var in colors_quantitative:
