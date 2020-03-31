@@ -12,13 +12,13 @@ This README is pulled from a default template for workflows.
 
 ## pipelines
 
-* Each module is a full analysis. Think of it like the heading of a methods section in a paper. For instance if this were genetic summary statistics workflow, a module might be "fine-mapping" that does both conditional and credible set analysis. Another module may be "colocalization".
+* Each pipeline is a full analysis. Think of it like the heading of a methods section in a paper. For instance if this were genetic summary statistics workflow, a pipeline might be "fine-mapping" that does both conditional and credible set analysis. Another pipeline may be "colocalization".
 
-* Modules may have numbers prior to their name (e.g., `example_module_1` to `0025-example_module_1`). These numbers do not mean anything, but merely used to keep modules in their general order of execution. These are optional.
+* Pipelines may have numbers prior to their name (e.g., `example_pipeline_1` to `0025-example_pipeline_1`). These numbers do not mean anything, but merely used to keep pipelines in their general order of execution. These are optional.
 
-* A module consists of :
+* A pipeline consists of :
 1. A workflow.
-2. A `scripts` directory with *all* scripts referenced by that workflow (unless a general lib script is called).
+2. A `scripts` directory with *all* scripts referenced by that workflow (unless a general lib script is called). Scripts may have numbers prior to their name. These numbers do not mean anything, but merely used to keep scripts in their general order of execution. These are optional.
 3. A `docs` directory that contains a documentation of the default parameters written in a style that is publishable as methods in a paper (including citations). Within the `docs` directory there may be a `reference` with any additional reference materials.
 4. An `example_runtime_setup` directory contains files that give an example of actual config files and any other files used to run the pipeline.
 
@@ -26,16 +26,16 @@ This README is pulled from a default template for workflows.
 ## studies
 
 * A studies directory should either exist within the workflow repo or be a separate repo that has the same name as the workflow repo, but with `studies` appended to it (e.g. `template-workflow` becomes `template-workflow-studies`).
-* If there is a standard set of plots that will always look the same way, a module should generate such plots. Otherwise, all code to analyze the results of a module run should be in the `studies` directory. For instance if this were genetic summary statistics workflow, `studies` may contain a `t2d` directory and a `weight` directory.
-* Within a study is either an Jupyter notebook (either python or R kernel) or an R markdown file. Nearly all plots / analysis of the results of running the various modules should be done in the notebook / markdown file.
-* A study may also contain a scripts directory with scripts to aggregate data for a one off analysis (if the analysis is going to be repeated, consider making a new module or adding it to an existing module) or for special plots that cannot be done in the notebook / markdown file.
+* If there is a standard set of plots that will always look the same way, a pipeline should generate such plots. Otherwise, all code to analyze the results of a pipeline run should be in the `studies` directory. For instance if this were genetic summary statistics workflow, `studies` may contain a `t2d` directory and a `weight` directory.
+* Within a study is either an Jupyter notebook (either python or R kernel) or an R markdown file. Nearly all plots / analysis of the results of running the various pipelines should be done in the notebook / markdown file.
+* A study may also contain a scripts directory with scripts to aggregate data for a one off analysis (if the analysis is going to be repeated, consider making a new pipeline or adding it to an existing pipeline) or for special plots that cannot be done in the notebook / markdown file.
 
 
 # New workflow reminders
 
 - [ ] Documentation
 - [ ] Environment version control
-- [ ] Module version control
+- [ ] Pipeline version control
 - [ ] Git branches
 - [ ] Code review
 
@@ -47,16 +47,16 @@ Be sure to document your code!
 
 # Environment version control
 
-Analysis environment is controlled using conda. Each module should have an `environment.yml` file with all of the packages used. If a required package or library is missing from conda (and therefore not in the `environment.yml`), it should be noted in the `README.md` of the module.
+Analysis environment is controlled using conda. Each pipeline should have an `environment.yml` file with all of the packages used. If a required package or library is missing from conda (and therefore not in the `environment.yml`), it should be noted in the `README.md` of the pipeline.
 
 ```bash
 conda env export --no-builds | grep -v prefix | grep -v name > environment.yml
 ```
 
 
-# Module version control
+# Pipeline version control
 
-Each module within this workflow uses [bumpversion](https://pypi.org/project/bumpversion) for automatic [semantic versioning](https://semver.org).
+Each pipeline within this workflow uses [bumpversion](https://pypi.org/project/bumpversion) for automatic [semantic versioning](https://semver.org).
 
 ```bash
 # bump the appropriate increment
@@ -93,7 +93,7 @@ git remote add my_repo git@github.com:my_repo/template-workflow.git
 
 # Git branches
 
-Branching is how git actually tracks code development. For more information, see the [Git Branch Tutorial](https://www.atlassian.com/git/tutorials/using-branches) on Atlassian. If you want to add a new feature, module, or fix a bug, a common work flow would look like this:
+Branching is how git actually tracks code development. For more information, see the [Git Branch Tutorial](https://www.atlassian.com/git/tutorials/using-branches) on Atlassian. If you want to add a new feature, pipeline, or fix a bug, a common work flow would look like this:
 
 ```bash
 # Update your local copy of the master branch to make sure you are getting the most up-to-date code
