@@ -178,8 +178,8 @@ def main():
     adata = sc.read_h5ad(filename=options.h5)
 
     print(
-        'WARNING: All functions in this script set use_raw=True,\
-        assuming that adata.raw.to_adata stores ln(CPM+1) normalized data.'
+        'WARNING: All functions in this script set use_raw=True,',
+        ' assuming that adata.raw.to_adata stores ln(CPM+1) normalized data.'
     )
 
     # NOTE: You should be using the ln(CPM+1) data here. By default these
