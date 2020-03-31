@@ -7,6 +7,8 @@ We use conda for version control for command line programs and python pacakges.
 
 ## R
 
+CURRENTLY THIS PIPELINE REQUIRES NO R PACKAGES. THE BELOW CODE SHOULD NOT BE RUN.
+
 Conda, however, does not work well with R packages. One could use conda to install a base version of R. Alternatively, one can pull from from a rocker image (e.g., `rocker/r-ver:3.6.2` instead of `buildpack-deps:curl` or a minimal install like `alpine` ).
 
 For R package management we use `renv`.
