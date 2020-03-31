@@ -9,11 +9,13 @@ sample_qc:
             - 'n_genes_by_counts > 2000'
     downsample_cells_fraction:
         description: 'Downsample to this fraction of the number of
-            observations (sc.pp.subsample). Use "" to indicate no downsampling.'
+            observations (sc.pp.subsample). Use "" to indicate no downsampling.
+            Example: if 0.8, will drop 20% of cells.'
         value: ''
     downsample_cells_n:
         description: 'Downsample to this number of observations
-            (sc.pp.subsample). Use "" to indicate no downsampling.'
+            (sc.pp.subsample). Use "" to indicate no downsampling. Example: if
+            200 then 200 total cells will be kept.'
         value: ''
     downsample_feature_counts:
         description: 'Downsample the number of feature counts by this fraction.
