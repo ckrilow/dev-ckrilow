@@ -79,6 +79,8 @@ process normalize_and_pca {
         path("${runid}-adata-normalized_pca.h5", emit: anndata)
         path("${runid}-adata-metadata.tsv.gz", emit: metadata)
         path("${runid}-adata-pcs.tsv.gz", emit: pcs)
+        path("*.pdf") optional true
+        path("*.png") optional true
         // tuple(
         //     val(outdir),
         //     path("${runid}-adata-normalized_pca.h5"),
