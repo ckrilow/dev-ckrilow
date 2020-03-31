@@ -34,9 +34,6 @@ nf-qc_cluster
 
 * Add `docs/methods.pdf` file.
 * Add brief description of module.
-* `scanpy_normalize_pca.py`: Enable regress out.
-* `scanpy_normalize_pca.py`: Enable layers.
-* `scanpy_cluster.py`: Choose proper data normalization for marker identification and plots (right now I think it uses the same data used for dimensionality reduction).
 
 
 # Enhancement list
@@ -136,9 +133,11 @@ nextflow run "${REPO_MODULE}/main.nf" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
     --file_sample_qc "${REPO_MODULE}/example_runtime_setup/params.yml" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml" \
+    -with-report "nf_report.html" \
     -resume
 
 # After completion, clean up the temporary cache.
+rm -r "/tmp/${USER}/nf/work"  # cache dir for -resume
 rm -r "/tmp/${USER}/nf"
 ```
 
