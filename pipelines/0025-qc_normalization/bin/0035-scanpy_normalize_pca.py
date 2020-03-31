@@ -192,9 +192,9 @@ def scanpy_normalize_and_pca(
         #       fail. https://github.com/theislab/scanpy/issues/230
         if verbose:
             print('For regress_out, calling {}'.format(
-                'pp.filter_genes(adata, min_cells=1)'
+                'pp.filter_genes(adata, min_cells=5)'
             ))
-        sc.pp.filter_genes(adata, min_cells=1)
+        sc.pp.filter_genes(adata, min_cells=5)
         # NOTE: sc.pp.regress_out out should default to sc.settings.n_jobs
         sc.pp.regress_out(
             adata,
