@@ -80,6 +80,16 @@ def main():
     )
 
     parser.add_argument(
+        '-ncpu', '--number_cpu',
+        action='store',
+        dest='ncpu',
+        default=4,
+        type=int,
+        help='Number of CPUs to use.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
@@ -94,6 +104,12 @@ def main():
     # Fixed settings.
     verbose = True
 
+    # Scanpy settings
+    sc.settings.figdir = os.getcwd()  # figure output directory to match base.
+    sc.settings.n_jobs = options.ncpu  # number CPUs
+    # sc.settings.max_memory = 500  # in Gb
+    sc.set_figure_params(dpi_save=300)
+
     # Get the out file base.
     out_file_base = options.of
     if out_file_base == '':
@@ -101,12 +117,9 @@ def main():
             os.path.basename(options.h5.rstrip('.h5')),
             os.path.basename(options.pc.rstrip('.tsv.gz'))
         )
-    # Set the figure output directory to match the base.
-    sc.settings.figdir = os.getcwd()
 
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=options.h5)
-    #adata = sc.read_h5ad(filename="adata-normalized_pca.h5")
 
     # Load the PCs.
     if options.pc == '':

@@ -1,5 +1,76 @@
-{
-    "example_module_1.my_input_file": "/my_data_dir/path_to_input_file/input.tsv.gz",
-    "coloc_swarm.threads": "16",
-    "coloc_swarm.temp_dir": "/tmp"
-}
+sample_qc:
+    description: 'Paremeters for sample QC prior to merge.
+        Filters are applied to all samples.'
+    cell_filters:
+        description: 'Cell filters applied to each sample.'
+        value:
+            - 'pct_counts_in_top_100_genes < 50'
+            - 'pct_counts_mito_gene < 80'
+            - 'n_genes_by_counts > 2000'
+    downsample_cells_fraction:
+        description: 'Downsample to this fraction of the number of
+            observations (sc.pp.subsample). Use "" to indicate no downsampling.'
+        value: ''
+    downsample_cells_n:
+        description: 'Downsample to this number of observations
+            (sc.pp.subsample). Use "" to indicate no downsampling.'
+        value: ''
+    downsample_feature_counts:
+        description: 'Downsample the number of feature counts by this fraction.
+            Use "" to indicate no downsampling.'
+        value: ''
+reduced_dims:
+    description: 'Parameters for dimensionality reduction (principal component
+        and harmony calculations). All pairwise combinations of
+        vars_to_regress and n_dims will be performed.'
+    vars_to_regress:
+        description: 'Comma seperated string of variables to regress. Use "" to
+            indicate no regssion is to be performed.'
+        value:
+            - ''
+            - 'total_counts,lane'
+    n_dims:
+        description: 'Number of dimensions to use for calculating PCs,
+            harmony corrected PCs, and clusters.'
+        value:
+            - 3
+            - 30
+harmony:
+    description: 'Parameters for harmony.'
+    variables_and_thetas:
+        description: 'Tuples of metadata columns and corresponding thetas.'
+        value:
+            - variable: 'sanger_sample_id'
+              theta: '1.0'
+            - variable: 'sanger_sample_id,ack_lysis_buffer'
+              theta: '1.0,0.2'
+cluster:
+    description: 'Parameters for clustering. All pairwise combinations of
+        method and resolution will be performed.'
+    methods:
+        description: 'Clustering method. Valid options [leiden|louvain].'
+        value:
+            - 'leiden'
+            - 'louvain'
+    resolutions:
+        description: 'Clustering resolution.'
+        value:
+            - 1.0
+            - 3.0
+cluster_marker:
+    description: 'Parameters for identifying cluster marker features.'
+    methods:
+        description: 'Method for marker detection.'
+        value:
+            - 'wilcoxon'
+            - 'logreg'
+umap:
+    description: 'Parameters for umap.'
+    colors_quantitative:
+        description: 'Comma seperated string of quantitative variables that
+            will be used to color points.'
+        value: 'total_reads'
+    colors_categorical:
+        description: 'Comma seperated string of categorical variables that
+            will be used to color points.'
+        value: 'sanger_sample_id,ack_lysis_buffer'

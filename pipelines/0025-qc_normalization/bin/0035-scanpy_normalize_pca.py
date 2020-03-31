@@ -10,6 +10,8 @@ import os
 import pandas as pd
 import scanpy as sc
 import csv
+import time
+from datetime import timedelta
 
 # Set scanpy settings
 # sc verbosity: errors (0), warnings (1), info (2), hints (3)
@@ -22,7 +24,8 @@ def scanpy_normalize_and_pca(
     adata,
     output_file,
     vars_to_regress,
-    sample_id_metadata_column='sanger_sample_id',
+    variable_feature_batch_key='sanger_sample_id',
+    n_variable_features=2000,
     verbose=True
 ):
     """Normalize data and calculate PCs.
@@ -34,10 +37,12 @@ def scanpy_normalize_and_pca(
     output_file : string
         Description of parameter `output_file`.
     vars_to_regress : list
-        Description of parameter `vars_to_regress`.
-    sample_id_metadata_column : string
-        Description of parameter `sample_id_metadata_column`
+        List of metadata variables to regress.
+    variable_feature_batch_key : string
+        Description of parameter `variable_feature_batch_key`
         (the default is "sanger_sample_id").
+    n_variable_features : int
+        Number of variable features to select.
     verbose : boolean
         Write extra info to standard out.
 
@@ -79,16 +84,36 @@ def scanpy_normalize_and_pca(
         # max_mean=3,
         # min_disp=0.5,
         flavor='seurat',
-        batch_key=sample_id_metadata_column,
+        n_top_genes=n_variable_features,  # 2000 = SeuratFindVariableFeatures
+        batch_key=variable_feature_batch_key,
         inplace=True
     )
     if verbose:
-        print('Number of variable genes detected across batches:\t{}'.format(
-            adata.var['highly_variable_intersection'].sum()
+        print('{}: {} (all batches); {} ({})'.format(
+            'Number of variable features detected',
+            adata.var['highly_variable_intersection'].sum(),
+            adata.var['highly_variable'].sum(),
+            'after ranking the number of batches where a feature is variable'
         ))
+    # If n_top_genes = None, then one needs to set 'highly_variable'.
+    # Here, highly_variable_intersection is only true for genes variable across
+    # all batch keys (i.e., 'highly_variable_nbatches' = n_batch_keys):
+    # adata.var.loc[
+    #     adata.var["highly_variable_intersection"],
+    #     ["highly_variable_nbatches"]
+    # ]
+    #
+    # If n_top_genes = None, then one also needs needs to set highly_variable'.
     # Fix bug in PCA when we have set batch_key. More below:
     # https://github.com/theislab/scanpy/issues/1032
-    adata.var['highly_variable'] = adata.var['highly_variable_intersection']
+    # adata.var['highly_variable'] = adata.var['highly_variable_intersection']
+    #
+    # Alternatively, if one specifies n_top_genes, then genes are ranked by
+    # 'highly_variable_nbatches' and highly_variable is set to the top n.
+    # adata.var.loc[
+    #     adata.var["highly_variable"],
+    #     ["highly_variable_nbatches"]
+    # ]
 
     # Regress out any continuous variables.
     if (len(vars_to_regress) > 0):
@@ -99,11 +124,12 @@ def scanpy_normalize_and_pca(
                 'pp.filter_genes(adata, min_cells=1)'
             ))
         sc.pp.filter_genes(adata, min_cells=1)
-        # sc.pp.regress_out(
-        #     adata,
-        #     keys=vars_to_regress,
-        #     copy=False
-        # )
+        # NOTE: sc.pp.regress_out out should default to sc.settings.n_jobs
+        sc.pp.regress_out(
+            adata,
+            keys=vars_to_regress,
+            copy=False
+        )
 
     # Scale the data to unit variance.
     # This effectively weights each gene evenly.
@@ -195,26 +221,47 @@ def main():
     )
 
     parser.add_argument(
+        '-bk', '--batch_key',
+        action='store',
+        dest='bk',
+        default='sanger_sample_id',
+        help='Batch key for highly-variable feature (e.g., gene) detection.\
+            If specified, highly-variable features are selected within each\
+            batch separately and merged.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-nvf', '--number_variable_features',
+        action='store',
+        dest='nvf',
+        default=2000,
+        type=int,
+        help='After calculating variable features within each batch set via\
+            <batch_key>, rank features by number of batches where they are\
+            variable and select the top <number_variable_features>.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
         '-vr', '--vars_to_regress',
         action='store',
         dest='vr',
         default='',
         help='Comma seperated list of metadata variables to regress prior to\
-            calculating PCs. Example: mito_gene,n_count\
-            (default: %(default)s)'
+            calculating PCs. Example: mito_gene,n_count.\
+            (default: "" and sc.pp.regress_out is not called)'
     )
 
     parser.add_argument(
-        '-c', '--cores',
+        '-ncpu', '--number_cpu',
         action='store',
-        dest='c',
-        default=1,
+        dest='ncpu',
+        default=4,
         type=int,
-        help='Cores available for analysis. TOTO:implement.\
+        help='Number of CPUs to use.\
             (default: %(default)s)'
     )
-    # TODO: see documentation for regress out on how to set number of cores
-    # available for scanpy
 
     parser.add_argument(
         '-of', '--output_file',
@@ -227,6 +274,12 @@ def main():
 
     options = parser.parse_args()
 
+    # Scanpy settings
+    sc.settings.figdir = os.getcwd()  # figure output directory to match base.
+    sc.settings.n_jobs = options.ncpu  # number CPUs
+    # sc.settings.max_memory = 500  # in Gb
+    # sc.set_figure_params(dpi_save = 300)
+
     # Load the AnnData file
     adata = sc.read_h5ad(filename=options.h5)
 
@@ -235,14 +288,20 @@ def main():
     if options.vr != '':
         vars_to_regress = options.vr.split(',')
 
-    out_file = scanpy_normalize_and_pca(
+    start_time = time.time()
+    _ = scanpy_normalize_and_pca(
         adata,
         output_file=options.of,
         vars_to_regress=vars_to_regress,
-        sample_id_metadata_column='sanger_sample_id',
+        variable_feature_batch_key=options.bk,
+        n_variable_features=options.nvf,
         verbose=True
     )
-    print(out_file)
+    execution_summary = "Analysis execution time [{}]:\t{}".format(
+        "scanpy_normalize_and_pca.py",
+        str(timedelta(seconds=time.time()-start_time))
+    )
+    print(execution_summary)
 
 
 if __name__ == '__main__':
