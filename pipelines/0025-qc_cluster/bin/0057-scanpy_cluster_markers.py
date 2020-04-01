@@ -309,7 +309,7 @@ def main():
 
     # Sort by scores: same order as p-values except most methods return scores.
     marker_df = marker_df.sort_values(by=['scores'], ascending=False)
-    # Make dataframe of the top 5 markers per cluster
+    # Make dataframe of the top 3 markers per cluster
     marker_df_plt = marker_df.groupby('cluster').head(3)
     if (np.invert(marker_df_plt.gene_symbols.notnull()).sum() > 0):
         filt = np.invert(marker_df_plt.gene_symbols.notna())
@@ -319,6 +319,17 @@ def main():
         filt = np.invert(marker_df_plt.gene_symbols.notna())
         print(marker_df_plt.loc[filt, :])
         raise Exception('Missing gene_symbols in marker_df_plt.')
+    # Drop markers that are not good... the markers from above are just the
+    # top n ranked markers.
+    # NOTE: Not sure how to do this when we only have scores, for instance
+    #       with logreg marker discovery.
+    if 'pvals_adj' in marker_df_plt.columns:
+        marker_df_plt.loc[(marker_df_plt['pvals_adj'] < 0.05), :]
+
+    # Dict for plotting both ensembl_gene_id and gene_symbols on the same plot.
+    marker_dict_plt = {}
+    for idx, row in marker_df_plt.iterrows():
+        marker_dict_plt[row['gene_symbols']] = row['ensembl_gene_id']
 
     # NOTE: You should be using the ln(CPM+1) data here. "$ln(CPM+1)$"
     # Plot cell type markers in dotplot.
@@ -327,7 +338,7 @@ def main():
         markers=marker_df_plt['gene_symbols'].values
     )
     fig.savefig(
-        'dotplot-{}.pdf'.format(out_file_base),
+        'dotplot-{}-nodendrogram.pdf'.format(out_file_base),
         dpi=300,
         bbox_inches='tight'
     )
@@ -341,14 +352,11 @@ def main():
     #       functionality is an ongoing issue in scanpy.
     #       See: https://github.com/theislab/scanpy/issues/455
     adata_raw = adata.raw.to_adata()
-    adata_raw.var_names = adata_raw.var.gene_symbols
     _ = sc.pl.dotplot(
         adata_raw,
-        # var_names=marker_df_plt['ensembl_gene_id'].to_list(),
-        var_names=marker_df_plt['gene_symbols'].to_list(),
+        var_names=marker_dict_plt,
         groupby='cluster',
         dendrogram=True,
-        # gene_symbols='gene_symbols',  # causes error for some reason
         use_raw=False,
         show=False,
         color_map='Blues',
@@ -356,33 +364,47 @@ def main():
     )
     _ = sc.pl.dotplot(
         adata_raw,
+        var_names=marker_df_plt['gene_symbols'].to_list(),
+        groupby='cluster',
+        dendrogram=True,
+        gene_symbols='gene_symbols',
+        use_raw=False,
+        show=False,
+        color_map='Blues',
+        save='-{}.pdf'.format(out_file_base)
+    )
+    _ = sc.pl.dotplot(
+        adata_raw,
         marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
+        gene_symbols='gene_symbols',
         standard_scale='var',  # Scale color between 0 and 1
         use_raw=False,
         show=False,
         color_map='Blues',
-        save='_ensembl-{}-standardized.pdf'.format(out_file_base)
+        save='-{}-standardized.pdf'.format(out_file_base)
     )
     _ = sc.pl.heatmap(
         adata_raw,
         marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
+        gene_symbols='gene_symbols',
         use_raw=False,
         show=False,
-        save='_ensembl-{}-standardized.pdf'.format(out_file_base)
+        save='-{}.pdf'.format(out_file_base)
     )
     _ = sc.pl.heatmap(
         adata_raw,
         marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
+        gene_symbols='gene_symbols',
         standard_scale='var',  # Scale color between 0 and 1
         use_raw=False,
         show=False,
-        save='_ensembl-{}-standardized.pdf'.format(out_file_base)
+        save='-{}-standardized.pdf'.format(out_file_base)
     )
 
 
