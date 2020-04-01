@@ -88,7 +88,7 @@ Examples of all of these files can be found in `example_runtime_setup/`.
 
 ## 3. Set up and run Nextflow
 
-Run Nexflow locally (NOTE: if running on a virtual machine you may need to set `export QT_QPA_PLATFORM='offscreen'` for scanpy as described [here](https://github.com/ipython/ipython/issues/10627)):
+Run Nexflow locally (NOTE: if running on a virtual machine you may need to set `export QT_QPA_PLATFORM="offscreen"` for scanpy as described [here](https://github.com/ipython/ipython/issues/10627)):
 ```bash
 # Boot up tmux session.
 tmux new -s nf
@@ -104,6 +104,10 @@ nextflow run "${REPO_MODULE}/main.nf" \
 
 Run Nextflow using LSF on a compute cluster. More on bgroups [here](https://www.ibm.com/support/knowledgecenter/SSETD4_9.1.3/lsf_config_ref/lsb.params.default_jobgroup.5.html).:
 ```bash
+# Set the results directory.
+RESULTS_DIR="/path/to/results/dir"
+mkdir -p "${RESULTS_DIR}"
+
 # Boot up tmux session.
 tmux new -s nf
 
@@ -122,9 +126,17 @@ export LSB_DEFAULT_JOBGROUP="/${USER}/nf"
 export LSB_DEFAULTGROUP="team152"
 # NOTE: by setting the above flags, all of the nextflow lsf jobs will have these flags set.
 
-# Change to a temporary runtime dir on the node:
-mkdir -p "/tmp/${USER}/nf"
-cd "/tmp/${USER}/nf"
+# Settings for scanpy (see note above).
+export QT_QPA_PLATFORM="offscreen"
+
+# Change to a temporary runtime dir on the node. In this demo, we will change
+# to the same execution directory.
+cd ${RESULTS_DIR}
+
+# Remove old logs and nextflow output (if one previously ran nextflow in this
+# dir).
+rm -r *html;
+rm .nextflow.log*;
 
 # NOTE: If you want to resume a previous workflow, add -resume to the flag.
 nextflow run "${REPO_MODULE}/main.nf" \
@@ -132,13 +144,13 @@ nextflow run "${REPO_MODULE}/main.nf" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
     --file_sample_qc "${REPO_MODULE}/example_runtime_setup/params.yml" \
+    --output_dir "${RESULTS_DIR}" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml" \
     -with-report "nf_report.html" \
     -resume
 
-# After completion, clean up the temporary cache.
-rm -r "/tmp/${USER}/nf/work"  # cache dir for -resume
-rm -r "/tmp/${USER}/nf"
+# NOTE: If you would like to see the ongoing processes, look at the log files.
+cat .nextflow.log
 ```
 
 
