@@ -1,9 +1,9 @@
 experiment_id	data_path_10x_format	short_experiment_id
-OTARscRNA8355918	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8355918/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8355918
-OTARscRNA8356014	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356014/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8356014
-OTARscRNA8356110	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356110/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8356110
-OTARscRNA8356302	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356302/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8356302
-OTARscRNA8356398	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356398/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8356398
-OTARscRNA8356590	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356590/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8356590
-OTARscRNA8356686	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356686/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8356686
-OTARscRNA8356782	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356782/filtered_feature_bc_matrix/matrix.mtx.gz	OTARscRNA8356782
+OTARscRNA8355918	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8355918/filtered_feature_bc_matrix	OTARscRNA8355918
+OTARscRNA8356014	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356014/filtered_feature_bc_matrix	OTARscRNA8356014
+OTARscRNA8356110	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356110/filtered_feature_bc_matrix	OTARscRNA8356110
+OTARscRNA8356302	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356302/filtered_feature_bc_matrix	OTARscRNA8356302
+OTARscRNA8356398	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356398/filtered_feature_bc_matrix	OTARscRNA8356398
+OTARscRNA8356590	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356590/filtered_feature_bc_matrix	OTARscRNA8356590
+OTARscRNA8356686	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356686/filtered_feature_bc_matrix	OTARscRNA8356686
+OTARscRNA8356782	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356782/filtered_feature_bc_matrix	OTARscRNA8356782
