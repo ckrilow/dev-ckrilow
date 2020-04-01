@@ -331,45 +331,56 @@ def main():
         dpi=300,
         bbox_inches='tight'
     )
-    # Annoyingly, the prefix is hardcoded as dotplot. Should save to axes
+    # Annoyingly, the prefix is hardcoded as dotplot. Should save to axes.
+    # NOTE: We use adata_raw in order to properly get the gene symbols on the
+    #       x axis. In theory, the below command should work.
+    #           sc.pl.dotplot(adata,
+    #               var_names=marker_df_plt['ensembl_gene_id'].to_list(),
+    #               use_raw=True, gene_symbols='gene_symbols')
+    #       ...however it does not. It seems like properly adding gene_symbols
+    #       functionality is an ongoing issue in scanpy.
+    #       See: https://github.com/theislab/scanpy/issues/455
+    adata_raw = adata.raw.to_adata()
+    adata_raw.var_names = adata_raw.var.gene_symbols
     _ = sc.pl.dotplot(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
+        adata_raw,
+        # var_names=marker_df_plt['ensembl_gene_id'].to_list(),
+        var_names=marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
         # gene_symbols='gene_symbols',  # causes error for some reason
-        use_raw=True,
+        use_raw=False,
         show=False,
         color_map='Blues',
         save='_ensembl-{}.pdf'.format(out_file_base)
     )
     _ = sc.pl.dotplot(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
+        adata_raw,
+        marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
         standard_scale='var',  # Scale color between 0 and 1
-        use_raw=True,
+        use_raw=False,
         show=False,
         color_map='Blues',
         save='_ensembl-{}-standardized.pdf'.format(out_file_base)
     )
     _ = sc.pl.heatmap(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
+        adata_raw,
+        marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
-        use_raw=True,
+        use_raw=False,
         show=False,
         save='_ensembl-{}-standardized.pdf'.format(out_file_base)
     )
     _ = sc.pl.heatmap(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
+        adata_raw,
+        marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
         standard_scale='var',  # Scale color between 0 and 1
-        use_raw=True,
+        use_raw=False,
         show=False,
         save='_ensembl-{}-standardized.pdf'.format(out_file_base)
     )
