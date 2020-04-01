@@ -179,7 +179,7 @@ def main():
 
     print(
         'WARNING: All functions in this script set use_raw=True,',
-        ' assuming that adata.raw.to_adata stores ln(CPM+1) normalized data.'
+        'assuming that adata.raw.to_adata stores ln(CPM+1) normalized data.'
     )
 
     # NOTE: You should be using the ln(CPM+1) data here. By default these
@@ -215,14 +215,13 @@ def main():
             reference='rest',
             use_raw=True,
             method='logreg',
-            n_genes=100
+            n_genes=100,
+            max_iter=5000  # passed to sklearn.linear_model.LogisticRegression
         )
     else:
         # Other options for cell type marker identification in scanpy:
         # MAST, limma, DESeq2, diffxpy, logreg
-        raise Exception(
-            'Method not implemented'
-        )
+        raise Exception('Method not implemented')
 
     # Save the ranks.
     results_dict = dict()
@@ -253,11 +252,24 @@ def main():
     )
 
     # Add gene_symbols.
+    # NOTE: Because rank_genes_groups was run on the ln(CPM+1) data,
+    #       we must be sure to use the gene symbols from that data since the
+    #       data in adata.X may contain fewer genes, for instance if the
+    #       matrix was filtered before scaling.
     marker_df = marker_df.set_index('ensembl_gene_id', inplace=False)
     marker_df = marker_df.join(
-        adata.var[['gene_symbols']],
+        adata.raw.var[['gene_symbols']],
         how='left'
     )
+    if (np.invert(marker_df.gene_symbols.notnull()).sum() > 0):
+        filt = np.invert(marker_df.gene_symbols.notnull())
+        print(marker_df.loc[filt, :])
+        raise Exception('Missing gene_symbols in marker_df.')
+    elif (np.invert(marker_df.gene_symbols.notna()).sum() > 0):
+        filt = np.invert(marker_df.gene_symbols.notna())
+        print(marker_df.loc[filt, :])
+        raise Exception('Missing gene_symbols in marker_df.')
+
     marker_df = marker_df.reset_index(drop=False)
     marker_df = marker_df.rename(
         columns={'index': 'ensembl_gene_id'},
@@ -297,8 +309,27 @@ def main():
 
     # Sort by scores: same order as p-values except most methods return scores.
     marker_df = marker_df.sort_values(by=['scores'], ascending=False)
-    # Make dataframe of the top 5 markers per cluster
+    # Make dataframe of the top 3 markers per cluster
     marker_df_plt = marker_df.groupby('cluster').head(3)
+    if (np.invert(marker_df_plt.gene_symbols.notnull()).sum() > 0):
+        filt = np.invert(marker_df_plt.gene_symbols.notna())
+        print(marker_df_plt.loc[filt, :])
+        raise Exception('Missing gene_symbols in marker_df_plt.')
+    elif (np.invert(marker_df_plt.gene_symbols.notna()).sum() > 0):
+        filt = np.invert(marker_df_plt.gene_symbols.notna())
+        print(marker_df_plt.loc[filt, :])
+        raise Exception('Missing gene_symbols in marker_df_plt.')
+    # Drop markers that are not good... the markers from above are just the
+    # top n ranked markers.
+    # NOTE: Not sure how to do this when we only have scores, for instance
+    #       with logreg marker discovery.
+    if 'pvals_adj' in marker_df_plt.columns:
+        marker_df_plt.loc[(marker_df_plt['pvals_adj'] < 0.05), :]
+
+    # Dict for plotting both ensembl_gene_id and gene_symbols on the same plot.
+    marker_dict_plt = {}
+    for idx, row in marker_df_plt.iterrows():
+        marker_dict_plt[row['gene_symbols']] = row['ensembl_gene_id']
 
     # NOTE: You should be using the ln(CPM+1) data here. "$ln(CPM+1)$"
     # Plot cell type markers in dotplot.
@@ -307,51 +338,73 @@ def main():
         markers=marker_df_plt['gene_symbols'].values
     )
     fig.savefig(
-        'dotplot-{}.pdf'.format(out_file_base),
+        'dotplot-{}-nodendrogram.pdf'.format(out_file_base),
         dpi=300,
         bbox_inches='tight'
     )
-    # Annoyingly, the prefix is hardcoded as dotplot. Should save to axes
+    # Annoyingly, the prefix is hardcoded as dotplot. Should save to axes.
+    # NOTE: We use adata_raw in order to properly get the gene symbols on the
+    #       x axis. In theory, the below command should work.
+    #           sc.pl.dotplot(adata,
+    #               var_names=marker_df_plt['ensembl_gene_id'].to_list(),
+    #               use_raw=True, gene_symbols='gene_symbols')
+    #       ...however it does not. It seems like properly adding gene_symbols
+    #       functionality is an ongoing issue in scanpy.
+    #       See: https://github.com/theislab/scanpy/issues/455
+    adata_raw = adata.raw.to_adata()
     _ = sc.pl.dotplot(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
+        adata_raw,
+        var_names=marker_dict_plt,
         groupby='cluster',
         dendrogram=True,
-        # gene_symbols='gene_symbols',  # causes error for some reason
-        use_raw=True,
+        use_raw=False,
         show=False,
         color_map='Blues',
         save='_ensembl-{}.pdf'.format(out_file_base)
     )
     _ = sc.pl.dotplot(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
+        adata_raw,
+        var_names=marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
-        standard_scale='var',  # Scale color between 0 and 1
-        use_raw=True,
+        gene_symbols='gene_symbols',
+        use_raw=False,
         show=False,
         color_map='Blues',
-        save='_ensembl-{}-standardized.pdf'.format(out_file_base)
+        save='-{}.pdf'.format(out_file_base)
     )
-    _ = sc.pl.heatmap(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
+    _ = sc.pl.dotplot(
+        adata_raw,
+        marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
         dendrogram=True,
-        use_raw=True,
-        show=False,
-        save='_ensembl-{}-standardized.pdf'.format(out_file_base)
-    )
-    _ = sc.pl.heatmap(
-        adata,
-        marker_df_plt['ensembl_gene_id'].to_list(),
-        groupby='cluster',
-        dendrogram=True,
+        gene_symbols='gene_symbols',
         standard_scale='var',  # Scale color between 0 and 1
-        use_raw=True,
+        use_raw=False,
         show=False,
-        save='_ensembl-{}-standardized.pdf'.format(out_file_base)
+        color_map='Blues',
+        save='-{}-standardized.pdf'.format(out_file_base)
+    )
+    _ = sc.pl.heatmap(
+        adata_raw,
+        marker_df_plt['gene_symbols'].to_list(),
+        groupby='cluster',
+        dendrogram=True,
+        gene_symbols='gene_symbols',
+        use_raw=False,
+        show=False,
+        save='-{}.pdf'.format(out_file_base)
+    )
+    _ = sc.pl.heatmap(
+        adata_raw,
+        marker_df_plt['gene_symbols'].to_list(),
+        groupby='cluster',
+        dendrogram=True,
+        gene_symbols='gene_symbols',
+        standard_scale='var',  # Scale color between 0 and 1
+        use_raw=False,
+        show=False,
+        save='-{}-standardized.pdf'.format(out_file_base)
     )
 
 
