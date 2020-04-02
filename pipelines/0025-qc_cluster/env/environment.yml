@@ -10,5 +10,6 @@ dependencies:
   - leidenalg=0.7.0
   - louvain=0.6.1
   - harmonypy=0.0.4
-  - r-base=3.6.2
-  - r-renv=0.9.3
+  - r-seurat=3.1.4
+  - r-optparse=1.6.4
+  - r-data.table=1.12.8
