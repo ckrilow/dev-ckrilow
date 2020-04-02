@@ -155,7 +155,7 @@ def scanpy_merge(
 
         # Apply cell filter.
         # adata = adata[selected_cells, :]
-        # apply gene filter
+        # Apply gene filter
         # adata = adata[:, selected_genes]
 
         # Apply downsampling if needed.
