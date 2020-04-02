@@ -7,6 +7,7 @@ __version__ = '0.0.1'
 
 import argparse
 import os
+import numpy as np
 import pandas as pd
 import scanpy as sc
 import csv
@@ -26,7 +27,7 @@ def scanpy_normalize_and_pca(
     vars_to_regress,
     variable_feature_batch_key='sanger_sample_id',
     n_variable_features=2000,
-    exclude_mito_highly_variable_genes=False,
+    exclude_hv_gene_df=[],
     verbose=True,
     plot=True,
 ):
@@ -170,21 +171,45 @@ def scanpy_normalize_and_pca(
             save='-{}-log.pdf'.format(output_file)
         )
 
-    #
-    if verbose:
-        n_highly_variable_mito = adata.var.loc[
-            adata.var['mito_gene'],
-            ['highly_variable']
-        ].sum()
-        print('Within highly variable genes there are {} mito genes'.format(
-            n_highly_variable_mito
-        ))
-    if exclude_mito_highly_variable_genes:
+    # Exclude mitocondrial genes.
+    # if exclude_mito_highly_variable_genes:
+    #     n_highly_variable_mito = adata.var.loc[
+    #         adata.var['mito_gene'],
+    #         ['highly_variable']
+    #     ].sum()
+    #     if verbose:
+    #         print('Within highly variable genes, {} are mito genes'.format(
+    #             n_highly_variable_mito
+    #         ))
+    #     adata.var.loc[
+    #         adata.var['mito_gene'],
+    #         ['highly_variable']
+    #     ] = False
+    # Exclude other genes.
+    if len(exclude_hv_gene_df) > 0:
+        # Annotate the exclusion dataframe with the genes that are highly
+        # variable.
+        exclude_hv_gene_df['highly_variable'] = exclude_hv_gene_df[
+            'ensembl_gene_id'
+        ].isin(adata.var.loc[adata.var.highly_variable, :].index)
+
+        # Exclude these genes.
         adata.var.loc[
-            adata.var['mito_gene'],
+            exclude_hv_gene_df['ensembl_gene_id'],
             ['highly_variable']
         ] = False
-    # TODO: exclude highly expressed genes (e.g. MATL1)?
+
+        # Add record of gene exclustions
+        adata.uns['highly_variable_gene_filters'] = exclude_hv_gene_df
+
+        # Print out the number of genes excluded
+        if verbose:
+            print(
+                'Within highly variable genes, {} genes are in the list of',
+                'genes to exclude'.format(
+                    exclude_hv_gene_df['highly_variable'].sum()
+                )
+            )
 
     # Regress out any continuous variables.
     if (len(vars_to_regress) > 0):
@@ -253,6 +278,7 @@ def scanpy_normalize_and_pca(
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
 
+    # Plot the PC info.
     if plot:
         # Plot the vanilla PCs.
         # sc.pl.pca(
@@ -325,6 +351,16 @@ def main():
     )
 
     parser.add_argument(
+        '-vge', '--variable_genes_exclude',
+        action='store',
+        dest='vge',
+        default='',
+        help='Tab-delimited file with genes to exclude from the highly\
+            variable gene list. Must contain ensembl_gene_id column.\
+            (default: None - keep all variable genes)'
+    )
+
+    parser.add_argument(
         '-vr', '--vars_to_regress',
         action='store',
         dest='vr',
@@ -369,6 +405,11 @@ def main():
     if options.vr != '':
         vars_to_regress = options.vr.split(',')
 
+    # Load list of genes to filter
+    genes_filter = []
+    if options.vge != '':
+        genes_filter = pd.read_csv(options.vge, sep='\t')
+
     start_time = time.time()
     _ = scanpy_normalize_and_pca(
         adata,
@@ -376,7 +417,7 @@ def main():
         vars_to_regress=vars_to_regress,
         variable_feature_batch_key=options.bk,
         n_variable_features=options.nvf,
-        exclude_mito_highly_variable_genes=False,
+        exclude_hv_gene_df=genes_filter,
         verbose=True
     )
     execution_summary = "Analysis execution time [{}]:\t{}".format(
