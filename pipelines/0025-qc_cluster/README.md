@@ -115,6 +115,9 @@ tmux new -s nf
 # NOTE: Here we set the -G parameter due to our institute's LSF configuration.
 bgadd "/${USER}/logins"
 bsub -q normal -G team152 -g /${USER}/logins -Is -XF -M 8192 -R "select[mem>8192] rusage[mem=8192]" /bin/bash
+# NOTE: If you are running over many cells, you may need to start an
+# interactive session on a queue that allows long jobs
+#bsub -q long -G team152 -g /${USER}/logins -Is -XF -M 18192 -R "select[mem>18192] rusage[mem=18192]" /bin/bash
 
 # Activate the Conda environment (inherited by subsequent jobs).
 conda activate sc_qc_cluster
@@ -124,7 +127,8 @@ bgadd -L 500 "/${USER}/nf"
 export LSB_DEFAULT_JOBGROUP="/${USER}/nf"
 # Depending on LSF setup, you may want to export a default -G parameter.
 export LSB_DEFAULTGROUP="team152"
-# NOTE: by setting the above flags, all of the nextflow lsf jobs will have these flags set.
+# NOTE: By setting the above flags, all of the nextflow LSF jobs will have
+# these flags set.
 
 # Settings for scanpy (see note above).
 export QT_QPA_PLATFORM="offscreen"
