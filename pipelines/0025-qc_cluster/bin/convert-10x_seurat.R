@@ -207,7 +207,7 @@ command_line_interface <- function() {
 
 
 main <- function() {
-    SCRIPT_NAME <- "seruat_load_tenx.R"
+    SCRIPT_NAME <- "convert-10x_seurat.R"
 
     # run analysis
     run_time <- system.time(df_results <- command_line_interface())
