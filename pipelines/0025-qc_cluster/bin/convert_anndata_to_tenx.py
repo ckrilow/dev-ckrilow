@@ -8,7 +8,8 @@ __version__ = '0.0.1'
 import argparse
 import os
 from distutils.version import LooseVersion
-import scipy.io as sio
+import scipy
+import scipy.io
 import gzip
 import pandas as pd
 import scanpy as sc
@@ -18,7 +19,8 @@ def anndata_to_tenx(
     adata,
     raw=False,
     out_file='',
-    out_dir='tenx_from_adata'
+    out_dir='tenx_from_adata',
+    verbose=True
 ):
     """Write 10x like data from anndata.
 
@@ -32,6 +34,8 @@ def anndata_to_tenx(
         Description of parameter `output_file`.
     out_dir : string
         Description of parameter `out_dir`.
+    verbose : boolean
+        Description of parameter `verbose`.
 
     Returns
     -------
@@ -41,10 +45,16 @@ def anndata_to_tenx(
     if out_dir == '':
         out_dir = os.getcwd()
     else:
-        os.makedirs(out_dir)
+        os.makedirs(out_dir, exist_ok=True)
+
+    # Set up out_file
+    if out_file != '':
+        out_file = '{}-'.format(out_file)
 
     # If raw, overwrite adata to be the raw dataframe.
     if raw:
+        if verbose:
+            print('Using raw slot.')
         adata = adata.raw.to_adata()
 
     # Get compression opts for pandas
@@ -53,11 +63,14 @@ def anndata_to_tenx(
         compression_opts = dict(method='gzip', compresslevel=9)
 
     # Save the barcodes.
+    out_f = os.path.join(
+        out_dir,
+        '{}barcodes.tsv.gz'.format(out_file)
+    )
+    if verbose:
+        print('Writing {}'.format(out_f))
     pd.DataFrame(adata.obs.index).to_csv(
-        os.path.join(
-            out_dir,
-            '{}-barcodes.tsv.gz'.format(out_file)
-        ),
+        out_f,
         sep='\t',
         compression=compression_opts,
         index=False,
@@ -65,15 +78,18 @@ def anndata_to_tenx(
     )
 
     # Save the features.
+    out_f = os.path.join(
+        out_dir,
+        '{}features.tsv.gz'.format(out_file)
+    )
+    if verbose:
+        print('Writing {}'.format(out_f))
     for i in ['gene_symbols', 'feature_types']:
         if i not in adata.var.columns:
             raise Exception('Could not find expected columns in adata.var.')
     df_features = adata.var.loc[:, ['gene_symbols', 'feature_types']]
     df_features.to_csv(
-        os.path.join(
-            out_dir,
-            '{}-features.tsv.gz'.format(out_file)
-        ),
+        out_f,
         sep='\t',
         compression=compression_opts,
         index=True,
@@ -81,11 +97,14 @@ def anndata_to_tenx(
     )
 
     # Save the metadata.
+    out_f = os.path.join(
+        out_dir,
+        '{}metadata.tsv.gz'.format(out_file)
+    )
+    if verbose:
+        print('Writing {}'.format(out_f))
     adata.obs.to_csv(
-        os.path.join(
-            out_dir,
-            '{}-metadata.tsv.gz'.format(out_file)
-        ),
+        out_f,
         sep='\t',
         compression=compression_opts,
         index=True,
@@ -100,17 +119,30 @@ def anndata_to_tenx(
             out_mtx = adata.X.transpose()
         else:
             out_mtx = adata.layers[mtx_i].transpose()
-        out = os.path.join(
+        if not isinstance(out_mtx, scipy.sparse.csr.csr_matrix):
+            out_mtx = scipy.sparse.csr_matrix(out_mtx)
+        out_f = os.path.join(
             out_dir,
-            '{}-matrix-{}.mtx.gz'.format(out_file, mtx_i)
+            '{}matrix-{}.mtx.gz'.format(out_file, mtx_i)
         )
-        with gzip.open(out, 'wb', compresslevel=9) as f:
-            sio.mmwrite(
+        if verbose:
+            print('Writing {}'.format(out_f))
+        with gzip.open(out_f, 'wb', compresslevel=9) as f:
+            scipy.io.mmwrite(
                 f,
                 out_mtx,
-                comment='metadata_json: {"format_version": 2}',
-                field='real'  # can be integer if counts otherwise real TODO
+                comment='metadata_json: {"format_version": 2}'
+                # field='real'  # can be integer if counts otherwise real
             )
+
+    if verbose:
+        print(
+            'Done. In order to run Seurat::Read10X, files need to map to',
+            'barcodes.tsv.gz, features.tsv.gz, and matrix.mtx.gz.',
+            'Consider making symbolic links if needed. Note the count',
+            'matrix in the Seurat object may not be counts depending on the',
+            'data one loads.'
+        )
 
     return 0
 
