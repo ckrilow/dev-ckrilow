@@ -74,10 +74,17 @@ def help_message() {
 
         --file_sample_qc    YAML file containing sample quality control
                             filters.
+                        
+        --variable_genes_exclude
+                            Tab-delimited file with genes to exclude from
+                            highly variable gene list. Must contain
+                            ensembl_gene_id column. If no filter, then pass an
+                            empty file.
 
     Other arguments:
         --output_dir        Directory name to save results to. (Defaults to
                             'nf-qc_cluster')
+
         -params-file        YAML file containing analysis parameters. See
                             example in example_runtime_setup/params.yml
 
@@ -102,6 +109,7 @@ if (params.help){
     file_paths_10x                : ${params.file_paths_10x}
     file_metadata                 : ${params.file_metadata}
     file_sample_qc                : ${params.file_sample_qc}
+    variable_genes_exclude        : ${params.variable_genes_exclude}
     output_dir (output folder)    : ${params.output_dir}
     """.stripIndent()
     // A dictionary way to accomplish the text above.
@@ -116,6 +124,13 @@ if (params.help){
 // Channel
 //     .fromPath( params.file_paths_10x )
 //     .println()
+// Channel: required files
+// file_paths_10x = Channel
+//     .fromPath(params.file_paths_10x)
+// file_metadata = Channel
+//     .fromPath(params.file_metadata)
+// file_sample_qc = Channel
+//     .fromPath(params.file_sample_qc)
 // Channel: variables to regress out prior to scaling.
 // reduced_dims__vars_to_regress = Channel
 //     .fromList(params.reduced_dims__vars_to_regress)
@@ -137,6 +152,7 @@ workflow {
         normalize_and_pca(
             params.output_dir,
             merge_samples.out.anndata,
+            params.variable_genes_exclude,
             params.reduced_dims.vars_to_regress.value
         )
         // Subset PCs to those for anlaysis

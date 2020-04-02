@@ -93,11 +93,16 @@ Run Nexflow locally (NOTE: if running on a virtual machine you may need to set `
 # Boot up tmux session.
 tmux new -s nf
 
+# Here we are not going to filter any variable genes, so we make an empty file
+# to pass to --variable_genes_exclude
+touch "${REPO_MODULE}/example_runtime_setup/empty_file.tsv"
+
 # NOTE: All input file paths should be full paths.
 nextflow run "${REPO_MODULE}/main.nf" \
     -profile "local" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
+    --variable_genes_exclude "${REPO_MODULE}/example_runtime_setup/empty_file.tsv" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml"
 ```
 
@@ -143,11 +148,14 @@ rm -r *html;
 rm .nextflow.log*;
 
 # NOTE: If you want to resume a previous workflow, add -resume to the flag.
+# NOTE: If you do not want to filter any variable genes, pass an empty file to
+#       --variable_genes_exclude. See previous local example.
 nextflow run "${REPO_MODULE}/main.nf" \
     -profile "lsf" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
     --file_sample_qc "${REPO_MODULE}/example_runtime_setup/params.yml" \
+    --variable_genes_exclude "${REPO_MODULE}/example_runtime_setup/filters-variable_gene.tsv" \
     --output_dir "${RESULTS_DIR}" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml" \
     -with-report "nf_report.html" \

@@ -204,12 +204,10 @@ def scanpy_normalize_and_pca(
 
         # Print out the number of genes excluded
         if verbose:
-            print(
-                'Within highly variable genes, {} genes are in the list of',
-                'genes to exclude'.format(
-                    exclude_hv_gene_df['highly_variable'].sum()
-                )
-            )
+            print('Within highly variable genes, {} genes are {}'.format(
+                exclude_hv_gene_df['highly_variable'].sum(),
+                'in the list of genes to exclude.'
+            ))
 
     # Regress out any continuous variables.
     if (len(vars_to_regress) > 0):
