@@ -1,5 +1,5 @@
 sample_qc:
-    description: 'Paremeters for sample QC prior to merge.
+    description: 'Parameters for sample QC prior to merge.
         Filters are applied to all samples.'
     cell_filters:
         description: 'Cell filters applied to each sample.'
