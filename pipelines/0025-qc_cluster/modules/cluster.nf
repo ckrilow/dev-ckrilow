@@ -206,7 +206,8 @@ process umap {
 
 
 process convert_seurat {
-    // Converts anndata h5 file to a seurat data object
+    // Converts anndata h5 file to a Seurat data object.
+    // TODO: automatically add reduced_dims to Seurat data object.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
