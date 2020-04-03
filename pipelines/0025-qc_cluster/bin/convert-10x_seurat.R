@@ -57,7 +57,7 @@ command_line_interface <- function() {
             type = "character",
             default = "sc_df",
             help = paste0(
-                "Name (and possibly path) of output file. Will have rds.gz",
+                "Name (and possibly path) of output file. Will have .rds.gz",
                 " appended to it.",
                 " [default: %default]"
             )
