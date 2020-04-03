@@ -13,6 +13,7 @@ include {
     harmony;
 } from "./modules/core.nf"
 include {
+    convert_seurat;
     umap;
     umap as umap__harmony;
     wf__cluster;
@@ -74,7 +75,7 @@ def help_message() {
 
         --file_sample_qc    YAML file containing sample quality control
                             filters.
-                        
+
         --variable_genes_exclude
                             Tab-delimited file with genes to exclude from
                             highly variable gene list. Must contain
@@ -154,6 +155,11 @@ workflow {
             merge_samples.out.anndata,
             params.variable_genes_exclude,
             params.reduced_dims.vars_to_regress.value
+        )
+        // Make Seurat dataframes of the normalized anndata
+        convert_seurat(
+            normalize_and_pca.out.outdir,
+            normalize_and_pca.out.anndata
         )
         // Subset PCs to those for anlaysis
         subset_pcs(
