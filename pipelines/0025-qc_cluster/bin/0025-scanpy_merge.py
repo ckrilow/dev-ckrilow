@@ -150,6 +150,9 @@ def scanpy_merge(
             adata.obs[col] = np.repeat(metadata_smpl[col].values, adata.n_obs)
 
         # Calculate basic qc metrics for this sample.
+        # NOTE: n_genes_by_counts == number of genes with > 0 counts
+        #       adata.obs['n_genes'] = (adata.X > 0).sum(axis = 1) is same as
+        #       adata.obs['n_genes_by_counts']
         vars_prior_metrics = adata.var_keys()
         sc.pp.calculate_qc_metrics(adata, qc_vars=['mito_gene'], inplace=True)
 
@@ -198,13 +201,15 @@ def scanpy_merge(
         if len(params_dict['cell_filters']['value']) > 0:
             n_cells_start = adata.n_obs
             for filter_query in params_dict['cell_filters']['value']:
-                adata = adata[adata.obs.query(filter_query).index, :]
-                print('[{}] cell QC applied "{}": {} dropped {} remain'.format(
-                    row['experiment_id'],
-                    filter_query,
-                    n_cells_start - adata.n_obs,
-                    adata.n_obs
-                ))
+                if filter_query != '':
+                    adata = adata[adata.obs.query(filter_query).index, :]
+                    print('[{}] {} "{}": {} dropped {} remain'.format(
+                        'cell QC applied',
+                        row['experiment_id'],
+                        filter_query,
+                        n_cells_start - adata.n_obs,
+                        adata.n_obs
+                    ))
             print('[{}] after all cell QC: {} dropped {} remain'.format(
                 row['experiment_id'],
                 n_cells_start - adata.n_obs,
