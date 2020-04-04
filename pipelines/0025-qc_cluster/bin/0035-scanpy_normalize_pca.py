@@ -7,7 +7,6 @@ __version__ = '0.0.1'
 
 import argparse
 import os
-import numpy as np
 import pandas as pd
 import scanpy as sc
 import csv
