@@ -1,11 +1,12 @@
 sample_qc:
-    description: 'Paremeters for sample QC prior to merge.
+    description: 'Parameters for sample QC prior to merge.
         Filters are applied to all samples.'
     cell_filters:
-        description: 'Cell filters applied to each sample.'
+        description: 'Cell filters applied to each sample. Cells passing these
+            filters are kept. Note: n_genes_by_counts == n_detected_features.'
         value:
             - 'pct_counts_in_top_100_genes < 50'
-            - 'pct_counts_mito_gene < 80'
+            - 'pct_counts_mito_gene < 80 and n_genes_by_counts > 100'
             - 'n_genes_by_counts > 2000'
     downsample_cells_fraction:
         description: 'Downsample to this fraction of the number of

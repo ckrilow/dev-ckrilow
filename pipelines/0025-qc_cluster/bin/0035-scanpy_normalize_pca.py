@@ -29,25 +29,30 @@ def scanpy_normalize_and_pca(
     n_variable_features=2000,
     exclude_hv_gene_df=[],
     verbose=True,
-    plot=True,
+    plot=True
 ):
     """Normalize data and calculate PCs.
 
     Parameters
     ----------
     adata : AnnData
-        Description of parameter `adata`.
+        Input AnnData file.
     output_file : string
-        Description of parameter `output_file`.
+        Basename of output_file, will have -normalized_pca.h5 appended to it.
     vars_to_regress : list
-        List of metadata variables to regress.
+        List of metadata variables to regress. If empty no regression.
     variable_feature_batch_key : string
-        Description of parameter `variable_feature_batch_key`
-        (the default is "sanger_sample_id").
+        Batch key for variable gene detection.
+        The default is "sanger_sample_id".
     n_variable_features : int
         Number of variable features to select.
+    exclude_hv_gene_df : pd.DataFrame
+        Dataframe of genes to exclude from highly variable gene selection.
     verbose : boolean
         Write extra info to standard out.
+    plot : boolean
+        Generate plots.
+
 
     Returns
     -------
@@ -65,12 +70,15 @@ def scanpy_normalize_and_pca(
                 )
 
     # Add a raw counts layer.
+    # NOTE: This stays with the main AnnData and is not stashed when we
+    #       later save the ln(CPM+1) data to raw (raw only stores X without
+    #       layers).
     adata.layers['counts'] = adata.X.copy()
 
     # NOTE: prior to running normalization, low quality cells should be
     # filtered. Example:
     # sc.pp.filter_cells(adata, min_genes=200)
-    # sc.pp.filter_genes(adata, min_cells=3)
+    sc.pp.filter_genes(adata, min_cells=5)
     # Only consider genes expressed in more than 0.5% of cells:
     # sc.pp.filter_genes(adata, min_cells=0.005*len(adata.obs.index))
 
@@ -86,10 +94,11 @@ def scanpy_normalize_and_pca(
     # Logarithmize the data: X = log(X + 1) where log = natural logorithm.
     # Numpy has a nice function to undo this np.expm1(adata.X).
     sc.pp.log1p(adata)
+    # Delete automatically added uns
+    del adata.uns['log1p']
     # Add record of this operation.
-    adata.uns['X'] = {'transformation': 'ln(CPM+1)'}
-    # adata.layers['log1p'] = adata.X.copy()
-    # adata.uns['log1p'] = {'base': 'e'}
+    adata.layers['log1p_cpm'] = adata.X.copy()
+    adata.uns['log1p_cpm'] = {'transformation': 'ln(CPM+1)'}
 
     # Stash the unprocessed data in the raw slot.
     # adata.raw.X.data is now ln(CPM+1).
@@ -195,7 +204,9 @@ def scanpy_normalize_and_pca(
 
         # Exclude these genes.
         adata.var.loc[
-            exclude_hv_gene_df['ensembl_gene_id'],
+            exclude_hv_gene_df.loc[
+                exclude_hv_gene_df.highly_variable, :
+            ]['ensembl_gene_id'],
             ['highly_variable']
         ] = False
 
@@ -204,12 +215,10 @@ def scanpy_normalize_and_pca(
 
         # Print out the number of genes excluded
         if verbose:
-            print(
-                'Within highly variable genes, {} genes are in the list of',
-                'genes to exclude'.format(
-                    exclude_hv_gene_df['highly_variable'].sum()
-                )
-            )
+            print('Within highly variable genes, {} genes are {}'.format(
+                exclude_hv_gene_df['highly_variable'].sum(),
+                'in the list of genes to exclude.'
+            ))
 
     # Regress out any continuous variables.
     if (len(vars_to_regress) > 0):

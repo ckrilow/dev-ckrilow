@@ -205,6 +205,57 @@ process umap {
 }
 
 
+process convert_seurat {
+    // Converts anndata h5 file to a Seurat data object.
+    // TODO: automatically add reduced_dims to Seurat data object.
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+
+    output:
+        val(outdir, emit: outdir)
+        path("${runid}-${outfile}.rds.gz", emit: seurat_data)
+        path("${outdir_relative}/*", emit: matrix_data)
+        // tuple(path("${outdir_relative}/*"), emit: matrix_data)
+
+    script:
+        runid = random_hex(16)
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        outdir_relative = "${runid}-matrices-${outfile}"
+        outdir = "${outdir_prev}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "convert_seurat: ${process_info}"
+        outdir_relative_full_path=\$(pwd)"/${outdir_relative}"
+        convert-anndata_10x.py \
+            --h5_anndata ${file__anndata} \
+            --output_dir ${outdir_relative}
+        ln -s \${outdir_relative_full_path}/matrix-X.mtx.gz ${outdir_relative}/matrix.mtx.gz
+        convert-10x_seurat.R \
+            --in_dir \${outdir_relative_full_path} \
+            --metadata_file \${outdir_relative_full_path}/metadata.tsv.gz \
+            --count_matrix_file \${outdir_relative_full_path}/matrix-counts.mtx.gz \
+            --out_file ${runid}-${outfile}
+        """
+}
+
+
 workflow wf__cluster {
     take:
         outdir
@@ -225,6 +276,11 @@ workflow wf__cluster {
             reduced_dims,
             cluster__methods,
             cluster__resolutions
+        )
+        // Make Seurat dataframes of the clustered anndata
+        convert_seurat(
+            cluster.out.outdir,
+            cluster.out.anndata
         )
         // Generate UMAPs of the results.
         umap(

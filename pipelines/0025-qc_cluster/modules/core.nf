@@ -72,6 +72,7 @@ process normalize_and_pca {
     input:
         val(outdir_prev)
         path(file__anndata)
+        path(file__variable_genes_exclude)
         each vars_to_regress
 
     output:
@@ -99,17 +100,20 @@ process normalize_and_pca {
             outdir = "${outdir}-scale.vars_to_regress=${vars_to_regress}"
             cmd__vars_to_regress = "--vars_to_regress ${vars_to_regress}"
         }
-        //outdir_pca = "${outdir}/reduced_dims-pca"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "normalize_pca: ${process_info}"
+        cmd__vg_exclude="--variable_genes_exclude ${file__variable_genes_exclude}"
+        val=\$(cat ${file__variable_genes_exclude} | wc -l)
+        if [ \$val -eq 0 ]; then cmd__vg_exclude=""; fi
         0035-scanpy_normalize_pca.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-adata \
             --number_cpu ${task.cpus} \
-            ${cmd__vars_to_regress}
+            ${cmd__vars_to_regress} \
+            \${cmd__vg_exclude}
         """
 }
 
