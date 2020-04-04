@@ -249,7 +249,7 @@ process convert_seurat {
         ln -s \${outdir_relative_full_path}/matrix-X.mtx.gz ${outdir_relative}/matrix.mtx.gz
         convert-10x_seurat.R \
             --in_dir \${outdir_relative_full_path} \
-            --metadata_file \${outdir_relative_full_path}/metadata.tsv.gz \
+            --metadata_file \${outdir_relative_full_path}/metadata-barcodes.tsv.gz \
             --count_matrix_file \${outdir_relative_full_path}/matrix-counts.mtx.gz \
             --out_file ${runid}-${outfile}
         """
