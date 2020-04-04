@@ -96,10 +96,10 @@ def anndata_to_tenx(
         header=False
     )
 
-    # Save the metadata.
+    # Save the metadata on each cell.
     out_f = os.path.join(
         out_dir,
-        '{}metadata.tsv.gz'.format(out_file)
+        '{}metadata-barcodes.tsv.gz'.format(out_file)
     )
     if verbose:
         print('Writing {}'.format(out_f))
@@ -110,6 +110,22 @@ def anndata_to_tenx(
         index=True,
         header=True,
         index_label='cell_barcode'
+    )
+
+    # Save the metadata on each feature.
+    out_f = os.path.join(
+        out_dir,
+        '{}metadata-features.tsv.gz'.format(out_file)
+    )
+    if verbose:
+        print('Writing {}'.format(out_f))
+    adata.var.to_csv(
+        out_f,
+        sep='\t',
+        compression=compression_opts,
+        index=True,
+        header=True,
+        index_label='ensembl_gene_id'
     )
 
     # Save all matricies - both the core matrix (X) as well as any layers.
@@ -127,6 +143,7 @@ def anndata_to_tenx(
         )
         if verbose:
             print('Writing {}'.format(out_f))
+            # print(out_mtx.dtype)  # it looks like even counts stored as float
         with gzip.open(out_f, 'wb', compresslevel=9) as f:
             scipy.io.mmwrite(
                 f,
