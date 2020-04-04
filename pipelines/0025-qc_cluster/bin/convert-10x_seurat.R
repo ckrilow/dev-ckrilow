@@ -109,6 +109,11 @@ command_line_interface <- function() {
         " will not actually be counts."
     ))
 
+    message(paste0(
+        "NOTE: If a \"scan() expected 'an integer', got <int> is thrown\", it",
+        " is likely because you have run out of memory."
+    ))
+
     # Read in the data.
     in_dir <- param[["in_dir"]]
     df_tmp <- Seurat::Read10X(
