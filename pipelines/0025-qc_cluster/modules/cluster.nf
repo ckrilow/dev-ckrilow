@@ -252,6 +252,7 @@ process convert_seurat {
             --metadata_file \${outdir_relative_full_path}/metadata-barcodes.tsv.gz \
             --count_matrix_file \${outdir_relative_full_path}/matrix-counts.mtx.gz \
             --out_file ${runid}-${outfile}
+        unlink ${outdir_relative}/matrix.mtx.gz
         """
 }
 
