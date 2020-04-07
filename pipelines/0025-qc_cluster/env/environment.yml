@@ -9,6 +9,7 @@ dependencies:
   - scanpy=1.4.6
   - leidenalg=0.7.0
   - louvain=0.6.1
+  - plotnine=0.6.0
   - harmonypy=0.0.4
   - r-seurat=3.1.4
   - r-optparse=1.6.4

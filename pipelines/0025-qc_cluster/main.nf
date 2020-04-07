@@ -8,6 +8,7 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 // Modules to include.
 include {
     merge_samples;
+    plot_qc;
     normalize_and_pca;
     subset_pcs;
     harmony;
@@ -148,6 +149,10 @@ workflow {
             params.file_paths_10x,
             params.file_metadata,
             params.file_sample_qc
+        )
+        plot_qc(
+            params.output_dir,
+            merge_samples.out.anndata
         )
         // Normalize, regress (optional), scale, and calculate PCs
         normalize_and_pca(
