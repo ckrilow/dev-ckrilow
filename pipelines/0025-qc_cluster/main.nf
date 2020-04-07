@@ -157,10 +157,10 @@ workflow {
             params.reduced_dims.vars_to_regress.value
         )
         // Make Seurat dataframes of the normalized anndata
-        convert_seurat(
-            normalize_and_pca.out.outdir,
-            normalize_and_pca.out.anndata
-        )
+        // convert_seurat(
+        //     normalize_and_pca.out.outdir,
+        //     normalize_and_pca.out.anndata
+        // )
         // Subset PCs to those for anlaysis
         subset_pcs(
             normalize_and_pca.out.outdir,
