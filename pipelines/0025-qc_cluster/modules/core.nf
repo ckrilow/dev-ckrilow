@@ -70,15 +70,28 @@ process plot_qc {
     input:
         val(outdir_prev)
         path(file__anndata)
+        each facet_columns
+        each variable_columns_distribution_plots
 
     output:
         val(outdir, emit: outdir)
-        path("*.png")
-        path("*.pdf") optional true
+        path("plots/*.png")
+        // path("plots/*.pdf") optional true
 
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        // Append run_id to output file.
+        outfile = "${runid}-${outfile}"
+        // Figure out if we are facetting the plot and update accordingly.
+        if (facet_columns == "") {
+            cmd__facet_columns = ""
+        } else {
+            cmd__facet_columns = "--facet_columns ${facet_columns}"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -86,11 +99,21 @@ process plot_qc {
         echo "plot_qc: ${process_info}"
         plot_qc_umi_nfeature_mt.py \
             --h5_anndata ${file__anndata} \
-            --output_file "${runid}-adata"
-        plot_qc_umi_nfeature_mt.py \
+            --output_file ${outfile} \
+            ${cmd__facet_columns}
+        plot_anndata_distribution_across_cells.py \
             --h5_anndata ${file__anndata} \
-            --output_file "${runid}-adata-facet=sanger_sample_id" \
-            --facet_column "sanger_sample_id"
+            --output_file ${outfile} \
+            --variable_columns ${variable_columns_distribution_plots} \
+            ${cmd__facet_columns}
+        plot_anndata_distribution_across_cells.py \
+            --h5_anndata ${file__anndata} \
+            --output_file ${outfile} \
+            --variable_columns ${variable_columns_distribution_plots} \
+            --ecdf \
+            ${cmd__facet_columns}
+        mkdir plots
+        mv *png plots/
         """
 }
 
