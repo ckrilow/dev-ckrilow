@@ -37,7 +37,7 @@ def scanpy_normalize_and_pca(
     adata : AnnData
         Input AnnData file.
     output_file : string
-        Basename of output_file, will have -normalized_pca.h5 appended to it.
+        Basename of output_file, will have -normalized_pca.h5ad appended to it.
     vars_to_regress : list
         List of metadata variables to regress. If empty no regression.
     variable_feature_batch_key : string
@@ -282,7 +282,10 @@ def scanpy_normalize_and_pca(
     )
 
     # Save the data.
-    adata.write('{}-normalized_pca.h5'.format(output_file), compression='gzip')
+    adata.write(
+        '{}-normalized_pca.h5ad'.format(output_file),
+        compression='gzip'
+    )
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
 
@@ -308,6 +311,15 @@ def scanpy_normalize_and_pca(
             show=False,
             save='-{}-log.pdf'.format(output_file)
         )
+
+    # Save the filtered count matrix for input to other software like scVI
+    adata.X = adata.layers['counts']
+    del adata.layers['counts']
+    del adata.raw
+    adata.write(
+        '{}-normalized_pca-counts.h5ad'.format(output_file),
+        compression='gzip'
+    )
 
     return(output_file)
 
