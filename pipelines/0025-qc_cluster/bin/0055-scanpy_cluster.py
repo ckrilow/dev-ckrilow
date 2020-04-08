@@ -111,7 +111,7 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}-{}-clustered'.format(
-            os.path.basename(options.h5.rstrip('.h5')),
+            os.path.basename(options.h5.rstrip('.h5ad')),
             os.path.basename(options.pc.rstrip('.tsv.gz'))
         )
 
@@ -207,7 +207,7 @@ def main():
         compression='gzip'
     )
 
-    adata.write('{}.h5'.format(out_file_base), compression='gzip')
+    adata.write('{}.h5ad'.format(out_file_base), compression='gzip')
 
     # if verbose:
     #     print('Finished clustering and saved clustered AnnData.')

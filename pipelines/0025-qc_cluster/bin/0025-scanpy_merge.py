@@ -264,7 +264,7 @@ def scanpy_merge(
     ))
 
     # output_file = output_dir + "/adata"
-    adata_merged.write('{}.h5'.format(output_file), compression='gzip')
+    adata_merged.write('{}.h5ad'.format(output_file), compression='gzip')
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
 
@@ -351,7 +351,7 @@ def main():
         dest='of',
         default='adata',
         help='Basename of output anndata file, assuming output in current \
-            working directory. Will have .h5 appended.\
+            working directory. Will have .h5ad appended.\
             (default: %(default)s)'
     )
 

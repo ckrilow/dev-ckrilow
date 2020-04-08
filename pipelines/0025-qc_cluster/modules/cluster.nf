@@ -17,7 +17,7 @@ process cluster {
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
-                    if (filename.endsWith("normalized_pca.h5")) {
+                    if (filename.endsWith("normalized_pca.h5ad")) {
                         null
                     } else if(filename.endsWith("metadata.tsv.gz")) {
                         null
@@ -44,7 +44,7 @@ process cluster {
 
     output:
         val(outdir, emit: outdir)
-        path("${runid}-${outfile}-clustered.h5", emit: anndata)
+        path("${runid}-${outfile}-clustered.h5ad", emit: anndata)
         path(file__metadata, emit: metadata)
         path(file__pcs, emit: pcs)
         path(file__reduced_dims, emit: reduced_dims)
@@ -60,7 +60,7 @@ process cluster {
         outdir = "${outdir}-resolution=${resolution_str}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -88,7 +88,7 @@ process cluster_markers {
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
-                    if (filename.endsWith("clustered.h5")) {
+                    if (filename.endsWith("clustered.h5ad")) {
                         null
                     } else if(filename.endsWith("metadata.tsv.gz")) {
                         null
@@ -134,7 +134,7 @@ process cluster_markers {
         outdir = "${outdir}-method=${method}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -179,7 +179,7 @@ process umap {
         outdir = "${outdir_prev}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        // outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        // outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
         outfile = "umap"
         cmd__colors_quant = ""
         if (colors_quantitative != "") {
@@ -234,7 +234,7 @@ process convert_seurat {
         runid = random_hex(16)
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
         outdir_relative = "${runid}-matrices-${outfile}"
         outdir = "${outdir_prev}"
         process_info = "${runid} (runid)"

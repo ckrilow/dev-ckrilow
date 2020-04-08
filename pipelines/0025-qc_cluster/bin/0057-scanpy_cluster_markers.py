@@ -171,7 +171,7 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}'.format(
-            os.path.basename(options.h5.rstrip('.h5'))
+            os.path.basename(options.h5.rstrip('.h5ad'))
         )
 
     # Load the AnnData file.
