@@ -85,8 +85,9 @@ def plot_umi_ngene_mt(
         gplt.save(
             '{}.png'.format(output_file),
             dpi=300,
-            width=4*n_samples,
-            height=4*n_samples
+            width=4*(n_samples/4),
+            height=4*(n_samples/4),
+            limitsize=False
         )
     else:
         gplt.save(

@@ -84,10 +84,10 @@ process plot_qc {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "plot_qc: ${process_info}"
-        plot_basic_qc.py \
+        plot_qc_umi_nfeature_mt.py \
             --h5_anndata ${file__anndata} \
             --output_file "${runid}-adata"
-        plot_basic_qc.py \
+        plot_qc_umi_nfeature_mt.py \
             --h5_anndata ${file__anndata} \
             --output_file "${runid}-adata-facet=sanger_sample_id" \
             --facet_column "sanger_sample_id"
