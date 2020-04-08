@@ -8,6 +8,7 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 // Modules to include.
 include {
     merge_samples;
+    plot_qc;
     normalize_and_pca;
     subset_pcs;
     harmony;
@@ -149,6 +150,10 @@ workflow {
             params.file_metadata,
             params.file_sample_qc
         )
+        plot_qc(
+            params.output_dir,
+            merge_samples.out.anndata
+        )
         // Normalize, regress (optional), scale, and calculate PCs
         normalize_and_pca(
             params.output_dir,
@@ -157,10 +162,10 @@ workflow {
             params.reduced_dims.vars_to_regress.value
         )
         // Make Seurat dataframes of the normalized anndata
-        convert_seurat(
-            normalize_and_pca.out.outdir,
-            normalize_and_pca.out.anndata
-        )
+        // convert_seurat(
+        //     normalize_and_pca.out.outdir,
+        //     normalize_and_pca.out.anndata
+        // )
         // Subset PCs to those for anlaysis
         subset_pcs(
             normalize_and_pca.out.outdir,

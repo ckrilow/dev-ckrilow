@@ -54,6 +54,47 @@ process merge_samples {
 }
 
 
+process plot_qc {
+    // Takes annData object, generates basic qc plots
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+
+    output:
+        val(outdir, emit: outdir)
+        path("*.png")
+        path("*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_qc: ${process_info}"
+        plot_qc_umi_nfeature_mt.py \
+            --h5_anndata ${file__anndata} \
+            --output_file "${runid}-adata"
+        plot_qc_umi_nfeature_mt.py \
+            --h5_anndata ${file__anndata} \
+            --output_file "${runid}-adata-facet=sanger_sample_id" \
+            --facet_column "sanger_sample_id"
+        """
+}
+
+
 process normalize_and_pca {
     // Takes annData object, nomalizes across samples, calculates PCs.
     // NOTE: Once normalization is set, it would be faster to normalize per
