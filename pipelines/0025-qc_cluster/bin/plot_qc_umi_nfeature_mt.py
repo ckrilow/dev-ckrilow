@@ -27,7 +27,7 @@ def comma_labels(x_list):
 def plot_umi_ngene_mt(
     df_plot,
     output_file='plot_umi_ngene_mt',
-    facet_column=''
+    facet_column='none'
 ):
     """Plot plot_umi_ngene_mt to png.
 
@@ -76,7 +76,7 @@ def plot_umi_ngene_mt(
         title=''
     )
     gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
-    if facet_column != '':
+    if facet_column != 'none':
         gplt = gplt + plt9.facet_wrap(
             '~ {}'.format(facet_column),
             ncol=5
@@ -200,10 +200,10 @@ def main():
     )
 
     parser.add_argument(
-        '--facet_column',
+        '--facet_columns',
         action='store',
-        dest='facet_column',
-        default='',
+        dest='facet_columns',
+        default='none',
         help='Column to facet plot by.\
             (default: No facet.)'
     )
@@ -219,12 +219,21 @@ def main():
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=options.h5)
 
+    # Get a list of the facets to plot.
+    facets_to_plot = options.facet_columns.split(',')
+    if len(facets_to_plot) == 0:
+        facets_to_plot = ['none']
+
     # Plot the data.
-    plot_umi_ngene_mt(
-        df_plot=adata.obs,
-        output_file='plot_umi_ngene_mt-{}'.format(options.of),
-        facet_column=options.facet_column
-    )
+    for facet in facets_to_plot:
+        plot_umi_ngene_mt(
+            df_plot=adata.obs,
+            output_file='plot_umi_ngene_mt.facet={}-{}'.format(
+                facet,
+                options.of
+            ),
+            facet_column=facet
+        )
 
 
 if __name__ == '__main__':

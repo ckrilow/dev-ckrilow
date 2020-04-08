@@ -28,6 +28,13 @@ params.help          = false
 // NOTE: The default parameters below were chosen to show the flexiblity of
 //       this pipeline. They were not chosen because these are the values one
 //       should use for final analysis.
+// Default parameters for qc plots.
+params.plots_qc = [
+    facet_columns: [value: ["sanger_sample_id"]],
+    variable_columns_distribution_plots: [value: [
+        "total_counts,pct_counts_mito_gene"
+    ]],
+]
 // Default parameters for reduced dimension calculations.
 params.reduced_dims = [
     vars_to_regress: [value: ["", "total_counts,age"]],
@@ -150,9 +157,12 @@ workflow {
             params.file_metadata,
             params.file_sample_qc
         )
+        // Make QC plots of the merged data.
         plot_qc(
             params.output_dir,
-            merge_samples.out.anndata
+            merge_samples.out.anndata,
+            params.plots_qc.facet_columns.value,
+            params.plots_qc.variable_columns_distribution_plots.value
         )
         // Normalize, regress (optional), scale, and calculate PCs
         normalize_and_pca(

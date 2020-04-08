@@ -279,10 +279,10 @@ workflow wf__cluster {
             cluster__resolutions
         )
         // Make Seurat dataframes of the clustered anndata
-        convert_seurat(
-            cluster.out.outdir,
-            cluster.out.anndata
-        )
+        // convert_seurat(
+        //     cluster.out.outdir,
+        //     cluster.out.anndata
+        // )
         // Generate UMAPs of the results.
         umap(
             cluster.out.outdir,
