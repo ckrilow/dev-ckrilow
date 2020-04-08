@@ -22,6 +22,21 @@ sample_qc:
         description: 'Downsample the number of feature counts by this fraction.
             Use "" to indicate no downsampling.'
         value: ''
+plots_qc:
+    description: 'Parameters for basic QC plots after sample merge. All
+        pairwise combinations of facet_columns and
+        variable_columns_distribution_plots will be performed.'
+    facet_columns:
+        description: 'Column to facet all QC plots by.'
+        value:
+            - ''
+            - 'sanger_sample_id,lane'
+    variable_columns_distribution_plots:
+        description: 'Plot the distributions of these variables (histogram and
+            ecdf).'
+        value:
+            - 'pct_counts_in_top_100_genes'
+            - 'total_counts,pct_counts_mito_gene'
 reduced_dims:
     description: 'Parameters for dimensionality reduction (principal component
         and harmony calculations). All pairwise combinations of
