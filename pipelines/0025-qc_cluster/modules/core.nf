@@ -30,7 +30,7 @@ process merge_samples {
     // NOTE: use path here and not file see:
     //       https://github.com/nextflow-io/nextflow/issues/1414
     output:
-        path("${runid}-adata.h5", emit: anndata)
+        path("${runid}-adata.h5ad", emit: anndata)
 
     script:
         runid = random_hex(16)
@@ -83,7 +83,7 @@ process plot_qc {
         outdir = "${outdir_prev}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5").split("-").drop(1).join("-")
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
         // Append run_id to output file.
         outfile = "${runid}-${outfile}"
         // Figure out if we are facetting the plot and update accordingly.
@@ -141,14 +141,18 @@ process normalize_and_pca {
 
     output:
         val(outdir, emit: outdir)
-        path("${runid}-adata-normalized_pca.h5", emit: anndata)
+        path("${runid}-adata-normalized_pca.h5ad", emit: anndata)
         path("${runid}-adata-metadata.tsv.gz", emit: metadata)
         path("${runid}-adata-pcs.tsv.gz", emit: pcs)
+        path(
+            "${runid}-adata-normalized_pca-counts.h5ad",
+            emit: anndata_filtered_counts
+        )
         path("*.pdf") optional true
         path("*.png") optional true
         // tuple(
         //     val(outdir),
-        //     path("${runid}-adata-normalized_pca.h5"),
+        //     path("${runid}-adata-normalized_pca.h5ad"),
         //     path("${runid}-adata-metadata.tsv.gz"),
         //     path("${runid}-adata-pcs.tsv.gz"),
         //     emit: results
@@ -193,7 +197,7 @@ process subset_pcs {
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
-                    if (filename.endsWith("normalized_pca.h5")) {
+                    if (filename.endsWith("normalized_pca.h5ad")) {
                         null
                     } else if(filename.endsWith("metadata.tsv.gz")) {
                         null
@@ -254,7 +258,7 @@ process harmony {
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
-                    if (filename.endsWith("normalized_pca.h5")) {
+                    if (filename.endsWith("normalized_pca.h5ad")) {
                         null
                     } else if(filename.endsWith("metadata.tsv.gz")) {
                         null

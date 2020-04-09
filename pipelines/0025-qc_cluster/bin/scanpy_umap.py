@@ -114,7 +114,7 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}-{}-umap'.format(
-            os.path.basename(options.h5.rstrip('.h5')),
+            os.path.basename(options.h5.rstrip('.h5ad')),
             os.path.basename(options.pc.rstrip('.tsv.gz'))
         )
 
