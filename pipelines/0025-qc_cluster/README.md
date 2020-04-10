@@ -172,3 +172,7 @@ NF_OUT_DIR="/path/to/out_dir"
 rsync -am --include="*.png" --include="*/" --exclude="*" my_cluster_ssh:${NF_OUT_DIR} .
 rsync -am --include="*.png" --include="*/" --exclude="*" my_cluster_ssh:${NF_OUT_DIR} .
 ```
+
+# Notes
+* --file_paths_10x - specify file that lists samples to run pipeline on
+* --file_metadata - specify file with metadata information of the samples, note that metadata will be trimmed to the samples you provide in --file_paths_10x 
