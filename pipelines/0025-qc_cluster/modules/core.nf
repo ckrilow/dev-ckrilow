@@ -76,7 +76,7 @@ process plot_qc {
     output:
         val(outdir, emit: outdir)
         path("plots/*.png")
-        // path("plots/*.pdf") optional true
+        path("plots/*.pdf") optional true
 
     script:
         runid = random_hex(16)
@@ -113,7 +113,8 @@ process plot_qc {
             --ecdf \
             ${cmd__facet_columns}
         mkdir plots
-        mv *png plots/
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
 }
 
@@ -136,7 +137,8 @@ process normalize_and_pca {
     input:
         val(outdir_prev)
         path(file__anndata)
-        path(file__variable_genes_exclude)
+        path(file__genes_exclude_hvg)
+        path(file__genes_score)
         each vars_to_regress
 
     output:
@@ -148,8 +150,8 @@ process normalize_and_pca {
             "${runid}-adata-normalized_pca-counts.h5ad",
             emit: anndata_filtered_counts
         )
-        path("*.pdf") optional true
-        path("*.png") optional true
+        path("plots/*.pdf")
+        path("plots/*.png") optional true
         // tuple(
         //     val(outdir),
         //     path("${runid}-adata-normalized_pca.h5ad"),
@@ -160,28 +162,46 @@ process normalize_and_pca {
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}/normalize.total_count"
+        outdir = "${outdir_prev}/normalize=total_count"
+        // Add any variables we are regressing to the output dir.
         if (vars_to_regress == "") {
-            outdir = "${outdir}-scale.vars_to_regress=none"
+            outdir = "${outdir}.vars_to_regress=none"
             cmd__vars_to_regress = ""
         } else {
-            outdir = "${outdir}-scale.vars_to_regress=${vars_to_regress}"
+            outdir = "${outdir}.vars_to_regress=${vars_to_regress}"
             cmd__vars_to_regress = "--vars_to_regress ${vars_to_regress}"
         }
+        // Add details on the genes we are exlcuding from hgv list.
+        file_vge = "${file__genes_exclude_hvg.getSimpleName()}"
+        outdir = "${outdir}.hvg_exclude=${file_vge}"
+        // Add details on the scores we are using.
+        file_score = "${file__genes_score.getSimpleName()}"
+        outdir = "${outdir}.scores=${file_score}"
+        // Basic details on the run.
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "normalize_pca: ${process_info}"
-        cmd__vg_exclude="--variable_genes_exclude ${file__variable_genes_exclude}"
-        val=\$(cat ${file__variable_genes_exclude} | wc -l)
+        # If there are entries in the variable_genes_exclude file, add it to
+        # the call.
+        cmd__vg_exclude="--variable_genes_exclude ${file__genes_exclude_hvg}"
+        val=\$(cat ${file__genes_exclude_hvg} | wc -l)
         if [ \$val -eq 0 ]; then cmd__vg_exclude=""; fi
+        # If there are entries in the score_genes file, add it to the call.
+        cmd__score_genes="--score_genes ${file__genes_score}"
+        val=\$(cat ${file__genes_score} | wc -l)
+        if [ \$val -eq 0 ]; then cmd__score_genes=""; fi
         0035-scanpy_normalize_pca.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-adata \
             --number_cpu ${task.cpus} \
             ${cmd__vars_to_regress} \
-            \${cmd__vg_exclude}
+            \${cmd__vg_exclude} \
+            \${cmd__score_genes}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
 }
 
@@ -233,7 +253,7 @@ process subset_pcs {
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}/reduced_dims-pca"
-        outdir = "${outdir}-n_pcs=${n_pcs}"
+        outdir = "${outdir}.n_pcs=${n_pcs}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -296,9 +316,9 @@ process harmony {
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}/reduced_dims-harmony"
-        outdir = "${outdir}-n_pcs=${n_pcs}"
-        outdir = "${outdir}-variables=${variables_and_thetas.variable}"
-        outdir = "${outdir}-thetas=${variables_and_thetas.theta}"
+        outdir = "${outdir}.n_pcs=${n_pcs}"
+        outdir = "${outdir}.variables=${variables_and_thetas.variable}"
+        outdir = "${outdir}.thetas=${variables_and_thetas.theta}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"

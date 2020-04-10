@@ -49,15 +49,15 @@ process cluster {
         path(file__pcs, emit: pcs)
         path(file__reduced_dims, emit: reduced_dims)
         path("${runid}-${outfile}-clustered.tsv.gz", emit: clusters)
-        path("*.pdf") optional true
-        path("*.png") optional true
+        path("plots/*.pdf") optional true
+        path("plots/*.png") optional true
 
     script:
         runid = random_hex(16)
         resolution_str = "${resolution}" //.replaceAll("\\.", "pt")
         outdir = "${outdir_prev}/cluster"
-        outdir = "${outdir}-method=${method}"
-        outdir = "${outdir}-resolution=${resolution_str}"
+        outdir = "${outdir}.method=${method}"
+        outdir = "${outdir}.resolution=${resolution_str}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
@@ -73,6 +73,9 @@ process cluster {
             --resolution ${resolution} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}-clustered
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
 }
 
@@ -125,13 +128,13 @@ process cluster_markers {
             "${runid}-${outfile}-cluster_markers.tsv.gz",
             emit: cluster_markers
         )
-        path("*.pdf") optional true
-        path("*.png") optional true
+        path("plots/*.pdf") optional true
+        path("plots/*.png") optional true
 
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}/cluster_markers"
-        outdir = "${outdir}-method=${method}"
+        outdir = "${outdir}.method=${method}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
@@ -145,6 +148,9 @@ process cluster_markers {
             --rank_genes_method ${method} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
 }
 
@@ -170,9 +176,9 @@ process umap {
         val(colors_categorical)
 
     output:
-        path("*.png")
-        path("*.pdf") optional true
-        path("*.svg") optional true
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
+        // path("plots/*.svg") optional true
 
     script:
         runid = random_hex(16)
@@ -201,6 +207,9 @@ process umap {
             ${cmd__colors_cat} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
 }
 
