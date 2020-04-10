@@ -78,8 +78,8 @@ source activate sc_qc_cluster
 Generate and/or edit input files for the pipeline.
 
 The pipeline takes as input:
-1. **file_paths_10x**:  Tab-delimited file containing experiment_id and data_path_10x_format columns. Reqired.
-2. **file_metadata**:  Tab-delimited file containing sample metadata. Reqired.
+1. **file_paths_10x**:  Tab-delimited file containing experiment_id and data_path_10x_format columns (i.e., list of input samples). Reqired.
+2. **file_metadata**:  Tab-delimited file containing sample metadata. This will automatically be subset down to the sample list from 1. Reqired.
 3. **file_sample_qc**:  YAML file containing sample qc and filtering parameters. Required. NOTE: in the example config file, this is part of the YAML file for item 4.
 4. **params-file**:  YAML file containing analysis parameters. Optional.
 
@@ -171,4 +171,17 @@ Example of how one may sync results:
 NF_OUT_DIR="/path/to/out_dir"
 rsync -am --include="*.png" --include="*/" --exclude="*" my_cluster_ssh:${NF_OUT_DIR} .
 rsync -am --include="*.png" --include="*/" --exclude="*" my_cluster_ssh:${NF_OUT_DIR} .
+```
+
+# Notes
+
+* On 10 April 2020, we found nextflow was writing some output into the ${HOME} directory and had used up the alotted ~15Gb on the Sanger farm. This resulted in a Java error as soon as a nextflow command was executed. Based on file sizes within ${HOME}, it seemed like the ouput was being written within the conda environment (following `du -h | sort -V -k 1`). By deleting and re-installing the coda environment, the problem was solved. The below flags may help prevent this from the future. In addition, setting the flag `export JAVA_OPTIONS=-Djava.io.tmpdir=/path/with/enough/space/` may also help. 
+
+```bash
+# To be run from the execution dir, before the above nextflow command
+export NXF_HOME=$(pwd)
+export NXF_WORK="${NXF_HOME}/.nexflow_work"
+export NXF_TEMP="${NXF_HOME}/.nexflow_temp"
+export NXF_CONDA_CACHEDIR="${NXF_HOME}/.nexflow_conda"
+export NXF_SINGULARITY_CACHEDIR="${NXF_HOME}/.nexflow_singularity"
 ```
