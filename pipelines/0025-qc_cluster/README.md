@@ -78,10 +78,13 @@ source activate sc_qc_cluster
 Generate and/or edit input files for the pipeline.
 
 The pipeline takes as input:
-1. **file_paths_10x**:  Tab-delimited file containing experiment_id and data_path_10x_format columns (i.e., list of input samples). Reqired.
-2. **file_metadata**:  Tab-delimited file containing sample metadata. This will automatically be subset down to the sample list from 1. Reqired.
-3. **file_sample_qc**:  YAML file containing sample qc and filtering parameters. Required. NOTE: in the example config file, this is part of the YAML file for item 4.
-4. **params-file**:  YAML file containing analysis parameters. Optional.
+1. **--file_paths_10x**:  Tab-delimited file containing experiment_id and data_path_10x_format columns (i.e., list of input samples). Reqired.
+2. **--file_metadata**:  Tab-delimited file containing sample metadata. This will automatically be subset down to the sample list from 1. Reqired.
+3. **--file_sample_qc**:  YAML file containing sample qc and filtering parameters. Required. NOTE: in the example config file, this is part of the YAML file for `-params-file`.
+4. **--genes_exclude_hvg**:  Tab-delimited file with genes to exclude from
+highly variable gene list. Must contain ensembl_gene_id column. If there are no genes to filter, then pass an empty file. Reqired.
+5. **--genes_score**:  Tab-delimited file with genes to use to score cells. Must contain ensembl_gene_id and score_idvcolumns. If one score_id == "cell_cycle", then requires a grouping_id column with "G2/M" and "S" (see example file in `example_runtime_setup`). If there are no scores to calculate, then pass an empty file. Reqired.
+6. **-params-file**:  YAML file containing analysis parameters. Optional.
 
 Examples of all of these files can be found in `example_runtime_setup/`.
 
@@ -94,7 +97,7 @@ Run Nexflow locally (NOTE: if running on a virtual machine you may need to set `
 tmux new -s nf
 
 # Here we are not going to filter any variable genes, so we make an empty file
-# to pass to --variable_genes_exclude
+# to pass to --genes_exclude_hvg
 touch "${REPO_MODULE}/example_runtime_setup/empty_file.tsv"
 
 # NOTE: All input file paths should be full paths.
@@ -102,7 +105,8 @@ nextflow run "${REPO_MODULE}/main.nf" \
     -profile "local" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
-    --variable_genes_exclude "${REPO_MODULE}/example_runtime_setup/empty_file.tsv" \
+    --genes_exclude_hvg "${REPO_MODULE}/example_runtime_setup/empty_file.tsv" \
+    --genes_score "${REPO_MODULE}/example_runtime_setup/genes_score_v001.tsv" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml"
 ```
 
@@ -149,13 +153,14 @@ rm .nextflow.log*;
 
 # NOTE: If you want to resume a previous workflow, add -resume to the flag.
 # NOTE: If you do not want to filter any variable genes, pass an empty file to
-#       --variable_genes_exclude. See previous local example.
+#       --genes_exclude_hvg. See previous local example.
 nextflow run "${REPO_MODULE}/main.nf" \
     -profile "lsf" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
     --file_sample_qc "${REPO_MODULE}/example_runtime_setup/params.yml" \
-    --variable_genes_exclude "${REPO_MODULE}/example_runtime_setup/filters-variable_gene.tsv" \
+    --genes_exclude_hvg "${REPO_MODULE}/example_runtime_setup/genes_remove_hvg_v001.tsv" \
+    --genes_score "${REPO_MODULE}/example_runtime_setup/genes_score_v001.tsv" \
     --output_dir "${RESULTS_DIR}" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml" \
     -with-report "nf_report.html" \
@@ -175,7 +180,7 @@ rsync -am --include="*.png" --include="*/" --exclude="*" my_cluster_ssh:${NF_OUT
 
 # Notes
 
-* On 10 April 2020, we found nextflow was writing some output into the ${HOME} directory and had used up the alotted ~15Gb on the Sanger farm. This resulted in a Java error as soon as a nextflow command was executed. Based on file sizes within ${HOME}, it seemed like the ouput was being written within the conda environment (following `du -h | sort -V -k 1`). By deleting and re-installing the coda environment, the problem was solved. The below flags may help prevent this from the future. In addition, setting the flag `export JAVA_OPTIONS=-Djava.io.tmpdir=/path/with/enough/space/` may also help. 
+* On 10 April 2020, we found nextflow was writing some output into the `${HOME}` directory and had used up the alotted ~15Gb on the Sanger farm. This resulted in a Java error as soon as a nextflow command was executed. Based on file sizes within `${HOME}`, it seemed like the ouput was being written within the conda environment (following `du -h | sort -V -k 1`). By deleting and re-installing the coda environment, the problem was solved. The below flags may help prevent this from the future. In addition, setting the flag `export JAVA_OPTIONS=-Djava.io.tmpdir=/path/with/enough/space/` may also help.
 
 ```bash
 # To be run from the execution dir, before the above nextflow command
