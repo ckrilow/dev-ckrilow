@@ -8,6 +8,7 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 // Modules to include.
 include {
     merge_samples;
+    plot_qc;
     normalize_and_pca;
     subset_pcs;
     harmony;
@@ -27,6 +28,13 @@ params.help          = false
 // NOTE: The default parameters below were chosen to show the flexiblity of
 //       this pipeline. They were not chosen because these are the values one
 //       should use for final analysis.
+// Default parameters for qc plots.
+params.plots_qc = [
+    facet_columns: [value: ["sanger_sample_id"]],
+    variable_columns_distribution_plots: [value: [
+        "total_counts,pct_counts_mito_gene"
+    ]],
+]
 // Default parameters for reduced dimension calculations.
 params.reduced_dims = [
     vars_to_regress: [value: ["", "total_counts,age"]],
@@ -76,11 +84,19 @@ def help_message() {
         --file_sample_qc    YAML file containing sample quality control
                             filters.
 
-        --variable_genes_exclude
+        --genes_exclude_hvg
                             Tab-delimited file with genes to exclude from
                             highly variable gene list. Must contain
                             ensembl_gene_id column. If no filter, then pass an
                             empty file.
+
+        --genes_score
+                            Tab-delimited file with genes to use to score
+                            cells. Must contain ensembl_gene_id and score_id
+                            columns.  If one score_id == "cell_cycle", then
+                            requires a grouping_id column with "G2/M" and "S".
+                            If no filter, then pass an empty file.
+
 
     Other arguments:
         --output_dir        Directory name to save results to. (Defaults to
@@ -110,7 +126,8 @@ if (params.help){
     file_paths_10x                : ${params.file_paths_10x}
     file_metadata                 : ${params.file_metadata}
     file_sample_qc                : ${params.file_sample_qc}
-    variable_genes_exclude        : ${params.variable_genes_exclude}
+    genes_exclude_hvg             : ${params.genes_exclude_hvg}
+    genes_score                   : ${params.genes_score}
     output_dir (output folder)    : ${params.output_dir}
     """.stripIndent()
     // A dictionary way to accomplish the text above.
@@ -149,11 +166,19 @@ workflow {
             params.file_metadata,
             params.file_sample_qc
         )
+        // Make QC plots of the merged data.
+        plot_qc(
+            params.output_dir,
+            merge_samples.out.anndata,
+            params.plots_qc.facet_columns.value,
+            params.plots_qc.variable_columns_distribution_plots.value
+        )
         // Normalize, regress (optional), scale, and calculate PCs
         normalize_and_pca(
             params.output_dir,
             merge_samples.out.anndata,
-            params.variable_genes_exclude,
+            params.genes_exclude_hvg,
+            params.genes_score,
             params.reduced_dims.vars_to_regress.value
         )
         // Make Seurat dataframes of the normalized anndata

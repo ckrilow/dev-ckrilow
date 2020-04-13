@@ -7,6 +7,7 @@ __version__ = '0.0.1'
 
 import argparse
 import os
+import numpy as np
 import pandas as pd
 import scanpy as sc
 import csv
@@ -20,6 +21,125 @@ from datetime import timedelta
 # sc.settings.set_figure_params(dpi=80)
 
 
+def score_cells(
+    adata,
+    score_genes_df,
+    score_genes_df_column='ensembl_gene_id',
+    only_use_variable_genes=False
+):
+    """Scores each cell.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Input AnnData object. Assume adata.X is norm->log1p->scaled data.
+    score_genes_df : pd.DataFrame
+        Dataframe of marker genes. Needs to have score_genes_df_column and
+        score_id column. If one score_id == 'cell_cycle', then requires a
+        grouping_id column with 'G2/M' and 'S'.
+    score_genes_df_column : string
+        Column in score_genes_df to use for gene ids (e.g., hgnc_symbol,
+        ensembl_gene_id)
+    only_use_variable_genes : boolean
+        Only use variable genes to calculate scores. If True, score_id will
+        be changed to <score_id>__hvg_only. Note this flage does not apply
+        to score_id == 'cell_cycle'.
+
+
+    Returns
+    -------
+    adata : AnnData
+        AnnData object with scores calculated and stored in
+        adata.obs[<score_id>].
+    score_genes_df : pd.DataFrame
+        The score_genes_df with the following columns added:
+        gene_found_in_adata, gene_found_is_highly_variable. It is suggested
+        that this dataframe is added to the adata.uns slot.
+    """
+    verbose = False  # For debugging purposes.
+
+    # Update the score_genes_df with details on the genes and if they were
+    # found in adata and if they are highly variable.
+    score_genes_df['gene_found_in_adata'] = np.in1d(
+        score_genes_df[score_genes_df_column],
+        adata.var.index
+    )
+    score_genes_df['gene_found_is_highly_variable'] = np.in1d(
+        score_genes_df[score_genes_df_column],
+        adata.var.index[adata.var['highly_variable']]
+    )
+
+    # Set the gene pool parameter.
+    gene_pool = None  # If None, all genes are randomly sampled for background
+    if only_use_variable_genes:
+        gene_pool = adata.var.index[adata.var['highly_variable']]
+
+    # Loop over each score_id in score_genes_df, updating adata.
+    for score_id, df_group in score_genes_df.groupby('score_id'):
+        # Downsample to only those genes found in the data.
+        df_group = df_group.loc[
+            df_group['gene_found_in_adata'], :
+        ]
+        if df_group.shape[0] == 0:
+            continue
+
+        # If we are supposed to use only_use_variable_genes, then do so.
+        if only_use_variable_genes:
+            if score_id == 'cell_cycle':
+                continue
+            score_id = '{}__hvg_only'.format(score_id)
+            df_group = df_group.loc[
+                df_group['gene_found_is_highly_variable'], :
+            ]
+            if df_group.shape[0] == 0:
+                continue
+        if verbose:
+            print('Scoring {}'.format(score_id))
+
+        # Set the number of control genes.
+        ctrl_size = 50
+        if df_group.shape[0] > 50:
+            ctrl_size = df_group.shape[0]
+        if gene_pool is not None:
+            if ctrl_size > len(gene_pool):
+                raise Exception(
+                    'Error in gene scoring ctrl_size > len(gene_pool)'
+                )
+
+        # If the score_id is cell_cycle, then use the specific cell cycle
+        # scoring function.
+        if score_id == 'cell_cycle':
+            # NOTE: Setting ctrl_size` is not possible, as it's set as
+            #       `min(len(s_genes), len(g2m_genes))`.
+            sc.tl.score_genes_cell_cycle(
+                adata,
+                s_genes=df_group.loc[
+                    df_group['grouping_id'] == 'S', score_genes_df_column
+                ],
+                g2m_genes=df_group.loc[
+                    df_group['grouping_id'] == 'G2/M', score_genes_df_column
+                ],
+                copy=False,
+                gene_pool=gene_pool,  # Default is None (aka, use all)
+                n_bins=25,  # Default is 25
+                use_raw=False
+            )
+        else:
+            sc.tl.score_genes(
+                adata,
+                df_group[score_genes_df_column],
+                ctrl_size=ctrl_size,  # Default is 50
+                gene_pool=gene_pool,  # Default is None (aka, use all)
+                n_bins=25,  # Default is 25
+                score_name=score_id,
+                random_state=0,  # Default is 0
+                copy=False,
+                use_raw=False
+            )
+
+    return adata, score_genes_df
+
+
 def scanpy_normalize_and_pca(
     adata,
     output_file,
@@ -27,6 +147,7 @@ def scanpy_normalize_and_pca(
     variable_feature_batch_key='sanger_sample_id',
     n_variable_features=2000,
     exclude_hv_gene_df=[],
+    score_genes_df=None,
     verbose=True,
     plot=True
 ):
@@ -37,7 +158,7 @@ def scanpy_normalize_and_pca(
     adata : AnnData
         Input AnnData file.
     output_file : string
-        Basename of output_file, will have -normalized_pca.h5 appended to it.
+        Basename of output_file, will have -normalized_pca.h5ad appended to it.
     vars_to_regress : list
         List of metadata variables to regress. If empty no regression.
     variable_feature_batch_key : string
@@ -47,6 +168,10 @@ def scanpy_normalize_and_pca(
         Number of variable features to select.
     exclude_hv_gene_df : pd.DataFrame
         Dataframe of genes to exclude from highly variable gene selection.
+    score_genes_df : pd.DataFrame
+        Dataframe of marker genes. Needs to have score_genes_df_column and
+        score_id column. If one score_id == 'cell_cycle', then requires a
+        grouping_id column with 'G2/M' and 'S'.
     verbose : boolean
         Write extra info to standard out.
     plot : boolean
@@ -179,7 +304,15 @@ def scanpy_normalize_and_pca(
             save='-{}-log.pdf'.format(output_file)
         )
 
-    # Exclude mitocondrial genes.
+    # After calculating highly variable genes, we subsquently remove any custom
+    # for highly variable gene selection. This way we retain the normalized
+    # values for each one of these genes even though they will not be used
+    # for dimensionality reduction. NOTE: If there are loads of genes
+    # to exclude and there are only a handful of n_variable_features, then
+    # one could end up with very few variable genes for dimensionality
+    # reduction in the end.
+    #
+    # Exclude mitocondrial genes from highly variable gene set.
     # if exclude_mito_highly_variable_genes:
     #     n_highly_variable_mito = adata.var.loc[
     #         adata.var['mito_gene'],
@@ -193,7 +326,7 @@ def scanpy_normalize_and_pca(
     #         adata.var['mito_gene'],
     #         ['highly_variable']
     #     ] = False
-    # Exclude other genes.
+    # Exclude other genes from highly variable gene set.
     if len(exclude_hv_gene_df) > 0:
         # Annotate the exclusion dataframe with the genes that are highly
         # variable.
@@ -210,7 +343,7 @@ def scanpy_normalize_and_pca(
         ] = False
 
         # Add record of gene exclustions
-        adata.uns['highly_variable_gene_filters'] = exclude_hv_gene_df
+        adata.uns['df_highly_variable_gene_filter'] = exclude_hv_gene_df
 
         # Print out the number of genes excluded
         if verbose:
@@ -219,29 +352,91 @@ def scanpy_normalize_and_pca(
                 'in the list of genes to exclude.'
             ))
 
-    # Regress out any continuous variables.
-    if (len(vars_to_regress) > 0):
+    if len(vars_to_regress) == 0:
+        # Scale the data to unit variance.
+        # This effectively weights each gene evenly.
+        sc.pp.scale(
+            adata,
+            zero_center=True,
+            max_value=None,
+            copy=False
+        )
+        # Calculate gene scores on each cell.
+        # Perform this two ways:
+        # (1) All genes [that pass basic 0 filters]. As done in sc tutorial:
+        # https://github.com/theislab/scanpy_usage/blob/master/180209_cell_cycle/cell_cycle.ipynb
+        # (2) Only highly variable genes. As done in:
+        # https://www.biorxiv.org/content/10.1101/2020.04.03.024075v1
+        if score_genes_df is not None:
+            adata, score_genes_df_updated = score_cells(
+                adata,
+                score_genes_df,
+                score_genes_df_column='ensembl_gene_id',
+                only_use_variable_genes=False
+            )
+            adata, _ = score_cells(
+                adata,
+                score_genes_df,
+                score_genes_df_column='ensembl_gene_id',
+                only_use_variable_genes=True
+            )
+    else:  # Regress out any continuous variables.
+        # Before regressing calculate the gene scores on a copy of the data.
+        if score_genes_df is not None:
+            adata_scored = sc.pp.scale(
+                adata,
+                zero_center=True,
+                max_value=None,
+                copy=True
+            )
+            adata_scored, score_genes_df_updated = score_cells(
+                adata_scored,
+                score_genes_df,
+                score_genes_df_column='ensembl_gene_id',
+                only_use_variable_genes=False
+            )
+            adata_scored, _ = score_cells(
+                adata_scored,
+                score_genes_df,
+                score_genes_df_column='ensembl_gene_id',
+                only_use_variable_genes=True
+            )
+
+            # Add scores back into the main dataframe.
+            new_cols = np.setdiff1d(
+                adata_scored.obs.columns,
+                adata.obs.columns
+            )
+            adata.obs = pd.concat(
+                [adata.obs, adata_scored.obs.loc[adata.obs.index, new_cols]],
+                axis=1
+            )
+
         # NOTE: if the same value is repeated (e.g., 0) for all cells this will
         #       fail. https://github.com/theislab/scanpy/issues/230
-        if verbose:
-            print('For regress_out, calling {}'.format(
-                'pp.filter_genes(adata, min_cells=5)'
-            ))
-        sc.pp.filter_genes(adata, min_cells=5)
+        # if verbose:
+        #     print('For regress_out, calling {}'.format(
+        #         'pp.filter_genes(adata, min_cells=5)'
+        #     ))
+        # sc.pp.filter_genes(adata, min_cells=5)
         # NOTE: sc.pp.regress_out out should default to sc.settings.n_jobs
         sc.pp.regress_out(
             adata,
             keys=vars_to_regress,
             copy=False
         )
+        # Scale the data to unit variance.
+        # This effectively weights each gene evenly.
+        sc.pp.scale(
+            adata,
+            zero_center=True,
+            max_value=None,
+            copy=False
+        )
 
-    # Scale the data to unit variance.
-    # This effectively weights each gene evenly.
-    sc.pp.scale(
-        adata,
-        zero_center=True,
-        max_value=None
-    )
+    # Keep a record of the different gene scores
+    if score_genes_df is not None:
+        adata.uns['df_score_genes'] = score_genes_df_updated
 
     # Calculate PCs.
     sc.tl.pca(
@@ -282,9 +477,12 @@ def scanpy_normalize_and_pca(
     )
 
     # Save the data.
-    adata.write('{}-normalized_pca.h5'.format(output_file), compression='gzip')
+    adata.write(
+        '{}-normalized_pca.h5ad'.format(output_file),
+        compression='gzip'
+    )
     # adata_merged.write_csvs(output_file)
-    # adata_merged.write_loom(output_file+".loom")
+    # adata_merged.write_loom(output_file+".loom"))
 
     # Plot the PC info.
     if plot:
@@ -308,6 +506,15 @@ def scanpy_normalize_and_pca(
             show=False,
             save='-{}-log.pdf'.format(output_file)
         )
+
+    # Save the filtered count matrix for input to other software like scVI
+    adata.X = adata.layers['counts']
+    del adata.layers['counts']
+    del adata.raw
+    adata.write(
+        '{}-normalized_pca-counts.h5ad'.format(output_file),
+        compression='gzip'
+    )
 
     return(output_file)
 
@@ -379,6 +586,17 @@ def main():
     )
 
     parser.add_argument(
+        '-sg', '--score_genes',
+        action='store',
+        dest='sg',
+        default='',
+        help='Tab-delimited file of genes for scores. Needs to have\
+            ensembl_gene_id and score_id column. If one\
+            score_id == "cell_cycle", then requires a grouping_id column with\
+            "G2/M" and "S".'
+    )
+
+    parser.add_argument(
         '-ncpu', '--number_cpu',
         action='store',
         dest='ncpu',
@@ -392,7 +610,7 @@ def main():
         '-of', '--output_file',
         action='store',
         dest='of',
-        default='{}/adata'.format(os.getcwd()),
+        default='adata-normalize_pca',
         help='Directory and basename of output files.\
             (default: %(default)s)'
     )
@@ -418,6 +636,11 @@ def main():
     if options.vge != '':
         genes_filter = pd.read_csv(options.vge, sep='\t')
 
+    # Load the gene scores
+    score_genes_df = None
+    if options.sg != '':
+        score_genes_df = pd.read_csv(options.sg, sep='\t')
+
     start_time = time.time()
     _ = scanpy_normalize_and_pca(
         adata,
@@ -426,6 +649,7 @@ def main():
         variable_feature_batch_key=options.bk,
         n_variable_features=options.nvf,
         exclude_hv_gene_df=genes_filter,
+        score_genes_df=score_genes_df,
         verbose=True
     )
     execution_summary = "Analysis execution time [{}]:\t{}".format(
