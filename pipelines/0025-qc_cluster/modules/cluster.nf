@@ -200,7 +200,7 @@ process umap {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "umap: ${process_info}"
-        scanpy_umap.py \
+        plot_umap.py \
             --h5_anndata ${file__anndata} \
             --tsv_pcs ${file__reduced_dims} \
             ${cmd__colors_quant} \
