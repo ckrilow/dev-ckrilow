@@ -11,6 +11,7 @@ dependencies:
   - louvain=0.6.1
   - plotnine=0.6.0
   - harmonypy=0.0.4
+  - scrublet=0.2.1
   - r-seurat=3.1.4
   - r-optparse=1.6.4
   - r-data.table=1.12.8
