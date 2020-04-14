@@ -10,7 +10,8 @@ import os
 import pandas as pd
 import scanpy as sc
 import csv
-
+import plotnine as plt9
+from plotnine import *
 
 def main():
     """Run CLI."""
@@ -208,6 +209,22 @@ def main():
     )
 
     adata.write('{}.h5ad'.format(out_file_base), compression='gzip')
+
+    # Save dotplot of number of cells for each sample in each cluster
+    df=adata.obs[['sanger_sample_id','cluster']]
+    df=df.groupby(['cluster', 'sanger_sample_id']).size().reset_index(name='nr_cells')
+    gplt = plt9.ggplot(df, aes(x='sanger_sample_id', y='cluster'))
+    gplt = gplt + plt9.geom_point(aes(size='nr_cells', color='nr_cells'))
+    gplt = gplt + plt9.theme(axis_text_x = plt9.element_text(angle = 90))
+    gplt
+
+    gplt.save(
+        '{}.png'.format('dotplot'),
+        dpi=300,
+        width=4,
+        height=4
+    )
+
 
     # if verbose:
     #     print('Finished clustering and saved clustered AnnData.')
