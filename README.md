@@ -97,17 +97,20 @@ Branching is how git actually tracks code development. For more information, see
 
 ```bash
 # Update your local copy of the master branch to make sure you are getting the most up-to-date code
-git fetch my_repo master
+git pull
 
-# Create a new branch based on your feature from the recently pulled master branch
-git checkout -b sc-atac-seq my_repo/master
+# Create the branch on your local machine and switch in this branch 
+git checkout -b [name_of_your_new_branch]
+
+# Push the branch on github
+git push origin [name_of_your_new_branch]
 ```
 
 As you develop, you want to commit your work to your branch, so you don't lose it all if something happens!
 
 ```bash
 # Confirm we're on the right branch
-git branch
+git branch -a
 
 # Add all your work to be tracked (Note: there are many ways to add specific files, etc. See https://git-scm.com/docs/git-add for more information). The following command adds everything in your currently directory.
 git add .
@@ -115,8 +118,13 @@ git add .
 # Commit your work to the branch with a message describing what's in the commit
 git commit -m "Created the scATAC-seq pipeline!"
 
-# When we are done with our feature, or just want to push it to GitHub for safe keeping:
-git push origin HEAD # HEAD pushes everything up to the most recent commit
+# You can add a -u parameter to set-upstream for a push
+# Alternatively, git will also automatically query you when you do your first push.
+# You can also set this manually by adding a new remote for your branch:
+#git remote add [name_of_your_remote] [name_of_your_new_branch]
+
+# Here is another push where we specify HEAD
+#git push origin HEAD # HEAD pushes everything up to the most recent commit
 ```
 
 
