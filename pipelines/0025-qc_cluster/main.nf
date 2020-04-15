@@ -7,6 +7,10 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 
 // Modules to include.
 include {
+    run_scrublet;
+    make_cellmetadata_pipeline_input;
+} from "./modules/multiplet.nf"
+include {
     merge_samples;
     plot_qc;
     normalize_and_pca;
@@ -143,6 +147,20 @@ if (params.help){
 //     .fromPath( params.file_paths_10x )
 //     .println()
 // Channel: required files
+// Channel
+//     .fromPath(params.file_paths_10x)
+//     .splitCsv(header: true, sep: "\t", by: 1)
+//     .map{row -> tuple(row.experiment_id, file(row.data_path_10x_format))}
+//     .view()
+channel__file_paths_10x = Channel
+    .fromPath(params.file_paths_10x)
+    .splitCsv(header: true, sep: "\t", by: 1)
+    .map{row -> tuple(
+        row.experiment_id,
+        file("${row.data_path_10x_format}/barcodes.tsv.gz"),
+        file("${row.data_path_10x_format}/features.tsv.gz"),
+        file("${row.data_path_10x_format}/matrix.mtx.gz")
+    )}
 // file_paths_10x = Channel
 //     .fromPath(params.file_paths_10x)
 // file_metadata = Channel
@@ -159,87 +177,102 @@ if (params.help){
 // Run the workflow.
 workflow {
     main:
+        run_scrublet(
+            params.output_dir,
+            channel__file_paths_10x
+        )
+        make_cellmetadata_pipeline_input(
+            params.output_dir,
+            run_scrublet.out.experiment_id.collectFile(
+                name: 'scrublet__experiment_id.txt',
+                newLine: true
+            ),
+            run_scrublet.out.multiplet_calls_published.collectFile(
+                name: 'scrublet__multiplet_calls.txt',
+                newLine: true
+            )
+        )
         // Merge the samples, perform cell + gene filtering, add metadata.
-        merge_samples(
-            params.output_dir,
-            params.file_paths_10x,
-            params.file_metadata,
-            params.file_sample_qc
-        )
-        // Make QC plots of the merged data.
-        plot_qc(
-            params.output_dir,
-            merge_samples.out.anndata,
-            params.plots_qc.facet_columns.value,
-            params.plots_qc.variable_columns_distribution_plots.value
-        )
-        // Normalize, regress (optional), scale, and calculate PCs
-        normalize_and_pca(
-            params.output_dir,
-            merge_samples.out.anndata,
-            params.genes_exclude_hvg,
-            params.genes_score,
-            params.reduced_dims.vars_to_regress.value
-        )
-        // Make Seurat dataframes of the normalized anndata
-        // convert_seurat(
-        //     normalize_and_pca.out.outdir,
-        //     normalize_and_pca.out.anndata
+        // merge_samples(
+        //     params.output_dir,
+        //     params.file_paths_10x,
+        //     params.file_metadata,
+        //     params.file_sample_qc
         // )
-        // Subset PCs to those for anlaysis
-        subset_pcs(
-            normalize_and_pca.out.outdir,
-            normalize_and_pca.out.anndata,
-            normalize_and_pca.out.metadata,
-            normalize_and_pca.out.pcs,
-            params.reduced_dims.n_dims.value
-        )
-        // "Correct" PCs using Harmony
-        harmony(
-            normalize_and_pca.out.outdir,
-            normalize_and_pca.out.anndata,
-            normalize_and_pca.out.metadata,
-            normalize_and_pca.out.pcs,
-            params.reduced_dims.n_dims.value,
-            params.harmony.variables_and_thetas.value
-        )
-        // Make UMAPs of the reduced dimensions
-        umap(
-            subset_pcs.out.outdir,
-            subset_pcs.out.anndata,
-            subset_pcs.out.reduced_dims,
-            params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value
-        )
-        umap__harmony(
-            harmony.out.outdir,
-            harmony.out.anndata,
-            harmony.out.reduced_dims,
-            params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value
-        )
-        // Cluster the results, varying the resolution.
-        // Also, generate UMAPs of the results.
-        wf__cluster(
-            subset_pcs.out.outdir,
-            subset_pcs.out.anndata,
-            subset_pcs.out.metadata,
-            subset_pcs.out.pcs,
-            subset_pcs.out.reduced_dims,
-            params.cluster.methods.value,
-            params.cluster.resolutions.value,
-            params.cluster_marker.methods.value
-        )
-        wf__cluster_harmony(
-            harmony.out.outdir,
-            harmony.out.anndata,
-            harmony.out.metadata,
-            harmony.out.pcs,
-            harmony.out.reduced_dims,
-            params.cluster.methods.value,
-            params.cluster.resolutions.value,
-            params.cluster_marker.methods.value
-        )
+        // // Make QC plots of the merged data.
+        // plot_qc(
+        //     params.output_dir,
+        //     merge_samples.out.anndata,
+        //     params.plots_qc.facet_columns.value,
+        //     params.plots_qc.variable_columns_distribution_plots.value
+        // )
+        // // Normalize, regress (optional), scale, and calculate PCs
+        // normalize_and_pca(
+        //     params.output_dir,
+        //     merge_samples.out.anndata,
+        //     params.genes_exclude_hvg,
+        //     params.genes_score,
+        //     params.reduced_dims.vars_to_regress.value
+        // )
+        // // Make Seurat dataframes of the normalized anndata
+        // // convert_seurat(
+        // //     normalize_and_pca.out.outdir,
+        // //     normalize_and_pca.out.anndata
+        // // )
+        // // Subset PCs to those for anlaysis
+        // subset_pcs(
+        //     normalize_and_pca.out.outdir,
+        //     normalize_and_pca.out.anndata,
+        //     normalize_and_pca.out.metadata,
+        //     normalize_and_pca.out.pcs,
+        //     params.reduced_dims.n_dims.value
+        // )
+        // // "Correct" PCs using Harmony
+        // harmony(
+        //     normalize_and_pca.out.outdir,
+        //     normalize_and_pca.out.anndata,
+        //     normalize_and_pca.out.metadata,
+        //     normalize_and_pca.out.pcs,
+        //     params.reduced_dims.n_dims.value,
+        //     params.harmony.variables_and_thetas.value
+        // )
+        // // Make UMAPs of the reduced dimensions
+        // umap(
+        //     subset_pcs.out.outdir,
+        //     subset_pcs.out.anndata,
+        //     subset_pcs.out.reduced_dims,
+        //     params.umap.colors_quantitative.value,
+        //     params.umap.colors_categorical.value
+        // )
+        // umap__harmony(
+        //     harmony.out.outdir,
+        //     harmony.out.anndata,
+        //     harmony.out.reduced_dims,
+        //     params.umap.colors_quantitative.value,
+        //     params.umap.colors_categorical.value
+        // )
+        // // Cluster the results, varying the resolution.
+        // // Also, generate UMAPs of the results.
+        // wf__cluster(
+        //     subset_pcs.out.outdir,
+        //     subset_pcs.out.anndata,
+        //     subset_pcs.out.metadata,
+        //     subset_pcs.out.pcs,
+        //     subset_pcs.out.reduced_dims,
+        //     params.cluster.methods.value,
+        //     params.cluster.resolutions.value,
+        //     params.cluster_marker.methods.value
+        // )
+        // wf__cluster_harmony(
+        //     harmony.out.outdir,
+        //     harmony.out.anndata,
+        //     harmony.out.metadata,
+        //     harmony.out.pcs,
+        //     harmony.out.reduced_dims,
+        //     params.cluster.methods.value,
+        //     params.cluster.resolutions.value,
+        //     params.cluster_marker.methods.value
+        // )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
     //       depending on the input data call. Therefore, we use publishDir
