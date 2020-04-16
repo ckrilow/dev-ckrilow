@@ -91,6 +91,19 @@ def main():
     )
 
     parser.add_argument(
+        '-uinit', '--umap_init',
+        action='store',
+        dest='umap_init',
+        default='X_pca',
+        help='How to initialize the low dimensional embedding.\
+            Valid options: any key for adata.obsm,\
+            ’paga’: positions from paga(),\
+            ’spectral’: use a spectral embedding of the graph,\
+            ’random’: assign initial embedding positions at random.\
+            (default: X_pca, the slot where tsv_pcs is stored if provided)'
+    )
+
+    parser.add_argument(
         '-umd', '--umap_min_dist',
         action='store',
         dest='umap_min_dist',
@@ -115,19 +128,6 @@ def main():
             min_dist this determines how clustered/clumped the embedded\
             points are.\
             (default: %(default)s)'
-    )
-
-    parser.add_argument(
-        '-uip', '--umap_init_pos',
-        action='store',
-        dest='umap_init_pos',
-        default='X_pca',
-        help='How to initialize the low dimensional embedding.\
-            Valid options: any key for adata.obsm,\
-            ’paga’: positions from paga(),\
-            ’spectral’: use a spectral embedding of the graph,\
-            ’random’: assign initial embedding positions at random.\
-            (default: X_pca, the slot where tsv_pcs is stored if provided)'
     )
 
     parser.add_argument(
@@ -227,9 +227,9 @@ def main():
         out_file_base,
         str(options.umap_spread).replace('.', 'pt')
     )
-    out_file_base = '{}.umap_init_pos={}'.format(
+    out_file_base = '{}.umap_init={}'.format(
         out_file_base,
-        options.umap_init_pos
+        options.umap_init
     )
 
     # Parse the color variables.
@@ -264,7 +264,7 @@ def main():
     )
 
     # If init with paga, plot paga first - NOTE we can only do this if
-    if options.umap_init_pos == 'paga' and 'paga' not in adata.uns:
+    if options.umap_init == 'paga' and 'paga' not in adata.uns:
         print(
             'Trying to call sc.tl.paga.',
             'NOTE: requires one to have clustered the data.'
@@ -280,7 +280,7 @@ def main():
         adata,
         min_dist=options.umap_min_dist,  # Scanpy default = 0.05
         spread=options.umap_spread,  # Scanpy default = 1.0
-        init_pos=options.umap_init_pos,  # Scanpy default = spectral
+        init_pos=options.umap_init,  # Scanpy default = spectral
         copy=False
     )
 
