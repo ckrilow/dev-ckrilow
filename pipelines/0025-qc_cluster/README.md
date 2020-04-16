@@ -80,11 +80,13 @@ Generate and/or edit input files for the pipeline.
 The pipeline takes as input:
 1. **--file_paths_10x**:  Tab-delimited file containing experiment_id and data_path_10x_format columns (i.e., list of input samples). Reqired.
 2. **--file_metadata**:  Tab-delimited file containing sample metadata. This will automatically be subset down to the sample list from 1. Reqired.
-3. **--file_sample_qc**:  YAML file containing sample qc and filtering parameters. Required. NOTE: in the example config file, this is part of the YAML file for `-params-file`.
+3. **--file_sample_qc**:  YAML file containing sample qc and filtering parameters. Optional. NOTE: in the example config file, this is part of the YAML file for `-params-file`.
 4. **--genes_exclude_hvg**:  Tab-delimited file with genes to exclude from
-highly variable gene list. Must contain ensembl_gene_id column. If there are no genes to filter, then pass an empty file. Reqired.
-5. **--genes_score**:  Tab-delimited file with genes to use to score cells. Must contain ensembl_gene_id and score_idvcolumns. If one score_id == "cell_cycle", then requires a grouping_id column with "G2/M" and "S" (see example file in `example_runtime_setup`). If there are no scores to calculate, then pass an empty file. Reqired.
+highly variable gene list. Must contain ensembl_gene_id column. Optional.
+5. **--genes_score**:  Tab-delimited file with genes to use to score cells. Must contain ensembl_gene_id and score_idvcolumns. If one score_id == "cell_cycle", then requires a grouping_id column with "G2/M" and "S" (see example file in `example_runtime_setup`). Optional.
 6. **-params-file**:  YAML file containing analysis parameters. Optional.
+7. **--run_multiplet**:  Flag to run multiplet analysis. Optional.
+8. **--file_cellmetadata**:  Tab-delimited file containing experiment_id and data_path_cellmetadata columns. For instance this file can be used to pass per cell doublet annotations. Optional.
 
 Examples of all of these files can be found in `example_runtime_setup/`.
 
@@ -96,16 +98,12 @@ Run Nexflow locally (NOTE: if running on a virtual machine you may need to set `
 # Boot up tmux session.
 tmux new -s nf
 
-# Here we are not going to filter any variable genes, so we make an empty file
-# to pass to --genes_exclude_hvg
-touch "${REPO_MODULE}/example_runtime_setup/empty_file.tsv"
-
+# Here we are not going to filter any variable genes, so don't pass a file.
 # NOTE: All input file paths should be full paths.
 nextflow run "${REPO_MODULE}/main.nf" \
     -profile "local" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
     --file_metadata "${REPO_MODULE}/example_runtime_setup/file_metadata.tsv" \
-    --genes_exclude_hvg "${REPO_MODULE}/example_runtime_setup/empty_file.tsv" \
     --genes_score "${REPO_MODULE}/example_runtime_setup/genes_score_v001.tsv" \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml"
 ```
@@ -162,6 +160,7 @@ nextflow run "${REPO_MODULE}/main.nf" \
     --genes_exclude_hvg "${REPO_MODULE}/example_runtime_setup/genes_remove_hvg_v001.tsv" \
     --genes_score "${REPO_MODULE}/example_runtime_setup/genes_score_v001.tsv" \
     --output_dir "${RESULTS_DIR}" \
+    --run_multiplet \
     -params-file "${REPO_MODULE}/example_runtime_setup/params.yml" \
     -with-report "nf_report.html" \
     -resume

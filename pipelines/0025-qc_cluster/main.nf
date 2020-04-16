@@ -7,6 +7,9 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 
 // Modules to include.
 include {
+    wf__multiplet;
+} from "./modules/multiplet.nf"
+include {
     merge_samples;
     plot_qc;
     normalize_and_pca;
@@ -23,8 +26,13 @@ include {
 
 
 // Set default parameters.
-params.output_dir    = "nf-qc_cluster"
-params.help          = false
+params.output_dir           = "nf-qc_cluster"
+params.help                 = false
+params.run_multiplet        = false
+params.file_sample_qc       = "no_file__file_sample_qc"
+params.file_cellmetadata    = "no_file__file_cellmetadata"
+params.genes_exclude_hvg    = "no_file__genes_exclude_hvg"
+params.genes_score          = "no_file__genes_score"
 // NOTE: The default parameters below were chosen to show the flexiblity of
 //       this pipeline. They were not chosen because these are the values one
 //       should use for final analysis.
@@ -81,8 +89,12 @@ def help_message() {
 
         --file_metadata     Tab-delimited file containing sample metadata.
 
+    Optional arguments:
         --file_sample_qc    YAML file containing sample quality control
                             filters.
+
+        --file_cellmetadata Tab-delimited file containing experiment_id and
+                            data_path_cellmetadata columns.
 
         --genes_exclude_hvg
                             Tab-delimited file with genes to exclude from
@@ -97,13 +109,16 @@ def help_message() {
                             requires a grouping_id column with "G2/M" and "S".
                             If no filter, then pass an empty file.
 
-
-    Other arguments:
         --output_dir        Directory name to save results to. (Defaults to
                             'nf-qc_cluster')
 
+        --run_multiplet     Flag to run multiplet analysis. Output from
+                            multiplet analysis will be added to the final
+                            AnnData object. The flag only works if
+                            file_cellmetadata is not set.
+
         -params-file        YAML file containing analysis parameters. See
-                            example in example_runtime_setup/params.yml
+                            example in example_runtime_setup/params.yml.
 
     Profiles:
         local               local execution
@@ -126,9 +141,11 @@ if (params.help){
     file_paths_10x                : ${params.file_paths_10x}
     file_metadata                 : ${params.file_metadata}
     file_sample_qc                : ${params.file_sample_qc}
+    file_cellmetadata             : ${params.file_cellmetadata}
     genes_exclude_hvg             : ${params.genes_exclude_hvg}
     genes_score                   : ${params.genes_score}
     output_dir (output folder)    : ${params.output_dir}
+    run_multiplet                 : ${params.run_multiplet}
     """.stripIndent()
     // A dictionary way to accomplish the text above.
     // def summary = [:]
@@ -143,6 +160,20 @@ if (params.help){
 //     .fromPath( params.file_paths_10x )
 //     .println()
 // Channel: required files
+// Channel
+//     .fromPath(params.file_paths_10x)
+//     .splitCsv(header: true, sep: "\t", by: 1)
+//     .map{row -> tuple(row.experiment_id, file(row.data_path_10x_format))}
+//     .view()
+channel__file_paths_10x = Channel
+    .fromPath(params.file_paths_10x)
+    .splitCsv(header: true, sep: "\t", by: 1)
+    .map{row -> tuple(
+        row.experiment_id,
+        file("${row.data_path_10x_format}/barcodes.tsv.gz"),
+        file("${row.data_path_10x_format}/features.tsv.gz"),
+        file("${row.data_path_10x_format}/matrix.mtx.gz")
+    )}
 // file_paths_10x = Channel
 //     .fromPath(params.file_paths_10x)
 // file_metadata = Channel
@@ -159,12 +190,31 @@ if (params.help){
 // Run the workflow.
 workflow {
     main:
+        // Optionally run multiplet filters.
+        if (
+            params.run_multiplet &
+            params.file_cellmetadata == "no_file__file_cellmetadata"
+        ) {
+            wf__multiplet(
+                params.output_dir,
+                channel__file_paths_10x
+            )
+            // NOTE: file__cellmetadata is already defined as path, so no need
+            // to call file or path.
+            file_cellmetadata = wf__multiplet.out.file__cellmetadata
+        } else {
+            // For some reason cannot use path here, must use file.
+            file_cellmetadata = file(params.file_cellmetadata)
+        }
+
         // Merge the samples, perform cell + gene filtering, add metadata.
+        file_sample_qc = file(params.file_sample_qc)
         merge_samples(
             params.output_dir,
             params.file_paths_10x,
             params.file_metadata,
-            params.file_sample_qc
+            file_sample_qc,
+            file_cellmetadata
         )
         // Make QC plots of the merged data.
         plot_qc(
@@ -173,12 +223,14 @@ workflow {
             params.plots_qc.facet_columns.value,
             params.plots_qc.variable_columns_distribution_plots.value
         )
-        // Normalize, regress (optional), scale, and calculate PCs
+        // Normalize, regress (optional), scale, and calculate PCs.
+        genes_exclude_hvg = file(params.genes_exclude_hvg)
+        genes_score = file(params.genes_score)
         normalize_and_pca(
             params.output_dir,
             merge_samples.out.anndata,
-            params.genes_exclude_hvg,
-            params.genes_score,
+            genes_exclude_hvg,
+            genes_score,
             params.reduced_dims.vars_to_regress.value
         )
         // Make Seurat dataframes of the normalized anndata
