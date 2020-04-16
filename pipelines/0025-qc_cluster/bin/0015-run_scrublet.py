@@ -196,28 +196,28 @@ def run_scrublet(
         scrub.doublet_scores_sim_,
         initial_guess=skif.threshold_otsu(scrub.doublet_scores_sim_)
     )
-    print('threshold_isodata:\t{}'.format(
-        skif.threshold_isodata(scrub.doublet_scores_sim_)
-    ))
-    print('threshold_li:\t{}'.format(
-        skif.threshold_li(
-            scrub.doublet_scores_sim_,
-            initial_guess=skif.threshold_otsu(scrub.doublet_scores_sim_)
-        )
-    ))
-    print('threshold_minimum:\t{}'.format(
-        skif.threshold_minimum(scrub.doublet_scores_sim_)
-    ))
-    print('threshold_triangle:\t{}'.format(
-        skif.threshold_triangle(scrub.doublet_scores_sim_)
-    ))
-    print('threshold_yen:\t{}'.format(
-        skif.threshold_yen(scrub.doublet_scores_sim_)
-    ))
-    print('threshold_otsu:\t{}'.format(
-        skif.threshold_otsu(scrub.doublet_scores_sim_)
-    ))
-    print('threshold_used:\t{}'.format(threshold))
+    # print('threshold_isodata:\t{}'.format(
+    #     skif.threshold_isodata(scrub.doublet_scores_sim_)
+    # ))
+    # print('threshold_li:\t{}'.format(
+    #     skif.threshold_li(
+    #         scrub.doublet_scores_sim_,
+    #         initial_guess=skif.threshold_otsu(scrub.doublet_scores_sim_)
+    #     )
+    # ))
+    # print('threshold_minimum:\t{}'.format(
+    #     skif.threshold_minimum(scrub.doublet_scores_sim_)
+    # ))
+    # print('threshold_triangle:\t{}'.format(
+    #     skif.threshold_triangle(scrub.doublet_scores_sim_)
+    # ))
+    # print('threshold_yen:\t{}'.format(
+    #     skif.threshold_yen(scrub.doublet_scores_sim_)
+    # ))
+    # print('threshold_otsu:\t{}'.format(
+    #     skif.threshold_otsu(scrub.doublet_scores_sim_)
+    # ))
+    # print('threshold_used:\t{}'.format(threshold))
     # Call multiplets using the otsu threshold
     predicted_multiplets = scrub.call_doublets(
         threshold=threshold,
@@ -395,6 +395,15 @@ def main():
     )
 
     parser.add_argument(
+        '-txh5', '--tenxdata_h5',
+        action='store',
+        dest='txh5',
+        default='',
+        required=False,
+        help='10x h5 format file.'
+    )
+
+    parser.add_argument(
         '-h5', '--h5_anndata',
         action='store',
         dest='h5',
@@ -462,6 +471,11 @@ def main():
             var_names='gene_ids',
             make_unique=False
         )
+    elif options.txh5 != '':
+        adata = sc.read_10x_h5(path=options.txd)
+        adata.var['gene_symbols'] = adata.var.index
+        adata.var.index = adata.var['gene_ids'].values
+        del adata.var['gene_ids']
     elif options.h5 != '':
         adata = sc.read_h5ad(filename=options.h5)
         print(

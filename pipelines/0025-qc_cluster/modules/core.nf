@@ -26,6 +26,7 @@ process merge_samples {
         path(file_paths_10x)
         path(file_metadata)
         path(file_params)
+        path(file_cellmetadata)
 
     // NOTE: use path here and not file see:
     //       https://github.com/nextflow-io/nextflow/issues/1414
@@ -35,21 +36,31 @@ process merge_samples {
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}"
+        // String filename = './parameters.yml'
+        // yaml.dump(file_params , new FileWriter(filename))
+        // Customize command for optional files.
+        cmd__params = ""
+        if (file_params.name != "no_file__file_sample_qc") {
+            cmd__params = "--params_yaml ${file_params}"
+        }
+        cmd__cellmetadata = ""
+        if (file_cellmetadata.name != "no_file__file_cellmetadata") {
+            cmd__cellmetadata = "--cell_metadata_file ${file_cellmetadata}"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
-        // String filename = './parameters.yml'
-        // yaml.dump(file_params , new FileWriter(filename))
         """
         echo "merge_samples: ${process_info}"
         0025-scanpy_merge.py \
             --tenxdata_file ${file_paths_10x} \
-            --metadata_file ${file_metadata} \
-            --metadata_columns_delete "sample_status,study,study_id" \
+            --sample_metadata_file ${file_metadata} \
+            --sample_metadata_columns_delete "sample_status,study,study_id" \
             --metadata_key "sanger_sample_id" \
-            --params_yaml ${file_params} \
             --number_cpu ${task.cpus} \
-            --output_file ${runid}-adata
+            --output_file ${runid}-adata \
+            ${cmd__params} \
+            ${cmd__cellmetadata}
         """
 }
 
@@ -87,9 +98,8 @@ process plot_qc {
         // Append run_id to output file.
         outfile = "${runid}-${outfile}"
         // Figure out if we are facetting the plot and update accordingly.
-        if (facet_columns == "") {
-            cmd__facet_columns = ""
-        } else {
+        cmd__facet_columns = ""
+        if (facet_columns != "") {
             cmd__facet_columns = "--facet_columns ${facet_columns}"
         }
         process_info = "${runid} (runid)"
@@ -177,32 +187,54 @@ process normalize_and_pca {
         // Add details on the scores we are using.
         file_score = "${file__genes_score.getSimpleName()}"
         outdir = "${outdir}.scores=${file_score}"
+        // Customize command for optional files.
+        cmd__genes_exclude_hvg = ""
+        if (file__genes_exclude_hvg.name != "no_file__genes_exclude_hvg") {
+            cmd__genes_exclude_hvg = "--variable_genes_exclude ${file__genes_exclude_hvg}"
+        }
+        cmd__genes_score = ""
+        if (file__genes_score.name != "no_file__genes_score") {
+            cmd__genes_score = "--score_genes ${file__genes_score}"
+        }
         // Basic details on the run.
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "normalize_pca: ${process_info}"
-        # If there are entries in the variable_genes_exclude file, add it to
-        # the call.
-        cmd__vg_exclude="--variable_genes_exclude ${file__genes_exclude_hvg}"
-        val=\$(cat ${file__genes_exclude_hvg} | wc -l)
-        if [ \$val -eq 0 ]; then cmd__vg_exclude=""; fi
-        # If there are entries in the score_genes file, add it to the call.
-        cmd__score_genes="--score_genes ${file__genes_score}"
-        val=\$(cat ${file__genes_score} | wc -l)
-        if [ \$val -eq 0 ]; then cmd__score_genes=""; fi
         0035-scanpy_normalize_pca.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-adata \
             --number_cpu ${task.cpus} \
             ${cmd__vars_to_regress} \
-            \${cmd__vg_exclude} \
-            \${cmd__score_genes}
+            ${cmd__genes_exclude_hvg} \
+            ${cmd__genes_score}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
         """
+        // Old version with bash evaluation of optional commands
+        //
+        // echo "normalize_pca: ${process_info}"
+        // # If there are entries in the variable_genes_exclude file, add it to
+        // # the call.
+        // cmd__vg_exclude="--variable_genes_exclude ${file__genes_exclude_hvg}"
+        // val=\$(cat ${file__genes_exclude_hvg} | wc -l)
+        // if [ \$val -eq 0 ]; then cmd__vg_exclude=""; fi
+        // # If there are entries in the score_genes file, add it to the call.
+        // cmd__score_genes="--score_genes ${file__genes_score}"
+        // val=\$(cat ${file__genes_score} | wc -l)
+        // if [ \$val -eq 0 ]; then cmd__score_genes=""; fi
+        // 0035-scanpy_normalize_pca.py \
+        //     --h5_anndata ${file__anndata} \
+        //     --output_file ${runid}-adata \
+        //     --number_cpu ${task.cpus} \
+        //     ${cmd__vars_to_regress} \
+        //     \${cmd__vg_exclude} \
+        //     \${cmd__score_genes}
+        // mkdir plots
+        // mv *pdf plots/ 2>/dev/null || true
+        // mv *png plots/ 2>/dev/null || true
 }
 
 

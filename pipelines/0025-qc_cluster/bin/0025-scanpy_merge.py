@@ -47,7 +47,8 @@ def scanpy_merge(
     metadata,
     metadata_key,
     output_file,
-    params_dict=dict()
+    params_dict=dict(),
+    cellmetadata_filepaths=None
 ):
     """Merge 10x data.
 
@@ -89,6 +90,20 @@ def scanpy_merge(
             np.sum(filt > 1),
             np.array2string(tenx_data['data_path_10x_format'][filt])
         ))
+
+    # Check the cellmetadata_filepaths if we have it
+    if cellmetadata_filepaths is not None:
+        # check all files exist
+        filt = cellmetadata_filepaths['data_path_cellmetadata'].apply(
+            lambda x: os.path.exists(x)
+        )
+        if np.sum(filt > 1):
+            raise Exception('Error {} data_path_cellmetadata missing:\t{}'.format(
+                np.sum(filt > 1),
+                np.array2string(
+                    cellmetadata_filepaths['data_path_cellmetadata'][filt]
+                )
+            ))
 
     # Init default values for params_dict
     params_filters_check = [
@@ -148,6 +163,20 @@ def scanpy_merge(
         ]
         for col in metadata_smpl.columns:
             adata.obs[col] = np.repeat(metadata_smpl[col].values, adata.n_obs)
+
+        # Add in per cell metadata if we have it.
+        if cellmetadata_filepaths is not None:
+            if row['experiment_id'] in cellmetadata_filepaths.index:
+                cellmetadata = pd.read_csv(
+                    cellmetadata_filepaths.loc[
+                        row['experiment_id'], 'data_path_cellmetadata'
+                    ],
+                    sep='\t',
+                    index_col='cell_barcode'
+                )
+
+                for col in cellmetadata.columns:
+                    adata.obs[col] = cellmetadata.loc[adata.obs.index, col]
 
         # Calculate basic qc metrics for this sample.
         # NOTE: n_genes_by_counts == number of genes with > 0 counts
@@ -217,7 +246,7 @@ def scanpy_merge(
             ))
 
         # Print the number of cells and genes for this sample.
-        print('[{}] {} obs (cells), {} vars (genes)'.format(
+        print('[{}] {} obs (cells), {} var (genes)'.format(
             row['experiment_id'],
             adata.n_obs,
             adata.n_vars
@@ -295,7 +324,7 @@ def main():
     )
 
     parser.add_argument(
-        '-mf', '--metadata_file',
+        '-mf', '--sample_metadata_file',
         action='store',
         dest='mf',
         required=True,
@@ -304,13 +333,13 @@ def main():
     )
 
     parser.add_argument(
-        '-mcd', '--metadata_columns_delete',
+        '-mcd', '--sample_metadata_columns_delete',
         action='store',
         dest='mcd',
         default='sample_status,study,study_id',
-        help='Comma seperated list of columns to delete in metadata_file.\
-            If "" then no columns are deleted. Not whitespace should be\
-            represented with an underscore (_).\
+        help='Comma seperated list of columns to delete in\
+            sample_metadata_file. If "" then no columns are deleted.\
+            Note: whitespace should be represented with an underscore (_).\
             (default: %(default)s)'
     )
 
@@ -321,6 +350,19 @@ def main():
         default='sanger_sample_id',
         help='Key to link metadata to tenxdata_file experiment_id column.\
             (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-cmf', '--cell_metadata_file',
+        action='store',
+        dest='cmf',
+        default='',
+        help='File with the following headers: experiment_id\
+            data_path_cellmetadata, where data_path_cellmetadata is the path\
+            to a tsv file contaning a cell_barcode column followed by other\
+            columns to add to the annotations of each cell of that experiment\
+            (e.g., doublet scores)\
+            (default: None)'
     )
 
     parser.add_argument(
@@ -410,13 +452,23 @@ def main():
             'Error cannot find metadata_key in metadata.'
         )
 
+    # Load cell metadata
+    cellmetadata_filepaths = None
+    if options.cmf != '':
+        cellmetadata_filepaths = pd.read_csv(
+            options.cmf,
+            sep='\t',
+            index_col='experiment_id'
+        )
+
     # Run the merge function.
     out_file = scanpy_merge(
         tenx_data,
         metadata,
         metadata_key=options.mk,
         output_file=options.of,
-        params_dict=params_dict
+        params_dict=params_dict,
+        cellmetadata_filepaths=cellmetadata_filepaths
     )
     print(out_file)
 
