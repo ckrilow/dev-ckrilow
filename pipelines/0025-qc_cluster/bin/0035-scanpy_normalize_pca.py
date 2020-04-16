@@ -210,7 +210,7 @@ def scanpy_normalize_and_pca(
     # counts per million, so that counts become comparable among cells.
     sc.pp.normalize_total(
         adata,
-        target_sum=1e6,
+        target_sum=1e4,
         exclude_highly_expressed=False,
         key_added='normalization_factor',  # add to adata.obs
         inplace=True
@@ -221,8 +221,10 @@ def scanpy_normalize_and_pca(
     # Delete automatically added uns
     del adata.uns['log1p']
     # Add record of this operation.
-    adata.layers['log1p_cpm'] = adata.X.copy()
-    adata.uns['log1p_cpm'] = {'transformation': 'ln(CPM+1)'}
+    # adata.layers['log1p_cpm'] = adata.X.copy()
+    # adata.uns['log1p_cpm'] = {'transformation': 'ln(CPM+1)'}
+    adata.layers['log1p_cp10k'] = adata.X.copy()
+    adata.uns['log1p_cp10k'] = {'transformation': 'ln(CP10k+1)'}
 
     # Stash the unprocessed data in the raw slot.
     # adata.raw.X.data is now ln(CPM+1).
@@ -443,7 +445,7 @@ def scanpy_normalize_and_pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
         zero_center=None,
-        svd_solver='auto',
+        svd_solver='arpack',  # Scanpy default arpack as of 1.4.5
         use_highly_variable=True,
         copy=False
     )

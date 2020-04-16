@@ -68,6 +68,10 @@ params.cluster_marker = [
 params.umap = [
     colors_quantitative: [value: "age"],
     colors_categorical: [value: "sanger_sample_id,sex"],
+    n_neighbors: [value: [15, 30]],
+    umap_init: [value: ["X_pca", "spectral"]],
+    umap_min_dist: [value: [0.5]],
+    umap_spread: [value: [1.0, 5.0]]
 ]
 
 
@@ -261,14 +265,22 @@ workflow {
             subset_pcs.out.anndata,
             subset_pcs.out.reduced_dims,
             params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value
+            params.umap.colors_categorical.value,
+            params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value
         )
         umap__harmony(
             harmony.out.outdir,
             harmony.out.anndata,
             harmony.out.reduced_dims,
             params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value
+            params.umap.colors_categorical.value,
+            params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value
         )
         // Cluster the results, varying the resolution.
         // Also, generate UMAPs of the results.
@@ -280,7 +292,11 @@ workflow {
             subset_pcs.out.reduced_dims,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
-            params.cluster_marker.methods.value
+            params.cluster_marker.methods.value,
+            params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value
         )
         wf__cluster_harmony(
             harmony.out.outdir,
@@ -290,7 +306,11 @@ workflow {
             harmony.out.reduced_dims,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
-            params.cluster_marker.methods.value
+            params.cluster_marker.methods.value,
+            params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
