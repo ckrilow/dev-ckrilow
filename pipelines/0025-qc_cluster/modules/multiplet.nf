@@ -53,9 +53,9 @@ process run_scrublet {
         ln --physical ${file_10x_barcodes} \$TMP_DIR
         ln --physical ${file_10x_features} \$TMP_DIR
         ln --physical ${file_10x_matrix} \$TMP_DIR
-        run_scrublet.py \
+        0015-run_scrublet.py \
             --tenxdata_dir \$TMP_DIR \
-            --n_simulated_multiplet 10000 \
+            --n_simulated_multiplet 100000 \
             --output_file ${runid}-${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
@@ -65,7 +65,7 @@ process run_scrublet {
 
 
 process make_cellmetadata_pipeline_input {
-    // Makes a input tsv file of all of the
+    // Makes a input tsv file for the main pipeline.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
@@ -96,28 +96,36 @@ process make_cellmetadata_pipeline_input {
         echo "make_pipeline_input_file: ${process_info}"
         # Note: the default paste delim is tab
         paste ${scrublet__experiment_id} ${scrublet__multiplet_calls} \
-            | awk 'BEGIN{print "experiment_id\tper_cell_metadata"}1' \
+            | awk 'BEGIN{print "experiment_id\tdata_path_cellmetadata"}1' \
             > file_cellmetadata.tsv
         """
 }
 
 
-// workflow wf__multiplet {
-//     take:
-//         outdir
-//         sample_id
-//         paths_10x
-//     main:
-//         // Identify multiplets using scrublet.
-//         run_scrublet(
-//             outdir
-//             sample_id
-//             paths_10x
-//         )
-//         // Generate input file for merge based in multiplets
-//         // make_pipeline_input_file(
-//         //     run_scrublet.out.outdir,
-//         //     run_scrublet.out.multiplet_annotations
-//         // )
-//     // Return merged input data file.
-// }
+workflow wf__multiplet {
+    take:
+        output_dir
+        channel__file_paths_10x
+    main:
+        // Identify multiplets using scrublet.
+        run_scrublet(
+            output_dir,
+            channel__file_paths_10x
+        )
+        // Generate input file for merge based in multiplets
+        make_cellmetadata_pipeline_input(
+            output_dir,
+            run_scrublet.out.experiment_id.collectFile(
+                name: 'scrublet__experiment_id.txt',
+                newLine: true
+            ),
+            run_scrublet.out.multiplet_calls_published.collectFile(
+                name: 'scrublet__multiplet_calls.txt',
+                newLine: true
+            )
+        )
+    emit:
+        // Return merged input data file.
+        outdir = make_cellmetadata_pipeline_input.out.outdir
+        file__cellmetadata = make_cellmetadata_pipeline_input.out.file__cellmetadata
+}
