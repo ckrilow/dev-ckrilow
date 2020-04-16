@@ -1,0 +1,95 @@
+plots_qc:
+    description: 'Parameters for basic QC plots after sample merge. All
+        pairwise combinations of facet_columns and
+        variable_columns_distribution_plots will be performed.'
+    facet_columns:
+        description: 'Column to facet all QC plots by.'
+        value:
+            - ''
+            - 'sanger_sample_id,sex,disease_status'
+            - 'bead_version,lane,ack_lysis_buffer'
+    variable_columns_distribution_plots:
+        description: 'Plot the distributions of these variables (histogram and
+            ecdf).'
+        value:
+            - 'total_counts'
+            - 'pct_counts_mito_gene'
+reduced_dims:
+    description: 'Parameters for dimensionality reduction (principal component
+        and harmony calculations). All pairwise combinations of
+        vars_to_regress and n_dims will be performed.'
+    vars_to_regress:
+        description: 'Comma seperated string of variables to regress. Use "" to
+            indicate no regssion is to be performed.'
+        value:
+            - ''
+    n_dims:
+        description: 'Number of dimensions to use for calculating PCs,
+            harmony corrected PCs, and clusters.'
+        value:
+            - 15
+            - 30
+            - 50
+harmony:
+    description: 'Parameters for harmony.'
+    variables_and_thetas:
+        description: 'Tuples of metadata columns and corresponding thetas.'
+        value:
+            - variable: 'sanger_sample_id'
+              theta: '0.5'
+            - variable: 'sanger_sample_id'
+              theta: '1.0'
+            - variable: 'sanger_sample_id'
+              theta: '2.0'
+cluster:
+    description: 'Parameters for clustering. All pairwise combinations of
+        method and resolution will be performed.'
+    methods:
+        description: 'Clustering method. Valid options [leiden|louvain].'
+        value:
+            - 'leiden'
+    resolutions:
+        description: 'Clustering resolution.'
+        value:
+            - 1.0
+            - 3.0
+cluster_marker:
+    description: 'Parameters for identifying cluster marker features.'
+    methods:
+        description: 'Method for marker detection.'
+        value:
+            - 'wilcoxon'
+            - 'logreg'
+umap:
+    description: 'Parameters for umap.'
+    colors_quantitative:
+        description: 'Comma seperated string of quantitative variables that
+            will be used to color points.'
+        value: 'total_reads,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
+    colors_categorical:
+        description: 'Comma seperated string of categorical variables that
+            will be used to color points.'
+        value: 'sanger_sample_id,ack_lysis_buffer,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
+    n_neighbors:
+        description: 'Number of neighbors for sc.pp.neighbors call.'
+        value:
+            - 15
+            - 25
+            - 50
+    umap_init:
+        description: 'How to initialize the low dimensional embedding.'
+        value:
+            - 'X_pca'
+            - 'spectral'
+    umap_min_dist:
+        description: 'The effective minimum distance between embedded points.'
+        value:
+            - 0.5
+            - 1.0
+            - 5.0
+    umap_spread:
+        description: 'The effective scale of embedded points.'
+        value:
+            - 1.0
+            - 5.0
+            - 10.0
