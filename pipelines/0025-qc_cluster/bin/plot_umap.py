@@ -11,12 +11,17 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 import matplotlib.pyplot as plt
+import warnings
 
 # Silence NumbaPerformanceWarning in umap. See below:
 # https://github.com/lmcinnes/umap/issues/252
-import warnings
 from numba.errors import NumbaPerformanceWarning
 warnings.filterwarnings('ignore', category=NumbaPerformanceWarning)
+
+# To error out when 'FloatingPointError: divide by zero encountered in power'
+# from UMAP. This is usually caused by a poor choice of min_dist and spread
+# parameters.
+np.seterr(all='raise')
 
 
 def main():
@@ -124,9 +129,22 @@ def main():
         dest='umap_spread',
         default=1.0,
         type=float,
-        help='The effective scale of embedded points. In combination with\
-            min_dist this determines how clustered/clumped the embedded\
-            points are.\
+        help='The minimum distance apart that points are allowed to be in the\
+            low dimensional representation (effective scale of embedded points\
+            ). In combination with min_dist this determines how\
+            clustered/clumped the embedded points are.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-dln', '--drop_legend_n',
+        action='store',
+        dest='drop_legend',
+        default=-1,
+        type=int,
+        help='Drop the legend for categorical colors with >= drop_legend_n\
+            categories. If drop_legend_n < 0, then no legend drops are\
+            performed.\
             (default: %(default)s)'
     )
 
@@ -160,6 +178,27 @@ def main():
     sc.settings.n_jobs = options.ncpu  # number CPUs
     # sc.settings.max_memory = 500  # in Gb
     sc.set_figure_params(dpi_save=300)
+
+    # Check input data
+    if not (2 <= options.n_neighbors <= 100):
+        # Recommended in parameter documentation:
+        # https://umap-learn.readthedocs.io/en/latest/api.html
+        warnings.warn(
+            'WARNING: it is suggested to set n_neighbors to a value between',
+            '2-100.'
+        )
+    if not (0.0 <= options.umap_min_dist <= 1.0):
+        # Recommended here: https://github.com/lmcinnes/umap/issues/249
+        warnings.warn(
+            'WARNING: it is suggested to set umap_min_dist to a value between',
+            '0-1.'
+        )
+    if not (0.0 <= options.umap_spread <= 3.0):
+        # Recommendation based on single cell experience.
+        warnings.warn(
+            'WARNING: it is suggested to set umap_spread to a value between',
+            '0-3.'
+        )
 
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=options.h5)
@@ -196,7 +235,7 @@ def main():
     if verbose:
         print('Using {} PCs.'.format(n_pcs))
     # Subset number of PCs to be exactly nPCs - here we assume PCs are ordered.
-    print('Subetting PCs - we assume they are ordered by column index')
+    print('Subetting PCs - we assume they are ordered by column index.')
     df_pca = df_pca.iloc[:, range(0, n_pcs)]
     print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
 
@@ -294,7 +333,7 @@ def main():
         fig = sc.pl.umap(
             adata,
             color=var,
-            alpha=0.25,
+            alpha=0.4,
             return_fig=True
         )
         fig.savefig(
@@ -312,12 +351,16 @@ def main():
             color_palette = 'Dark2'
         elif n_categories <= len(colors_large_palette):
             color_palette = colors_large_palette
+        legend_loc = 'right margin'
+        if options.drop_legend >= 0 and n_categories >= options.drop_legend:
+            legend_loc = None
         fig = sc.pl.umap(
             adata,
             color=var,
             palette=color_palette,
-            alpha=0.25,
-            return_fig=True
+            alpha=0.4,
+            return_fig=True,
+            legend_loc=legend_loc
         )
         fig.savefig(
             '{}-{}.png'.format(out_file_base, var),

@@ -27,7 +27,6 @@ reduced_dims:
         description: 'Number of dimensions to use for calculating PCs,
             harmony corrected PCs, and clusters.'
         value:
-            - 15
             - 30
             - 50
 harmony:
@@ -69,27 +68,30 @@ umap:
     colors_categorical:
         description: 'Comma seperated string of categorical variables that
             will be used to color points.'
-        value: 'sanger_sample_id,ack_lysis_buffer,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
+        value: 'sanger_sample_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
     n_neighbors:
-        description: 'Number of neighbors for sc.pp.neighbors call.'
+        description: 'Number of neighbors for sc.pp.neighbors call.
+            Recommended value between 2-100.'
         value:
             - 15
             - 25
             - 50
+            - 100
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
         value:
             - 'X_pca'
             - 'spectral'
     umap_min_dist:
-        description: 'The effective minimum distance between embedded points.'
+        description: 'The effective minimum distance between embedded points.
+            Recommended value between 0-1.'
         value:
             - 0.5
             - 1.0
-            - 5.0
     umap_spread:
-        description: 'The effective scale of embedded points.'
+        description: 'The effective scale of embedded points.
+            Recommended value between 0-3.'
         value:
+            - 0.5
             - 1.0
-            - 5.0
-            - 10.0
+            - 2.5

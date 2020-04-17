@@ -239,7 +239,7 @@ dev <- function() {
         stringsAsFactors = FALSE
     ))
     rownames(df_meta) <- df_meta[["cell_barcode"]]
-    df_meta <- df_meta[rownames(mtx_pca), c("sanger_sample_id", "bead_version")]
+    df_meta <- df_meta[rownames(mtx_pca), c("experiment_id", "bead_version")]
 
     n_pcs <- 10
     harmony_embeddings <- harmony::HarmonyMatrix(
@@ -249,9 +249,9 @@ dev <- function() {
         #npcs = n_pcs,
         verbose = TRUE,
         # epsilon.harmony = -Inf, # Set to -Inf to never stop early.
-        # vars_use = c("sanger_sample_id"),
+        # vars_use = c("experiment_id"),
         # theta = c(1)
-        vars_use = c("sanger_sample_id", "bead_version"),
+        vars_use = c("experiment_id", "bead_version"),
         theta = c(1, 0.2)
     )
     colnames(harmony_embeddings) <- gsub(

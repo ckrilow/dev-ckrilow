@@ -15,7 +15,13 @@ process run_scrublet {
     echo true          // echo output from script
 
     publishDir  path: "${outdir}",
-                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                saveAs: {filename ->
+                    if (filename.endsWith("multiplet_calls_published.txt")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
                 mode: "copy",
                 overwrite: "true"
 
@@ -33,7 +39,8 @@ process run_scrublet {
         val(outdir, emit: outdir)
         val(experiment_id, emit: experiment_id)
         path("${runid}-${outfile}-scrublet.tsv.gz", emit: multiplet_calls)
-        val("${outdir}/${outfile}-scrublet.tsv.gz",
+        path(
+            "${runid}-${outfile}-multiplet_calls_published.txt",
             emit: multiplet_calls_published
         )
         path("plots/*.pdf") optional true
@@ -57,6 +64,8 @@ process run_scrublet {
             --tenxdata_dir \$TMP_DIR \
             --n_simulated_multiplet 100000 \
             --output_file ${runid}-${outfile}
+        echo -e "${experiment_id}\t${outdir}/${outfile}-scrublet.tsv.gz" > \
+            ${runid}-${outfile}-multiplet_calls_published.txt
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
@@ -79,8 +88,7 @@ process make_cellmetadata_pipeline_input {
 
     input:
         val(outdir_prev)
-        path(scrublet__experiment_id)
-        path(scrublet__multiplet_calls)
+        path("*multiplet_calls_published.txt")
 
     output:
         val(outdir, emit: outdir)
@@ -95,7 +103,7 @@ process make_cellmetadata_pipeline_input {
         """
         echo "make_pipeline_input_file: ${process_info}"
         # Note: the default paste delim is tab
-        paste ${scrublet__experiment_id} ${scrublet__multiplet_calls} \
+        cat *multiplet_calls_published.txt \
             | awk 'BEGIN{print "experiment_id\tdata_path_cellmetadata"}1' \
             > file_cellmetadata.tsv
         """
@@ -115,14 +123,7 @@ workflow wf__multiplet {
         // Generate input file for merge based in multiplets
         make_cellmetadata_pipeline_input(
             output_dir,
-            run_scrublet.out.experiment_id.collectFile(
-                name: 'scrublet__experiment_id.txt',
-                newLine: true
-            ),
-            run_scrublet.out.multiplet_calls_published.collectFile(
-                name: 'scrublet__multiplet_calls.txt',
-                newLine: true
-            )
+            run_scrublet.out.multiplet_calls_published.collect()
         )
     emit:
         // Return merged input data file.
