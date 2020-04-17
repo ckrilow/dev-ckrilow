@@ -199,6 +199,10 @@ process umap {
         if (colors_categorical != "") {
             cmd__colors_cat = "--colors_categorical ${colors_categorical}"
         }
+        drop_legend_n = "-1"
+        if (cmd__colors_cat.contains("experiment_id")) {
+            drop_legend_n = "8"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -209,7 +213,7 @@ process umap {
             --tsv_pcs ${file__reduced_dims} \
             ${cmd__colors_quant} \
             ${cmd__colors_cat} \
-            --drop_legend_n 8 \
+            --drop_legend_n ${drop_legend_n} \
             --n_neighbors ${n_neighbors} \
             --umap_init ${umap_init} \
             --umap_min_dist ${umap_min_dist} \
