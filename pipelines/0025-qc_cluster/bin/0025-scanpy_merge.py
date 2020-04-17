@@ -62,7 +62,7 @@ def scanpy_merge(
         Description of parameter `output_file`.
     metadata_key : string
         Column in metadata that matches the "experiment_id" column in
-        tenx_data (the default is "sanger_sample_id").
+        tenx_data.
 
     Returns
     -------
@@ -163,6 +163,10 @@ def scanpy_merge(
         ]
         for col in metadata_smpl.columns:
             adata.obs[col] = np.repeat(metadata_smpl[col].values, adata.n_obs)
+
+        # Ensure we have experiment_in the final dataframe.
+        if 'experiment_id' not in adata.obs.columns:
+            adata.obs['experiment_id'] = adata.obs[metadata_key]
 
         # Add in per cell metadata if we have it.
         if cellmetadata_filepaths is not None:
@@ -328,8 +332,9 @@ def main():
         action='store',
         dest='mf',
         required=True,
-        help='File with metadata on samples matching sanger_sample_id in\
-            tenxdata_file.'
+        help='File with metadata on samples matching experiment_id column in\
+            tenxdata_file. The column that links these two files is specified\
+            in metadata_key.'
     )
 
     parser.add_argument(
@@ -347,7 +352,7 @@ def main():
         '-mk', '--metadata_key',
         action='store',
         dest='mk',
-        default='sanger_sample_id',
+        default='experiment_id',
         help='Key to link metadata to tenxdata_file experiment_id column.\
             (default: %(default)s)'
     )

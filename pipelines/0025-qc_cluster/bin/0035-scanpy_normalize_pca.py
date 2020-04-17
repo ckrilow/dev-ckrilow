@@ -144,7 +144,7 @@ def scanpy_normalize_and_pca(
     adata,
     output_file,
     vars_to_regress,
-    variable_feature_batch_key='sanger_sample_id',
+    variable_feature_batch_key='experiment_id',
     n_variable_features=2000,
     exclude_hv_gene_df=[],
     score_genes_df=None,
@@ -163,7 +163,7 @@ def scanpy_normalize_and_pca(
         List of metadata variables to regress. If empty no regression.
     variable_feature_batch_key : string
         Batch key for variable gene detection.
-        The default is "sanger_sample_id".
+        The default is "experiment_id".
     n_variable_features : int
         Number of variable features to select.
     exclude_hv_gene_df : pd.DataFrame
@@ -491,7 +491,7 @@ def scanpy_normalize_and_pca(
         # Plot the vanilla PCs.
         # sc.pl.pca(
         #     adata,
-        #     color='sanger_sample_id',
+        #     color='experiment_id',
         #     components=['1,2', '3,4']
         # )
         _ = sc.pl.pca_variance_ratio(
@@ -548,7 +548,7 @@ def main():
         '-bk', '--batch_key',
         action='store',
         dest='bk',
-        default='sanger_sample_id',
+        default='experiment_id',
         help='Batch key for highly-variable feature (e.g., gene) detection.\
             If specified, highly-variable features are selected within each\
             batch separately and merged.\

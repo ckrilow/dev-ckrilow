@@ -38,7 +38,7 @@ params.genes_score          = "no_file__genes_score"
 //       should use for final analysis.
 // Default parameters for qc plots.
 params.plots_qc = [
-    facet_columns: [value: ["sanger_sample_id"]],
+    facet_columns: [value: ["experiment_id"]],
     variable_columns_distribution_plots: [value: [
         "total_counts,pct_counts_mito_gene"
     ]],
@@ -51,8 +51,8 @@ params.reduced_dims = [
 // Default parameters for harmony.
 params.harmony = [
     variables_and_thetas: [value: [
-        [variable: "sanger_sample_id", theta: "1.0"],
-        [variable: "sanger_sample_id,bead_version", theta: "1.0,0.2"]
+        [variable: "experiment_id", theta: "1.0"],
+        [variable: "experiment_id,bead_version", theta: "1.0,0.2"]
     ]]
 ]
 // Default parameters for cluster calculations.
@@ -67,7 +67,7 @@ params.cluster_marker = [
 // Default parameters for umap calculations.
 params.umap = [
     colors_quantitative: [value: "age"],
-    colors_categorical: [value: "sanger_sample_id,sex"],
+    colors_categorical: [value: "experiment_id,sex"],
     n_neighbors: [value: [15, 30]],
     umap_init: [value: ["X_pca", "spectral"]],
     umap_min_dist: [value: [0.5]],
@@ -218,7 +218,8 @@ workflow {
             params.file_paths_10x,
             params.file_metadata,
             file_sample_qc,
-            file_cellmetadata
+            file_cellmetadata,
+            "sanger_sample_id"
         )
         // Make QC plots of the merged data.
         plot_qc(
