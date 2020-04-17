@@ -27,6 +27,7 @@ process merge_samples {
         path(file_metadata)
         path(file_params)
         path(file_cellmetadata)
+        val(metadata_key)
 
     // NOTE: use path here and not file see:
     //       https://github.com/nextflow-io/nextflow/issues/1414
@@ -56,7 +57,7 @@ process merge_samples {
             --tenxdata_file ${file_paths_10x} \
             --sample_metadata_file ${file_metadata} \
             --sample_metadata_columns_delete "sample_status,study,study_id" \
-            --metadata_key "sanger_sample_id" \
+            --metadata_key ${metadata_key} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-adata \
             ${cmd__params} \
