@@ -26,7 +26,7 @@ nextflow run "${REPO_MODULE}/main.nf" \
          --file_sample_qc "${STUDY_DIR}/params-sample_qc-no_filters.yml" \
          --genes_exclude_hvg "${STUDY_DIR}/../filters-variable_gene.tsv" \
          --genes_score "${REPO_MODULE}/example_runtime_setup/genes_score_v001.tsv" \
-         --output_dir "nf-sample_qc=no_filters-parameter_sweep_v001" \
+         --output_dir "$(pwd)/nf-sample_qc=no_filters-parameter_sweep_v001" \
          -params-file "${STUDY_DIR}/params-analysis-parameter_sweep_v001.yml" \
          --run_multiplet \
          -resume

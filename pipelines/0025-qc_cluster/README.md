@@ -152,6 +152,7 @@ rm .nextflow.log*;
 # NOTE: If you want to resume a previous workflow, add -resume to the flag.
 # NOTE: If you do not want to filter any variable genes, pass an empty file to
 #       --genes_exclude_hvg. See previous local example.
+# NOTE: --output_dir should be a full path - not relative.
 nextflow run "${REPO_MODULE}/main.nf" \
     -profile "lsf" \
     --file_paths_10x "${REPO_MODULE}/example_runtime_setup/file_paths_10x.tsv" \
