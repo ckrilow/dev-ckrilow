@@ -131,6 +131,18 @@ def main():
     )
 
     parser.add_argument(
+        '-dln', '--drop_legend_n',
+        action='store',
+        dest='drop_legend',
+        default=-1,
+        type=int,
+        help='Drop the legend for categorical colors with >= drop_legend_n\
+            categories. If drop_legend_n < 0, then no legend drops are\
+            performed.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
         '-ncpu', '--number_cpu',
         action='store',
         dest='ncpu',
@@ -196,7 +208,7 @@ def main():
     if verbose:
         print('Using {} PCs.'.format(n_pcs))
     # Subset number of PCs to be exactly nPCs - here we assume PCs are ordered.
-    print('Subetting PCs - we assume they are ordered by column index')
+    print('Subetting PCs - we assume they are ordered by column index.')
     df_pca = df_pca.iloc[:, range(0, n_pcs)]
     print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
 
@@ -294,7 +306,7 @@ def main():
         fig = sc.pl.umap(
             adata,
             color=var,
-            alpha=0.25,
+            alpha=0.4,
             return_fig=True
         )
         fig.savefig(
@@ -312,12 +324,16 @@ def main():
             color_palette = 'Dark2'
         elif n_categories <= len(colors_large_palette):
             color_palette = colors_large_palette
+        legend_loc = 'right margin'
+        if options.drop_legend >= 0 and n_categories >= options.drop_legend:
+            legend_loc = None
         fig = sc.pl.umap(
             adata,
             color=var,
             palette=color_palette,
-            alpha=0.25,
-            return_fig=True
+            alpha=0.4,
+            return_fig=True,
+            legend_loc=legend_loc
         )
         fig.savefig(
             '{}-{}.png'.format(out_file_base, var),

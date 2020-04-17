@@ -209,6 +209,7 @@ process umap {
             --tsv_pcs ${file__reduced_dims} \
             ${cmd__colors_quant} \
             ${cmd__colors_cat} \
+            --drop_legend_n 8 \
             --n_neighbors ${n_neighbors} \
             --umap_init ${umap_init} \
             --umap_min_dist ${umap_min_dist} \
