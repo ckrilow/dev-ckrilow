@@ -7,15 +7,21 @@ __version__ = '0.0.1'
 
 import argparse
 import os
+import numpy as np
 import pandas as pd
 import scanpy as sc
 import matplotlib.pyplot as plt
+import warnings
 
 # Silence NumbaPerformanceWarning in umap. See below:
 # https://github.com/lmcinnes/umap/issues/252
-import warnings
 from numba.errors import NumbaPerformanceWarning
 warnings.filterwarnings('ignore', category=NumbaPerformanceWarning)
+
+# To error out when 'FloatingPointError: divide by zero encountered in power'
+# from UMAP. This is usually caused by a poor choice of min_dist and spread
+# parameters.
+np.seterr(all='raise')
 
 
 def main():
@@ -80,6 +86,69 @@ def main():
     )
 
     parser.add_argument(
+        '-nn', '--n_neighbors',
+        action='store',
+        dest='n_neighbors',
+        default=15,
+        type=int,
+        help='Number of neighbors for sc.pp.neighbors call\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-uinit', '--umap_init',
+        action='store',
+        dest='umap_init',
+        default='X_pca',
+        help='How to initialize the low dimensional embedding.\
+            Valid options: any key for adata.obsm,\
+            ’paga’: positions from paga(),\
+            ’spectral’: use a spectral embedding of the graph,\
+            ’random’: assign initial embedding positions at random.\
+            (default: X_pca, the slot where tsv_pcs is stored if provided)'
+    )
+
+    parser.add_argument(
+        '-umd', '--umap_min_dist',
+        action='store',
+        dest='umap_min_dist',
+        default=0.5,
+        type=float,
+        help='The effective minimum distance between embedded points. Smaller\
+            values will result in a more clustered/clumped embedding where\
+            nearby points on the manifold are drawn closer together, while\
+            larger values will result on a more even dispersal of points.\
+            The value should be set relative to the spread value, which\
+            determines the scale at which embedded points will be spread out.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-us', '--umap_spread',
+        action='store',
+        dest='umap_spread',
+        default=1.0,
+        type=float,
+        help='The minimum distance apart that points are allowed to be in the\
+            low dimensional representation (effective scale of embedded points\
+            ). In combination with min_dist this determines how\
+            clustered/clumped the embedded points are.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-dln', '--drop_legend_n',
+        action='store',
+        dest='drop_legend',
+        default=-1,
+        type=int,
+        help='Drop the legend for categorical colors with >= drop_legend_n\
+            categories. If drop_legend_n < 0, then no legend drops are\
+            performed.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
         '-ncpu', '--number_cpu',
         action='store',
         dest='ncpu',
@@ -110,12 +179,25 @@ def main():
     # sc.settings.max_memory = 500  # in Gb
     sc.set_figure_params(dpi_save=300)
 
-    # Get the out file base.
-    out_file_base = options.of
-    if out_file_base == '':
-        out_file_base = '{}-{}-umap'.format(
-            os.path.basename(options.h5.rstrip('.h5ad')),
-            os.path.basename(options.pc.rstrip('.tsv.gz'))
+    # Check input data
+    if not (2 <= options.n_neighbors <= 100):
+        # Recommended in parameter documentation:
+        # https://umap-learn.readthedocs.io/en/latest/api.html
+        warnings.warn(
+            'WARNING: it is suggested to set n_neighbors to a value between',
+            '2-100.'
+        )
+    if not (0.0 <= options.umap_min_dist <= 1.0):
+        # Recommended here: https://github.com/lmcinnes/umap/issues/249
+        warnings.warn(
+            'WARNING: it is suggested to set umap_min_dist to a value between',
+            '0-1.'
+        )
+    if not (0.0 <= options.umap_spread <= 3.0):
+        # Recommendation based on single cell experience.
+        warnings.warn(
+            'WARNING: it is suggested to set umap_spread to a value between',
+            '0-3.'
         )
 
     # Load the AnnData file.
@@ -152,9 +234,42 @@ def main():
         )
     if verbose:
         print('Using {} PCs.'.format(n_pcs))
+    # Subset number of PCs to be exactly nPCs - here we assume PCs are ordered.
+    print('Subetting PCs - we assume they are ordered by column index.')
+    df_pca = df_pca.iloc[:, range(0, n_pcs)]
+    print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
 
     # Add the reduced dimensions to the AnnData object.
     adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
+
+    # Get the out file base.
+    out_file_base = options.of
+    if out_file_base == '':
+        out_file_base = '{}-{}-umap'.format(
+            os.path.basename(options.h5.rstrip('.h5ad')),
+            os.path.basename(options.pc.rstrip('.tsv.gz'))
+        )
+    # Append the parameters to the output file.
+    out_file_base = '{}.number_pcs={}'.format(
+        out_file_base,
+        n_pcs
+    )
+    out_file_base = '{}.n_neighbors={}'.format(
+        out_file_base,
+        options.n_neighbors
+    )
+    out_file_base = '{}.umap_min_dist={}'.format(
+        out_file_base,
+        str(options.umap_min_dist).replace('.', 'pt')
+    )
+    out_file_base = '{}.umap_spread={}'.format(
+        out_file_base,
+        str(options.umap_spread).replace('.', 'pt')
+    )
+    out_file_base = '{}.umap_init={}'.format(
+        out_file_base,
+        options.umap_init
+    )
 
     # Parse the color variables.
     colors_quantitative = []
@@ -183,12 +298,30 @@ def main():
         adata,
         use_rep='X_pca',
         n_pcs=n_pcs,
-        # n_neighbors=10,
+        n_neighbors=options.n_neighbors,  # Scanpy default = 15
         copy=False
     )
 
+    # If init with paga, plot paga first - NOTE we can only do this if
+    if options.umap_init == 'paga' and 'paga' not in adata.uns:
+        print(
+            'Trying to call sc.tl.paga.',
+            'NOTE: requires one to have clustered the data.'
+        )
+        sc.tl.paga(
+            adata,
+            use_rna_velocity=False,
+            copy=False
+        )
+
     # UMAP
-    sc.tl.umap(adata)
+    sc.tl.umap(
+        adata,
+        min_dist=options.umap_min_dist,  # Scanpy default = 0.05
+        spread=options.umap_spread,  # Scanpy default = 1.0
+        init_pos=options.umap_init,  # Scanpy default = spectral
+        copy=False
+    )
 
     # NOTE: If the color var is a gene, you should color by ln(CPM+1).
     #       By default these sc.pl.umap uses the .raw attribute of AnnData
@@ -200,7 +333,7 @@ def main():
         fig = sc.pl.umap(
             adata,
             color=var,
-            alpha=0.25,
+            alpha=0.4,
             return_fig=True
         )
         fig.savefig(
@@ -210,18 +343,24 @@ def main():
         )
     for var in colors_categorical:
         print(var)
+        # Cast to category - required for booleans.
+        adata.obs[var] = adata.obs[var].astype('category')
         n_categories = len(adata.obs[var].cat.categories)
         color_palette = None
         if n_categories <= len(plt.get_cmap('Dark2').colors):
             color_palette = 'Dark2'
         elif n_categories <= len(colors_large_palette):
             color_palette = colors_large_palette
+        legend_loc = 'right margin'
+        if options.drop_legend >= 0 and n_categories >= options.drop_legend:
+            legend_loc = None
         fig = sc.pl.umap(
             adata,
             color=var,
             palette=color_palette,
-            alpha=0.25,
-            return_fig=True
+            alpha=0.4,
+            return_fig=True,
+            legend_loc=legend_loc
         )
         fig.savefig(
             '{}-{}.png'.format(out_file_base, var),

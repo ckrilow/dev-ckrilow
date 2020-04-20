@@ -1,27 +1,3 @@
-sample_qc:
-    description: 'Parameters for sample QC prior to merge.
-        Filters are applied to all samples.'
-    cell_filters:
-        description: 'Cell filters applied to each sample. Cells passing these
-            filters are kept. Note: n_genes_by_counts == n_detected_features.'
-        value:
-            - 'pct_counts_in_top_100_genes < 50'
-            - 'pct_counts_mito_gene < 80 and n_genes_by_counts > 100'
-            - 'n_genes_by_counts > 2000'
-    downsample_cells_fraction:
-        description: 'Downsample to this fraction of the number of
-            observations (sc.pp.subsample). Use "" to indicate no downsampling.
-            Example: if 0.8, will drop 20% of cells.'
-        value: ''
-    downsample_cells_n:
-        description: 'Downsample to this number of observations
-            (sc.pp.subsample). Use "" to indicate no downsampling. Example: if
-            200 then 200 total cells will be kept.'
-        value: ''
-    downsample_feature_counts:
-        description: 'Downsample the number of feature counts by this fraction.
-            Use "" to indicate no downsampling.'
-        value: ''
 plots_qc:
     description: 'Parameters for basic QC plots after sample merge. All
         pairwise combinations of facet_columns and
@@ -30,13 +6,14 @@ plots_qc:
         description: 'Column to facet all QC plots by.'
         value:
             - ''
-            - 'experiment_id,lane'
+            - 'sanger_sample_id,sex,disease_status'
+            - 'bead_version,lane,ack_lysis_buffer'
     variable_columns_distribution_plots:
         description: 'Plot the distributions of these variables (histogram and
             ecdf).'
         value:
-            - 'pct_counts_in_top_100_genes'
-            - 'total_counts,pct_counts_mito_gene'
+            - 'total_counts'
+            - 'pct_counts_mito_gene'
 reduced_dims:
     description: 'Parameters for dimensionality reduction (principal component
         and harmony calculations). All pairwise combinations of
@@ -46,22 +23,23 @@ reduced_dims:
             indicate no regssion is to be performed.'
         value:
             - ''
-            - 'total_counts,lane'
     n_dims:
         description: 'Number of dimensions to use for calculating PCs,
             harmony corrected PCs, and clusters.'
         value:
-            - 3
             - 30
+            - 50
 harmony:
     description: 'Parameters for harmony.'
     variables_and_thetas:
         description: 'Tuples of metadata columns and corresponding thetas.'
         value:
-            - variable: 'experiment_id'
+            - variable: 'sanger_sample_id'
+              theta: '0.5'
+            - variable: 'sanger_sample_id'
               theta: '1.0'
-            - variable: 'experiment_id,ack_lysis_buffer'
-              theta: '1.0,0.2'
+            - variable: 'sanger_sample_id'
+              theta: '2.0'
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
@@ -69,7 +47,6 @@ cluster:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
             - 'leiden'
-            - 'louvain'
     resolutions:
         description: 'Clustering resolution.'
         value:
@@ -87,11 +64,11 @@ umap:
     colors_quantitative:
         description: 'Comma seperated string of quantitative variables that
             will be used to color points.'
-        value: 'total_reads'
+        value: 'total_reads,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
     colors_categorical:
         description: 'Comma seperated string of categorical variables that
             will be used to color points.'
-        value: 'experiment_id,ack_lysis_buffer'
+        value: 'sanger_sample_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.
             Recommended value between 2-100.'

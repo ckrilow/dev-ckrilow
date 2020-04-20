@@ -144,7 +144,7 @@ def scanpy_normalize_and_pca(
     adata,
     output_file,
     vars_to_regress,
-    variable_feature_batch_key='sanger_sample_id',
+    variable_feature_batch_key='experiment_id',
     n_variable_features=2000,
     exclude_hv_gene_df=[],
     score_genes_df=None,
@@ -163,7 +163,7 @@ def scanpy_normalize_and_pca(
         List of metadata variables to regress. If empty no regression.
     variable_feature_batch_key : string
         Batch key for variable gene detection.
-        The default is "sanger_sample_id".
+        The default is "experiment_id".
     n_variable_features : int
         Number of variable features to select.
     exclude_hv_gene_df : pd.DataFrame
@@ -210,7 +210,7 @@ def scanpy_normalize_and_pca(
     # counts per million, so that counts become comparable among cells.
     sc.pp.normalize_total(
         adata,
-        target_sum=1e6,
+        target_sum=1e4,
         exclude_highly_expressed=False,
         key_added='normalization_factor',  # add to adata.obs
         inplace=True
@@ -221,8 +221,10 @@ def scanpy_normalize_and_pca(
     # Delete automatically added uns
     del adata.uns['log1p']
     # Add record of this operation.
-    adata.layers['log1p_cpm'] = adata.X.copy()
-    adata.uns['log1p_cpm'] = {'transformation': 'ln(CPM+1)'}
+    # adata.layers['log1p_cpm'] = adata.X.copy()
+    # adata.uns['log1p_cpm'] = {'transformation': 'ln(CPM+1)'}
+    adata.layers['log1p_cp10k'] = adata.X.copy()
+    adata.uns['log1p_cp10k'] = {'transformation': 'ln(CP10k+1)'}
 
     # Stash the unprocessed data in the raw slot.
     # adata.raw.X.data is now ln(CPM+1).
@@ -443,7 +445,7 @@ def scanpy_normalize_and_pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
         zero_center=None,
-        svd_solver='auto',
+        svd_solver='arpack',  # Scanpy default arpack as of 1.4.5
         use_highly_variable=True,
         copy=False
     )
@@ -489,7 +491,7 @@ def scanpy_normalize_and_pca(
         # Plot the vanilla PCs.
         # sc.pl.pca(
         #     adata,
-        #     color='sanger_sample_id',
+        #     color='experiment_id',
         #     components=['1,2', '3,4']
         # )
         _ = sc.pl.pca_variance_ratio(
@@ -546,7 +548,7 @@ def main():
         '-bk', '--batch_key',
         action='store',
         dest='bk',
-        default='sanger_sample_id',
+        default='experiment_id',
         help='Batch key for highly-variable feature (e.g., gene) detection.\
             If specified, highly-variable features are selected within each\
             batch separately and merged.\

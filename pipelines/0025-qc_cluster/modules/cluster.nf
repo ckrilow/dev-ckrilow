@@ -174,6 +174,10 @@ process umap {
         path(file__reduced_dims)
         val(colors_quantitative)
         val(colors_categorical)
+        each n_neighbors
+        each umap_init
+        each umap_min_dist
+        each umap_spread
 
     output:
         path("plots/*.png")
@@ -195,6 +199,10 @@ process umap {
         if (colors_categorical != "") {
             cmd__colors_cat = "--colors_categorical ${colors_categorical}"
         }
+        drop_legend_n = "-1"
+        if (cmd__colors_cat.contains("experiment_id")) {
+            drop_legend_n = "8"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -205,6 +213,11 @@ process umap {
             --tsv_pcs ${file__reduced_dims} \
             ${cmd__colors_quant} \
             ${cmd__colors_cat} \
+            --drop_legend_n ${drop_legend_n} \
+            --n_neighbors ${n_neighbors} \
+            --umap_init ${umap_init} \
+            --umap_min_dist ${umap_min_dist} \
+            --umap_spread ${umap_spread} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}
         mkdir plots
@@ -276,6 +289,10 @@ workflow wf__cluster {
         cluster__methods
         cluster__resolutions
         cluster_marker__methods
+        n_neighbors
+        umap_init
+        umap_min_dist
+        umap_spread
     main:
         // Cluster the results, varying the resolution.
         cluster(
@@ -298,7 +315,11 @@ workflow wf__cluster {
             cluster.out.anndata,
             cluster.out.reduced_dims,
             '',
-            'cluster'
+            'cluster',
+            n_neighbors,
+            umap_init,
+            umap_min_dist,
+            umap_spread
         )
         // Find marker genes for clusters
         cluster_markers(
