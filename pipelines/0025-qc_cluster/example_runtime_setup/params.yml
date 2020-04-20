@@ -94,12 +94,14 @@ umap:
         value: 'experiment_id,ack_lysis_buffer'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.
-            Recommended value between 2-100.'
+            Recommended value between 2-100. If you expect each cell type
+            cluster to be shared across all experiments/samples, then setting
+            this number to the number of experiments/samples is a good palce to
+            start. Note: values seperated with a comma will be run within the
+            same script call (rather than swarm).'
         value:
-            - 15
-            - 25
-            - 50
-            - 100
+            - '15,25,50'
+            - '30'
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
         value:
@@ -107,14 +109,14 @@ umap:
             - 'spectral'
     umap_min_dist:
         description: 'The effective minimum distance between embedded points.
-            Recommended value between 0-1.'
+            Recommended value between 0-1. Note: values seperated with a comma
+            will be run within the same script call (rather than swarm).'
         value:
-            - 0.5
-            - 1.0
+            - '0.0,0.5,1.0'
     umap_spread:
         description: 'The effective scale of embedded points.
-            Recommended value between 0-3.'
+            Recommended value between 0-3. Note: values seperated with a comma
+            will be run within the same script call (rather than swarm).'
         value:
-            - 0.5
-            - 1.0
-            - 2.5
+            - '0.5,1.0,2.5'
+            - '3.0'

@@ -10,7 +10,10 @@ import os
 import numpy as np
 import pandas as pd
 import scanpy as sc
+import itertools
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+from matplotlib import gridspec
 import warnings
 
 # Silence NumbaPerformanceWarning in umap. See below:
@@ -22,6 +25,141 @@ warnings.filterwarnings('ignore', category=NumbaPerformanceWarning)
 # from UMAP. This is usually caused by a poor choice of min_dist and spread
 # parameters.
 np.seterr(all='raise')
+
+# Nice large palette.
+COLORS_LARGE_PALLETE = [
+    '#0F4A9C', '#3F84AA', '#C9EBFB', '#8DB5CE', '#C594BF', '#DFCDE4',
+    '#B51D8D', '#6f347a', '#683612', '#B3793B', '#357A6F', '#989898',
+    '#CE778D', '#7F6874', '#E09D37', '#FACB12', '#2B6823', '#A0CC47',
+    '#77783C', '#EF4E22', '#AF1F26'
+]
+
+
+# This function is based off of scanpy:
+# https://github.com/theislab/scanpy/blob/master/scanpy/plotting/_tools/scatterplots.py
+def panel_grid(hspace, wspace, ncols, num_panels):
+    """Init plot."""
+    n_panels_x = min(ncols, num_panels)
+    n_panels_y = np.ceil(num_panels / n_panels_x).astype(int)
+    if wspace is None:
+        #  try to set a wspace that is not too large or too small given the
+        #  current figure size
+        wspace = 0.75 / rcParams['figure.figsize'][0] + 0.02
+    # each panel will have the size of rcParams['figure.figsize']
+    fig = plt.figure(
+        figsize=(
+            n_panels_x * rcParams['figure.figsize'][0] * (1 + wspace),
+            n_panels_y * rcParams['figure.figsize'][1],
+        )
+    )
+    left = 0.2 / n_panels_x
+    bottom = 0.13 / n_panels_y
+    gs = gridspec.GridSpec(
+        nrows=n_panels_y,
+        ncols=n_panels_x,
+        left=left,
+        right=1 - (n_panels_x - 1) * left - 0.01 / n_panels_x,
+        bottom=bottom,
+        top=1 - (n_panels_y - 1) * bottom - 0.1 / n_panels_y,
+        hspace=hspace,
+        wspace=wspace
+    )
+    return fig, gs
+
+
+def save_plot(
+    adata,
+    list__umap_keys,
+    out_file_base,
+    color_var,
+    colors_quantitative=True,
+    colors_large_palette=COLORS_LARGE_PALLETE,
+    drop_legend=-1
+):
+    """Save a plot."""
+    fig, grid = panel_grid(
+        hspace=0.40,  # NOTE: if increase paramters in title, change this
+        wspace=None,
+        ncols=4,
+        num_panels=len(list__umap_keys)
+    )
+    i__ax = 0
+    for i__umap in list__umap_keys:
+
+        # Set the facet title.
+        plt_title = ''
+        for parameter, value in list__umap_keys[i__umap].items():
+            plt_title = '{}{}={}\n'.format(
+                plt_title,
+                parameter,
+                value
+            )
+        plt_title = plt_title.rstrip()
+
+        # Get the proper axis for this plot.
+        ax = plt.subplot(grid[i__ax])
+
+        # We could avoid this line by setting basis=i__umap, but then not
+        # consistent axis labels (e.g., X_umap__n_neighbors_151).
+        adata.obsm['X_umap'] = adata.obsm[i__umap]
+
+        # If not colors_quantitative, then boot up categorical plots.
+        legend_loc = 'right margin'
+        color_palette = 'viridis'
+        if colors_quantitative is False:
+            # Cast to category - required for booleans.
+            adata.obs[color_var] = adata.obs[color_var].astype('category')
+            n_categories = len(adata.obs[color_var].cat.categories)
+            color_palette = None
+            if n_categories <= len(plt.get_cmap('Dark2').colors):
+                color_palette = 'Dark2'
+            elif n_categories <= len(colors_large_palette):
+                color_palette = colors_large_palette
+            if drop_legend >= 0 and n_categories >= drop_legend:
+                legend_loc = None
+
+        # For some reason, there is an error if return_fig = False, but
+        # not when show = False.
+        # sc.pl.embedding(
+        #     basis='X_umap',
+        if color_var != 'embedding_density':
+            sc.pl.umap(
+                adata=adata,
+                color=color_var,
+                palette=color_palette,
+                alpha=0.4,
+                title=plt_title,
+                legend_loc=legend_loc,
+                ax=ax,
+                show=False
+            )
+        else:
+            # NOTE: i__umap looks something like X_umap__n_neighbors=15...
+            adata.obs['umap_density'] = adata.obs[
+                '{}__density'.format(i__umap).replace('X_', '')
+            ]
+            adata.uns['umap_density_params'] = adata.uns[
+                '{}__density_params'.format(i__umap).replace('X_', '')
+            ]
+            sc.pl.embedding_density(
+                adata=adata,
+                basis='umap',
+                alpha=0.4,
+                title=plt_title,
+                ax=ax,
+                show=False
+            )
+            del adata.obs['umap_density']
+            del adata.uns['umap_density_params']
+
+        del adata.obsm['X_umap']
+        i__ax += 1
+
+    fig.savefig(
+        '{}-{}.png'.format(out_file_base, color_var),
+        dpi=300,
+        bbox_inches='tight'
+    )
 
 
 def main():
@@ -89,8 +227,8 @@ def main():
         '-nn', '--n_neighbors',
         action='store',
         dest='n_neighbors',
-        default=15,
-        type=int,
+        default='15',
+        type=str,
         help='Number of neighbors for sc.pp.neighbors call\
             (default: %(default)s)'
     )
@@ -112,8 +250,8 @@ def main():
         '-umd', '--umap_min_dist',
         action='store',
         dest='umap_min_dist',
-        default=0.5,
-        type=float,
+        default='0.5',
+        type=str,
         help='The effective minimum distance between embedded points. Smaller\
             values will result in a more clustered/clumped embedding where\
             nearby points on the manifold are drawn closer together, while\
@@ -127,8 +265,8 @@ def main():
         '-us', '--umap_spread',
         action='store',
         dest='umap_spread',
-        default=1.0,
-        type=float,
+        default='1.0',
+        type=str,
         help='The minimum distance apart that points are allowed to be in the\
             low dimensional representation (effective scale of embedded points\
             ). In combination with min_dist this determines how\
@@ -178,27 +316,6 @@ def main():
     sc.settings.n_jobs = options.ncpu  # number CPUs
     # sc.settings.max_memory = 500  # in Gb
     sc.set_figure_params(dpi_save=300)
-
-    # Check input data
-    if not (2 <= options.n_neighbors <= 100):
-        # Recommended in parameter documentation:
-        # https://umap-learn.readthedocs.io/en/latest/api.html
-        warnings.warn(
-            'WARNING: it is suggested to set n_neighbors to a value between',
-            '2-100.'
-        )
-    if not (0.0 <= options.umap_min_dist <= 1.0):
-        # Recommended here: https://github.com/lmcinnes/umap/issues/249
-        warnings.warn(
-            'WARNING: it is suggested to set umap_min_dist to a value between',
-            '0-1.'
-        )
-    if not (0.0 <= options.umap_spread <= 3.0):
-        # Recommendation based on single cell experience.
-        warnings.warn(
-            'WARNING: it is suggested to set umap_spread to a value between',
-            '0-3.'
-        )
 
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=options.h5)
@@ -250,23 +367,11 @@ def main():
             os.path.basename(options.pc.rstrip('.tsv.gz'))
         )
     # Append the parameters to the output file.
-    out_file_base = '{}.number_pcs={}'.format(
+    out_file_base = '{},number_pcs={}'.format(
         out_file_base,
         n_pcs
     )
-    out_file_base = '{}.n_neighbors={}'.format(
-        out_file_base,
-        options.n_neighbors
-    )
-    out_file_base = '{}.umap_min_dist={}'.format(
-        out_file_base,
-        str(options.umap_min_dist).replace('.', 'pt')
-    )
-    out_file_base = '{}.umap_spread={}'.format(
-        out_file_base,
-        str(options.umap_spread).replace('.', 'pt')
-    )
-    out_file_base = '{}.umap_init={}'.format(
+    out_file_base = '{},umap_init={}'.format(
         out_file_base,
         options.umap_init
     )
@@ -283,89 +388,152 @@ def main():
     if len(colors_quantitative) == 0 and len(colors_categorical) == 0:
         raise Exception('Specify a color value.')
 
-    # Nice large palette.
-    colors_large_palette = [
-        '#0F4A9C', '#3F84AA', '#C9EBFB', '#8DB5CE', '#C594BF', '#DFCDE4',
-        '#B51D8D', '#6f347a', '#683612', '#B3793B', '#357A6F', '#989898',
-        '#CE778D', '#7F6874', '#E09D37', '#FACB12', '#2B6823', '#A0CC47',
-        '#77783C', '#EF4E22', '#AF1F26'
-    ]
     # Add colors_large_palette to adata.uns.
-    # adata.uns["annotation_colors"] = colors_large_palette
+    # adata.uns["annotation_colors"] = COLORS_LARGE_PALLETE
 
-    # Calculate neighbors for on the specified PCs.
-    sc.pp.neighbors(
-        adata,
-        use_rep='X_pca',
-        n_pcs=n_pcs,
-        n_neighbors=options.n_neighbors,  # Scanpy default = 15
-        copy=False
-    )
+    # Parse the neighbors iterations.
+    list__n_neighbors = []
+    if options.n_neighbors != '':
+        list__n_neighbors = map(int, options.n_neighbors.split(','))
 
-    # If init with paga, plot paga first - NOTE we can only do this if
-    if options.umap_init == 'paga' and 'paga' not in adata.uns:
-        print(
-            'Trying to call sc.tl.paga.',
-            'NOTE: requires one to have clustered the data.'
+    # Parse the min_dist iterations.
+    list__min_dist = []
+    if options.umap_min_dist != '':
+        list__min_dist = map(float, options.umap_min_dist.split(','))
+
+    # Parse the neighbors iterations.
+    list__spread = []
+    if options.umap_spread != '':
+        list__spread = map(float, options.umap_spread.split(','))
+
+    # Loop over all combinations of the different paramters we want to analyse.
+    list__umap_keys = {}
+    for i__n_neighbors, i__min_dist, i__spread in itertools.product(
+        list__n_neighbors, list__min_dist, list__spread
+    ):
+        # Check input parameters
+        if not (2 <= i__n_neighbors <= 100):
+            # Recommended in parameter documentation:
+            # https://umap-learn.readthedocs.io/en/latest/api.html
+            warnings.warn(
+                'WARNING: it is suggested to set n_neighbors to a value',
+                'between 2-100.'
+            )
+        if not (0.0 <= i__min_dist <= 1.0):
+            # Recommended here: https://github.com/lmcinnes/umap/issues/249
+            warnings.warn(
+                'WARNING: it is suggested to set umap_min_dist to a value',
+                'between 0-1.'
+            )
+        if not (0.0 <= i__spread <= 3.0):
+            # Recommendation based on single cell experience.
+            warnings.warn(
+                'WARNING: it is suggested to set umap_spread to a value',
+                'between 0-3.'
+            )
+
+        # Set the plot label.
+        plt__label = 'n_neighbors={}'.format(i__n_neighbors)
+        plt__label = '{},umap_min_dist={}'.format(
+            plt__label,
+            str(i__min_dist).replace('.', 'pt')
         )
-        sc.tl.paga(
+        plt__label = '{},umap_spread={}'.format(
+            plt__label,
+            str(i__spread).replace('.', 'pt')
+        )
+
+        # Save the parameters to a dict
+        list__umap_keys['X_umap__{}'.format(plt__label)] = {
+            'n_neighbors': i__n_neighbors,
+            'umap_min_dist': i__min_dist,
+            'umap_spread': i__spread
+        }
+
+        # Calculate neighbors for on the specified PCs.
+        # By default saved to adata.uns['neighbors']
+        sc.pp.neighbors(
             adata,
-            use_rna_velocity=False,
+            use_rep='X_pca',
+            n_pcs=n_pcs,
+            n_neighbors=i__n_neighbors,  # Scanpy default = 15
+            copy=False
+        )
+        adata.uns['neighbors__{}'.format(plt__label)] = adata.uns['neighbors']
+
+        # TODO: add paga
+        # # If init with paga, plot paga first - NOTE we can only do this if
+        # if options.umap_init == 'paga' and 'paga' not in adata.uns:
+        #     print(
+        #         'Trying to call sc.tl.paga.',
+        #         'NOTE: requires one to have clustered the data.'
+        #     )
+        #     sc.tl.paga(
+        #         adata,
+        #         use_rna_velocity=False,
+        #         copy=False
+        #     )
+
+        # UMAP
+        # Saved to adata.uns['umap'] and adata.obsm['X_umap']
+        sc.tl.umap(
+            adata,
+            min_dist=i__min_dist,  # Scanpy default = 0.05
+            spread=i__spread,  # Scanpy default = 1.0
+            init_pos=options.umap_init,  # Scanpy default = spectral
+            # For some reason cannot access neighbors key slot, thus we
+            # must keep uns['neighbors'] until we have run this.
+            # neighbors_key='neighbors__{}'.format(plt__label),
             copy=False
         )
 
-    # UMAP
-    sc.tl.umap(
-        adata,
-        min_dist=options.umap_min_dist,  # Scanpy default = 0.05
-        spread=options.umap_spread,  # Scanpy default = 1.0
-        init_pos=options.umap_init,  # Scanpy default = spectral
-        copy=False
-    )
+        if 'embedding_density' in colors_quantitative:
+            sc.tl.embedding_density(
+                adata,
+                basis='umap'
+            )
+            # Rename density estimates
+            adata.obs[
+                'umap__{}__density'.format(plt__label)
+            ] = adata.obs.pop('umap_density')
+            adata.uns[
+                'umap__{}__density_params'.format(plt__label)
+            ] = adata.uns.pop('umap_density_params')
+
+        # Rename UMAP
+        adata.uns[
+            'umap__{}'.format(plt__label)
+        ] = adata.uns.pop('umap')
+        adata.obsm[
+            'X_umap__{}'.format(plt__label)
+        ] = adata.obsm.pop('X_umap')
+
+        # Delete key that we no longer need since already copied and we have
+        # run umap.
+        del adata.uns['neighbors']
 
     # NOTE: If the color var is a gene, you should color by ln(CPM+1).
     #       By default these sc.pl.umap uses the .raw attribute of AnnData
     #       if present which is assumed to be ln(CPM+1).
 
-    # For each variable, loop over and set color accordingly. Save
-    # the results.
-    for var in colors_quantitative:
-        fig = sc.pl.umap(
-            adata,
-            color=var,
-            alpha=0.4,
-            return_fig=True
+    # For each color to plot, loop over the different iterations.
+    for color_var in colors_quantitative:
+        save_plot(
+            adata=adata,
+            list__umap_keys=list__umap_keys,
+            out_file_base=out_file_base,
+            color_var=color_var,
+            colors_quantitative=True,
+            drop_legend=options.drop_legend
         )
-        fig.savefig(
-            '{}-{}.png'.format(out_file_base, var),
-            dpi=300,
-            bbox_inches='tight'
-        )
-    for var in colors_categorical:
-        print(var)
-        # Cast to category - required for booleans.
-        adata.obs[var] = adata.obs[var].astype('category')
-        n_categories = len(adata.obs[var].cat.categories)
-        color_palette = None
-        if n_categories <= len(plt.get_cmap('Dark2').colors):
-            color_palette = 'Dark2'
-        elif n_categories <= len(colors_large_palette):
-            color_palette = colors_large_palette
-        legend_loc = 'right margin'
-        if options.drop_legend >= 0 and n_categories >= options.drop_legend:
-            legend_loc = None
-        fig = sc.pl.umap(
-            adata,
-            color=var,
-            palette=color_palette,
-            alpha=0.4,
-            return_fig=True,
-            legend_loc=legend_loc
-        )
-        fig.savefig(
-            '{}-{}.png'.format(out_file_base, var),
-            dpi=300,
-            bbox_inches='tight'
+    for color_var in colors_categorical:
+        save_plot(
+            adata=adata,
+            list__umap_keys=list__umap_keys,
+            out_file_base=out_file_base,
+            color_var=color_var,
+            colors_quantitative=False,
+            drop_legend=options.drop_legend
         )
 
     # In some ocassions, you might still observe disconnected clusters and
