@@ -184,6 +184,9 @@ rsync -am --include="*.png" --include="*/" --exclude="*" my_cluster_ssh:${NF_OUT
 
 ```bash
 # To be run from the execution dir, before the above nextflow command
+# If you are running this on a cluster, make sure you log into an interactive
+# session with >25Gb of RAM.
+export NXF_OPTS="-Xms25G -Xmx25G"
 export NXF_HOME=$(pwd)
 export NXF_WORK="${NXF_HOME}/.nexflow_work"
 export NXF_TEMP="${NXF_HOME}/.nexflow_temp"
