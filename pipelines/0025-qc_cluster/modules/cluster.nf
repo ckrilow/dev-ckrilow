@@ -6,6 +6,13 @@ def random_hex(n) {
 }
 
 
+// NOTE: This raises erroneous warning.
+// WARN: There's no process matching config selector: umap
+include {
+    umap_calculate_and_plot as umap_calculate_and_plot__cluster;
+} from "./umap.nf"
+
+
 process cluster {
     // Clusters results.
     // ------------------------------------------------------------------------
@@ -155,78 +162,6 @@ process cluster_markers {
 }
 
 
-process umap {
-    // UMAP from reduced_dims.
-    // ------------------------------------------------------------------------
-    //tag { output_dir }
-    //cache false        // cache results from run
-    scratch false      // use tmp directory
-    echo true          // echo output from script
-
-    publishDir  path: "${outdir}",
-                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
-                overwrite: "true"
-
-    input:
-        val(outdir_prev)
-        path(file__anndata)
-        path(file__reduced_dims)
-        val(colors_quantitative)
-        val(colors_categorical)
-        each n_neighbors
-        each umap_init
-        each umap_min_dist
-        each umap_spread
-
-    output:
-        path("plots/*.png")
-        path("plots/*.pdf") optional true
-        // path("plots/*.svg") optional true
-
-    script:
-        runid = random_hex(16)
-        outdir = "${outdir_prev}"
-        // For output file, use anndata name. First need to drop the runid
-        // from the file__anndata job.
-        // outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
-        outfile = "umap"
-        cmd__colors_quant = ""
-        if (colors_quantitative != "") {
-            cmd__colors_quant = "--colors_quantitative ${colors_quantitative}"
-        }
-        cmd__colors_cat = ""
-        if (colors_categorical != "") {
-            cmd__colors_cat = "--colors_categorical ${colors_categorical}"
-        }
-        drop_legend_n = "-1"
-        if (cmd__colors_cat.contains("experiment_id")) {
-            drop_legend_n = "8"
-        }
-        process_info = "${runid} (runid)"
-        process_info = "${process_info}, ${task.cpus} (cpus)"
-        process_info = "${process_info}, ${task.memory} (memory)"
-        """
-        echo "umap: ${process_info}"
-        plot_umap.py \
-            --h5_anndata ${file__anndata} \
-            --tsv_pcs ${file__reduced_dims} \
-            ${cmd__colors_quant} \
-            ${cmd__colors_cat} \
-            --drop_legend_n ${drop_legend_n} \
-            --n_neighbors ${n_neighbors} \
-            --umap_init ${umap_init} \
-            --umap_min_dist ${umap_min_dist} \
-            --umap_spread ${umap_spread} \
-            --number_cpu ${task.cpus} \
-            --output_file ${runid}-${outfile}
-        mkdir plots
-        mv *pdf plots/ 2>/dev/null || true
-        mv *png plots/ 2>/dev/null || true
-        """
-}
-
-
 process convert_seurat {
     // Converts anndata h5 file to a Seurat data object.
     // TODO: automatically add reduced_dims to Seurat data object.
@@ -310,7 +245,7 @@ workflow wf__cluster {
         //     cluster.out.anndata
         // )
         // Generate UMAPs of the results.
-        umap(
+        umap_calculate_and_plot__cluster(
             cluster.out.outdir,
             cluster.out.anndata,
             cluster.out.reduced_dims,
