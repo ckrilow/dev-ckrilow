@@ -71,27 +71,25 @@ umap:
         value: 'sanger_sample_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.
-            Recommended value between 2-100.'
+            Recommended value between 2-100. If you expect each cell type
+            cluster to be shared across all experiments/samples, then setting
+            this number to the number of experiments/samples is a good palce to
+            start.'
         value:
-            - 15
-            - 25
-            - 50
-            - 100
+            - '15,25,33,50,75'
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
         value:
-            - 'X_pca'
             - 'spectral'
     umap_min_dist:
         description: 'The effective minimum distance between embedded points.
-            Recommended value between 0-1.'
+            Recommended value between 0-1. Note: values seperated with a comma
+            will be run within the same script call (rather than swarm).'
         value:
-            - 0.5
-            - 1.0
+            - '0.0,0.25,0.5,1.0'
     umap_spread:
         description: 'The effective scale of embedded points.
-            Recommended value between 0-3.'
+            Recommended value between 0-3. Note: values seperated with a comma
+            will be run within the same script call (rather than swarm).'
         value:
-            - 0.5
-            - 1.0
-            - 2.5
+            - '0.5,1.0,2.5'
