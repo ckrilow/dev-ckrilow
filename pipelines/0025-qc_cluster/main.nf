@@ -18,11 +18,15 @@ include {
 } from "./modules/core.nf"
 include {
     convert_seurat;
-    umap;
-    umap as umap__harmony;
     wf__cluster;
     wf__cluster as wf__cluster_harmony;
 } from "./modules/cluster.nf"
+include {
+    wf__umap;
+    wf__umap as wf__umap_harmony;
+    // umap_calculate_and_plot;
+    // umap_calculate_and_plot as umap_calculate_and_plot__harmony;
+} from "./modules/umap.nf"
 
 
 // Set default parameters.
@@ -260,29 +264,56 @@ workflow {
             params.reduced_dims.n_dims.value,
             params.harmony.variables_and_thetas.value
         )
-        // Make UMAPs of the reduced dimensions
-        umap(
+        // Scatter-gather UMAP plots
+        wf__umap(
             subset_pcs.out.outdir,
             subset_pcs.out.anndata,
+            // subset_pcs.out.metadata,
+            // subset_pcs.out.pcs,
             subset_pcs.out.reduced_dims,
-            params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value,
             params.umap.n_neighbors.value,
             params.umap.umap_init.value,
             params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value
+            params.umap.umap_spread.value,
+            params.umap.colors_quantitative.value,
+            params.umap.colors_categorical.value
         )
-        umap__harmony(
+        wf__umap_harmony(
             harmony.out.outdir,
             harmony.out.anndata,
+            // subset_pcs.out.metadata,
+            // subset_pcs.out.pcs,
             harmony.out.reduced_dims,
-            params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value,
             params.umap.n_neighbors.value,
             params.umap.umap_init.value,
             params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value
+            params.umap.umap_spread.value,
+            params.umap.colors_quantitative.value,
+            params.umap.colors_categorical.value
         )
+        // // Make UMAPs of the reduced dimensions - no scatter gather
+        // umap_calculate_and_plot(
+        //     subset_pcs.out.outdir,
+        //     subset_pcs.out.anndata,
+        //     subset_pcs.out.reduced_dims,
+        //     params.umap.colors_quantitative.value,
+        //     params.umap.colors_categorical.value,
+        //     params.umap.n_neighbors.value,
+        //     params.umap.umap_init.value,
+        //     params.umap.umap_min_dist.value,
+        //     params.umap.umap_spread.value
+        // )
+        // umap_calculate_and_plot__harmony(
+        //     harmony.out.outdir,
+        //     harmony.out.anndata,
+        //     harmony.out.reduced_dims,
+        //     params.umap.colors_quantitative.value,
+        //     params.umap.colors_categorical.value,
+        //     params.umap.n_neighbors.value,
+        //     params.umap.umap_init.value,
+        //     params.umap.umap_min_dist.value,
+        //     params.umap.umap_spread.value
+        // )
         // Cluster the results, varying the resolution.
         // Also, generate UMAPs of the results.
         wf__cluster(
