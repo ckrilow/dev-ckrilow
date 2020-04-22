@@ -100,8 +100,9 @@ umap:
             start. Note: values seperated with a comma will be run within the
             same script call (rather than swarm).'
         value:
-            - '15,25,50'
-            - '30'
+            - 15
+            - 25
+            - 50
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
         value:
@@ -112,11 +113,14 @@ umap:
             Recommended value between 0-1. Note: values seperated with a comma
             will be run within the same script call (rather than swarm).'
         value:
-            - '0.0,0.5,1.0'
+            - 0.0
+            - 0.5
+            - 1.0
     umap_spread:
         description: 'The effective scale of embedded points.
             Recommended value between 0-3. Note: values seperated with a comma
             will be run within the same script call (rather than swarm).'
         value:
-            - '0.5,1.0,2.5'
-            - '3.0'
+            - 0.5
+            - 1.0
+            - 2.5

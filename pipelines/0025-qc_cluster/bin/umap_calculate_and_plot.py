@@ -394,17 +394,34 @@ def main():
     # Parse the neighbors iterations.
     list__n_neighbors = []
     if options.n_neighbors != '':
-        list__n_neighbors = map(int, options.n_neighbors.split(','))
+        list__n_neighbors = list(map(int, options.n_neighbors.split(',')))
 
     # Parse the min_dist iterations.
     list__min_dist = []
     if options.umap_min_dist != '':
-        list__min_dist = map(float, options.umap_min_dist.split(','))
+        list__min_dist = list(map(float, options.umap_min_dist.split(',')))
 
     # Parse the neighbors iterations.
     list__spread = []
     if options.umap_spread != '':
-        list__spread = map(float, options.umap_spread.split(','))
+        list__spread = list(map(float, options.umap_spread.split(',')))
+
+    # Update the out base if only one of any iteration.
+    if len(list__n_neighbors) == 1:
+        out_file_base = '{},n_neighbors={}'.format(
+            out_file_base,
+            list__n_neighbors[0]
+        )
+    if len(list__min_dist) == 1:
+        out_file_base = '{},umap_min_dist={}'.format(
+            out_file_base,
+            list__min_dist[0]
+        )
+    if len(list__spread) == 1:
+        out_file_base = '{},umap_spread={}'.format(
+            out_file_base,
+            list__spread[0]
+        )
 
     # Loop over all combinations of the different paramters we want to analyse.
     list__umap_keys = {}
@@ -502,7 +519,7 @@ def main():
 
         # Rename UMAP
         adata.uns[
-            'umap__{}'.format(plt__label)
+            'umap__{}__params'.format(plt__label)
         ] = adata.uns.pop('umap')
         adata.obsm[
             'X_umap__{}'.format(plt__label)
@@ -536,6 +553,10 @@ def main():
             drop_legend=options.drop_legend
         )
 
+    adata.write(
+        '{}.h5ad'.format('test'),
+        compression='gzip'
+    )
     # In some ocassions, you might still observe disconnected clusters and
     # similar connectivity violations. They can usually be remedied by running:
     # sc.tl.paga(adata)
