@@ -87,6 +87,83 @@ process cluster {
 }
 
 
+process cluster_validate_resolution {
+    // Validate the resolution for clusters.
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("clustered.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("reduced_dims.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("clustered.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        path(file__metadata)
+        path(file__pcs)
+        path(file__reduced_dims)
+        path(file__clusters)
+        //each method
+
+    output:
+        val(outdir, emit: outdir)
+        path(file__anndata, emit: anndata)
+        path(file__metadata, emit: metadata)
+        path(file__pcs, emit: pcs)
+        path(file__reduced_dims, emit: reduced_dims)
+        path(file__clusters, emit: clusters)
+        path(
+            "${runid}-${outfile}-cluster_markers.tsv.gz",
+            emit: cluster_markers
+        )
+        path("*.gz") optional true
+        path("plots/*.pdf") optional true
+        path("plots/*.png") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}/validate_resolution"
+        // outdir = "${outdir}.method=${method}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "cluster_validate_resolution: ${process_info}"
+        0057-scanpy_cluster_validate_resolution.py \
+            --h5_anndata ${file__anndata} \
+            --sparsity 0.5 \
+            --test_size 0.9 \
+            --number_cpu ${task.cpus} \
+            --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 process cluster_markers {
     // Find markers for clusters.
     // ------------------------------------------------------------------------
@@ -238,6 +315,15 @@ workflow wf__cluster {
             reduced_dims,
             cluster__methods,
             cluster__resolutions
+        )
+        // Validate the resolution
+        cluster_validate_resolution(
+            cluster.out.outdir,
+            cluster.out.anndata,
+            cluster.out.metadata,
+            cluster.out.pcs,
+            cluster.out.reduced_dims,
+            cluster.out.clusters
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
