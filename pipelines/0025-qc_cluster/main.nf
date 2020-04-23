@@ -281,8 +281,8 @@ workflow {
         wf__umap_harmony(
             harmony.out.outdir,
             harmony.out.anndata,
-            // subset_pcs.out.metadata,
-            // subset_pcs.out.pcs,
+            // harmony.out.metadata,
+            // harmony.out.pcs,
             harmony.out.reduced_dims,
             params.umap.n_neighbors.value,
             params.umap.umap_init.value,
