@@ -8,6 +8,7 @@ __version__ = '0.0.1'
 import argparse
 import os
 import numpy as np
+import scipy as sci
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -49,9 +50,9 @@ def logistic_model(
     sparsity=1.0,
     test_size=0.25,
     n_jobs=None,
-    verbose=True,
     standarize=True,
-    with_mean=False
+    with_mean=False,
+    verbose=True
 ):
     """Fit logistic regression model. Based off of NaiveDE."""
     # Standarize features - this is especially important for SAGA
@@ -77,11 +78,12 @@ def logistic_model(
             with_mean=with_mean,
             with_std=True
         )
+        if with_mean and sci.sparse.issparse(X):
+            X = X.todense()
         X_std = scaler.fit_transform(X)
         # X_std = (X / X.std()).dropna(1)  # Does not handle sparse matrix
         if verbose:
             print('Scaled X, with_mean={}'.format(with_mean))
-            print(type(X_std))
     else:
         X_std = X
 
@@ -100,7 +102,6 @@ def logistic_model(
                 X_test.shape
             )
         )
-        print(type(X_train))
 
     # As noted in scanpy documentation:
     # https://icb-scanpy.readthedocs-hosted.com/en/stable/api/scanpy.tl.rank_genes_groups.html
@@ -146,6 +147,10 @@ def logistic_model(
     if verbose:
         print('Completed: predict_proba.')
 
+    # Check out the performance of the model
+    # lr.score(X_train, y_train)
+    # lr.score(X_test, y_test)
+
     return lr, y_prob
 
 
@@ -172,6 +177,16 @@ def main():
     )
 
     parser.add_argument(
+        '-ncells', '--number_cells',
+        action='store',
+        dest='ncells',
+        default=-1,
+        type=int,
+        help='Downsample to this number of cells.\
+            (default: no downsampling)'
+    )
+
+    parser.add_argument(
         '-s', '--sparsity',
         action='store',
         dest='sparsity',
@@ -189,18 +204,8 @@ def main():
         dest='test_size',
         default=0.33,
         type=float,
-        help='Test size fraction.\
+        help='Fraction of the data to use for test set.\
             (default: %(default)s)'
-    )
-
-    parser.add_argument(
-        '-ncells', '--number_cells',
-        action='store',
-        dest='ncells',
-        default=-1,
-        type=int,
-        help='Downsample to this number of cells.\
-            (default: no downsampling)'
     )
 
     parser.add_argument(
@@ -305,13 +310,16 @@ def main():
         sparsity=options.sparsity,
         test_size=options.test_size,
         n_jobs=options.ncpu,
+        standarize=True,
+        with_mean=True,
         verbose=verbose
     )
 
     # Save the model
+    out_f = '{}-lr_model.joblib.gz'.format(out_file_base)
     joblib.dump(
         lr,
-        '{}-lr.joblib.gz'.format(out_file_base),
+        out_f,
         compress=('gzip', 3)
     )
     # Example of how to load a model.
@@ -319,12 +327,13 @@ def main():
     #     'CD5677E01F0E30D5-adata-normalized_pca-clustered-lr.joblib.gz'
     # )
     if verbose:
-        print('Completed: save lr.')
+        print('Completed: save {}.'.format(out_f))
 
     # Save the test results - each row is a cell and the columns are the prob
     # of that cell belonging to a particular class.
+    out_f = '{}-test_result.tsv.gz'.format(out_file_base)
     test_results.to_csv(
-        '{}-test_results.tsv.gz'.format(out_file_base),
+        out_f,
         sep='\t',
         index=False,
         quoting=csv.QUOTE_NONNUMERIC,
@@ -332,19 +341,20 @@ def main():
         compression='gzip'
     )
     if verbose:
-        print('Completed: save test_results.')
+        print('Completed: save {}.'.format(out_f))
 
     # Save the ROC of the test and truth.
+    out_f = '{}-roc.pdf'.format(out_file_base)
     fig = plt.figure()
     cell_label_true = test_results.pop('cell_label_true')
     plot_roc(test_results.values, cell_label_true.values, lr)
     fig.savefig(
-        '{}-roc.pdf'.format(out_file_base),
+        out_f,
         dpi=300,
         bbox_inches='tight'
     )
     if verbose:
-        print('Completed: save ROC plot.')
+        print('Completed: save {}.'.format(out_f))
 
     # Make a dataframe of the coefficients.
     # Rows = cell type label and columns = genes tested
@@ -354,8 +364,9 @@ def main():
         columns=adata.var.index
     )
     # Save the lr_res dataframe.
+    out_f = '{}-lr_coef.tsv.gz'.format(out_file_base)
     lr_res.to_csv(
-        '{}-lr_coef.tsv.gz'.format(out_file_base),
+        out_f,
         sep='\t',
         index=True,
         index_label='cell_label',
@@ -364,7 +375,7 @@ def main():
         compression='gzip'
     )
     if verbose:
-        print('Completed: save lr_res.')
+        print('Completed: save {}.'.format(out_f))
 
 
 if __name__ == '__main__':

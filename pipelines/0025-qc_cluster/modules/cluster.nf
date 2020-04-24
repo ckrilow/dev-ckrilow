@@ -122,7 +122,9 @@ process cluster_validate_resolution {
         path(file__pcs)
         path(file__reduced_dims)
         path(file__clusters)
-        //each method
+        each number_cells
+        each sparsity
+        each test_size
 
     output:
         val(outdir, emit: outdir)
@@ -131,13 +133,17 @@ process cluster_validate_resolution {
         path(file__pcs, emit: pcs)
         path(file__reduced_dims, emit: reduced_dims)
         path(file__clusters, emit: clusters)
+        path("${runid}-${outfile}-lr_model.joblib.gz", emit: model)
         path(
-            "${runid}-${outfile}-cluster_markers.tsv.gz",
-            emit: cluster_markers
+            "${runid}-${outfile}-test_result.tsv.gz",
+            emit: model_test_result
         )
-        path("*.gz") optional true
-        path("plots/*.pdf") optional true
-        path("plots/*.png") optional true
+        path(
+            "${runid}-${outfile}-lr_coef.tsv.gz",
+            emit: model_coefficient
+        )
+        path("*.png") optional true
+        path("*.pdf") optional true
 
     script:
         runid = random_hex(16)
@@ -146,6 +152,15 @@ process cluster_validate_resolution {
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        n_cells_downsample_txt = "none"
+        if (number_cells != "-1") {
+            n_cells_downsample_txt = "${number_cells}"
+        }
+        outfile = "${outfile}-n_cells_downsample=${n_cells_downsample_txt}"
+        sparsity_txt = "${sparsity}".replaceAll("\\.", "pt")
+        outfile = "${outfile}-sparsity=${sparsity_txt}"
+        test_size_txt = "${test_size}".replaceAll("\\.", "pt")
+        outfile = "${outfile}-test_size=${test_size_txt}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -153,8 +168,9 @@ process cluster_validate_resolution {
         echo "cluster_validate_resolution: ${process_info}"
         0057-scanpy_cluster_validate_resolution.py \
             --h5_anndata ${file__anndata} \
-            --sparsity 0.5 \
-            --test_size 0.9 \
+            --number_cells ${number_cells} \
+            --sparsity ${sparsity} \
+            --test_size ${test_size} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}
         mkdir plots
@@ -300,6 +316,9 @@ workflow wf__cluster {
         reduced_dims
         cluster__methods
         cluster__resolutions
+        cluster_validate_resolution__number_cells
+        cluster_validate_resolution__sparsity
+        cluster_validate_resolution__test_size
         cluster_marker__methods
         n_neighbors
         umap_init
@@ -323,7 +342,10 @@ workflow wf__cluster {
             cluster.out.metadata,
             cluster.out.pcs,
             cluster.out.reduced_dims,
-            cluster.out.clusters
+            cluster.out.clusters,
+            cluster_validate_resolution__number_cells,
+            cluster_validate_resolution__sparsity,
+            cluster_validate_resolution__test_size
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
