@@ -197,7 +197,7 @@ def main():
         '-ncells', '--number_cells',
         action='store',
         dest='ncells',
-        default=0,
+        default=-1,
         type=int,
         help='Downsample to this number of cells.\
             (default: no downsampling)'
@@ -247,7 +247,7 @@ def main():
     adata = sc.read_h5ad(filename=options.h5)
 
     # Optionally downsample cells
-    if options.ncells > 0:
+    if options.ncells > -1:
         n_cells_start = adata.n_obs
         if n_cells_start < options.ncells:
             raise Exception('Fewer cells than ncells specified.')
@@ -321,12 +321,12 @@ def main():
     if verbose:
         print('Completed: save lr.')
 
-    # Save the test results
+    # Save the test results - each row is a cell and the columns are the prob
+    # of that cell belonging to a particular class.
     test_results.to_csv(
         '{}-test_results.tsv.gz'.format(out_file_base),
         sep='\t',
-        index=True,
-        index_label='cell_label',
+        index=False,
         quoting=csv.QUOTE_NONNUMERIC,
         na_rep='',
         compression='gzip'
