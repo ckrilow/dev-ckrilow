@@ -87,6 +87,99 @@ process cluster {
 }
 
 
+process cluster_validate_resolution {
+    // Validate the resolution for clusters.
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("clustered.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("reduced_dims.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("clustered.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        path(file__metadata)
+        path(file__pcs)
+        path(file__reduced_dims)
+        path(file__clusters)
+        each number_cells
+        each sparsity
+        each test_size
+
+    output:
+        val(outdir, emit: outdir)
+        path(file__anndata, emit: anndata)
+        path(file__metadata, emit: metadata)
+        path(file__pcs, emit: pcs)
+        path(file__reduced_dims, emit: reduced_dims)
+        path(file__clusters, emit: clusters)
+        path("${runid}-${outfile}-lr_model.joblib.gz", emit: model)
+        path(
+            "${runid}-${outfile}-test_result.tsv.gz",
+            emit: model_test_result
+        )
+        path(
+            "${runid}-${outfile}-lr_coef.tsv.gz",
+            emit: model_coefficient
+        )
+        path("*.png") optional true
+        path("*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}/validate_resolution"
+        // outdir = "${outdir}.method=${method}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        n_cells_downsample_txt = "none"
+        if (number_cells != "-1") {
+            n_cells_downsample_txt = "${number_cells}"
+        }
+        outfile = "${outfile}-n_cells_downsample=${n_cells_downsample_txt}"
+        sparsity_txt = "${sparsity}".replaceAll("\\.", "pt")
+        outfile = "${outfile}-sparsity=${sparsity_txt}"
+        test_size_txt = "${test_size}".replaceAll("\\.", "pt")
+        outfile = "${outfile}-test_size=${test_size_txt}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "cluster_validate_resolution: ${process_info}"
+        0057-scanpy_cluster_validate_resolution.py \
+            --h5_anndata ${file__anndata} \
+            --number_cells ${number_cells} \
+            --sparsity ${sparsity} \
+            --test_size ${test_size} \
+            --number_cpu ${task.cpus} \
+            --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 process cluster_markers {
     // Find markers for clusters.
     // ------------------------------------------------------------------------
@@ -223,6 +316,9 @@ workflow wf__cluster {
         reduced_dims
         cluster__methods
         cluster__resolutions
+        cluster_validate_resolution__number_cells
+        cluster_validate_resolution__sparsity
+        cluster_validate_resolution__test_size
         cluster_marker__methods
         n_neighbors
         umap_init
@@ -238,6 +334,18 @@ workflow wf__cluster {
             reduced_dims,
             cluster__methods,
             cluster__resolutions
+        )
+        // Validate the resolution
+        cluster_validate_resolution(
+            cluster.out.outdir,
+            cluster.out.anndata,
+            cluster.out.metadata,
+            cluster.out.pcs,
+            cluster.out.reduced_dims,
+            cluster.out.clusters,
+            cluster_validate_resolution__number_cells,
+            cluster_validate_resolution__sparsity,
+            cluster_validate_resolution__test_size
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(

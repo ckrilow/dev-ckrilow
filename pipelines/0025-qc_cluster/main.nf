@@ -62,7 +62,13 @@ params.harmony = [
 // Default parameters for cluster calculations.
 params.cluster = [
     methods: [value: ["leiden", "louvain"]],
-    resolutions: [value: [1.0, 3.0]],
+    resolutions: [value: [1.0, 3.0]]
+]
+// Default parameters for cluster resolution validation.
+params.cluster_validate_resolution = [
+    number_cells: [value: ["10000", "-1"]],
+    sparsity: [value: ["0.25", "0.1"]],
+    test_size: [value: ["0.33"]]
 ]
 // Default parameters for cluster marker gene calculations.
 params.cluster_marker = [
@@ -214,7 +220,6 @@ workflow {
             // For some reason cannot use path here, must use file.
             file_cellmetadata = file(params.file_cellmetadata)
         }
-
         // Merge the samples, perform cell + gene filtering, add metadata.
         file_sample_qc = file(params.file_sample_qc)
         merge_samples(
@@ -291,7 +296,7 @@ workflow {
             params.umap.colors_quantitative.value,
             params.umap.colors_categorical.value
         )
-        // // Make UMAPs of the reduced dimensions - no scatter gather
+        // Make UMAPs of the reduced dimensions - no scatter gather
         // umap_calculate_and_plot(
         //     subset_pcs.out.outdir,
         //     subset_pcs.out.anndata,
@@ -324,6 +329,9 @@ workflow {
             subset_pcs.out.reduced_dims,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
+            params.cluster_validate_resolution.number_cells.value,
+            params.cluster_validate_resolution.sparsity.value,
+            params.cluster_validate_resolution.test_size.value,
             params.cluster_marker.methods.value,
             params.umap.n_neighbors.value,
             params.umap.umap_init.value,
