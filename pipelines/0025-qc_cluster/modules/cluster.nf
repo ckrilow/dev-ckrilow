@@ -142,8 +142,8 @@ process cluster_validate_resolution {
             "${runid}-${outfile}-lr_coef.tsv.gz",
             emit: model_coefficient
         )
-        path("*.png") optional true
-        path("*.pdf") optional true
+        path("plots/*.png") optional true
+        path("plots/*.pdf") optional true
 
     script:
         runid = random_hex(16)
