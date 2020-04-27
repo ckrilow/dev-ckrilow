@@ -15,11 +15,75 @@ from matplotlib import colors
 from matplotlib import cm
 import scanpy as sc
 import csv
+import joblib  # for numpy matrix, joblib faster than pickle
+
+from sklearn import metrics
 from sklearn import preprocessing
 from sklearn import model_selection
-from sklearn import metrics
 from sklearn.linear_model import LogisticRegression
-import joblib  # for numpy matrix, joblib faster than pickle
+
+# Import dask things that can be imported here.
+from dask_jobqueue import LSFCluster
+from dask.distributed import Client, performance_report, get_task_stream
+# import dask
+# import dask.array as da
+# from dask_ml import preprocessing
+# from dask_ml import model_selection
+# import dask_ml.linear_model as dlm
+
+# NOTE: The whole clustering pipeline could be replaced using dask as
+# described here. One could do a grid search over (1) neighbors for clustering,
+# (2) resolution for clustering, (3) regularization ... using the logreg score
+# as the estimator to guide selection. See more below:
+# https://ml.dask.org/examples/dask-glm.html
+
+
+def start_dask_lsfcluster(cluster_size=5):
+    """Start a dask cluster."""
+    if cluster_size < 4:
+        raise Exception('Too small of a cluster')
+    # Settings for Sanger farm
+    memory_in_gb = 20
+    cluster = LSFCluster(
+        queue='normal',
+        walltime='00:30',
+        log_directory='{}/dask_logs'.format(os.getcwd()),
+        cores=4,
+        memory='{} Gb'.format(memory_in_gb),
+        mem=memory_in_gb*1e+9,  # should be in bytes
+        lsf_units='mb',
+        job_extra=[
+            '-G team152',
+            '-g /lt9/dask',
+            '-R "select[mem>{}] rusage[mem={}]"'.format(
+                int(memory_in_gb*1e+3),
+                int(memory_in_gb*1e+3)
+            )
+        ],
+        use_stdin=True
+    )
+
+    # View the job submission from Dask
+    # cluster.job_script()
+
+    # Scale cluster
+    cluster.scale(cluster_size)
+
+    # auto-scale between 10 and 100 jobs
+    # cluster.adapt(
+    #     minimum_jobs=int(cluster_size/4),
+    #     maximum_jobs=cluster_size
+    # )
+    # cluster.adapt(maximum_memory="10 TB")  # use core/memory limits
+
+    client = Client(
+        cluster,
+        timeout=120
+    )
+    client.wait_for_workers(n_workers=cluster_size)
+    # print(client.scheduler_info()['services'])
+
+    return cluster, client
 
 
 def _create_colors(lr):
@@ -52,7 +116,9 @@ def logistic_model(
     n_jobs=None,
     standarize=True,
     with_mean=False,
-    verbose=True
+    verbose=True,
+    use_dask=False,
+    out_file='out_file'
 ):
     """Fit logistic regression model. Based off of NaiveDE."""
     # Standarize features - this is especially important for SAGA
@@ -87,6 +153,25 @@ def logistic_model(
     else:
         X_std = X
 
+    # if use_dask:
+    #     # Your chunks input will be normalized and stored in the third and
+    #     # most explicit form. Note: chunks stands for "chunk shape" rather
+    #     # than "number of chunks", so specifying chunks=1 means that you
+    #     # will have many chunks, each with exactly one element.
+    #     #
+    #     # Automatic chunking
+    #     # -1: no chunking along this dimension
+    #     # None: no change to the chunking along this dimension (useful for
+    #     #       rechunk)
+    #     # "auto": allow the chunking in this dimension to accommodate ideal
+    #     #         chunk sizes
+    #     chunk_x = X.shape[0] // n_jobs
+    #     chunk_y = X.shape[1] // n_jobs
+    #     if verbose:
+    #         print('Chunks: {},{}'.format(chunk_x, chunk_y))
+    #     # NOTE: currently only allowed to chunk on x axis.
+    #     X_std = da.from_array(X_std, chunks=({0: 'auto', 1: -1}))
+
     # Split the data into training and test data.
     # NOTE: does it make sense to stratify splitting by cell_lables?
     X_train, X_test, y_train, y_test = model_selection.train_test_split(
@@ -95,6 +180,16 @@ def logistic_model(
         # stratify=cell_labels,
         test_size=test_size
     )
+    # if use_dask:
+    #     # Calling dask.persist will preserve our data in memory, so no
+    #     # computation will be needed as we pass over our data many times.
+    #     # For example if our data came from CSV files and was not persisted,
+    #     # then the CSV files would have to be re-read on each pass. This is
+    #     # desirable if the data does not fit in RAM, but not slows down
+    #     # our computation otherwise.
+    #     X_train, X_test, y_train, y_test = dask.persist(
+    #         X_train, X_test, y_train, y_test
+    #     )
     if verbose:
         print(
             'Split X into training {} and test {} sets.'.format(
@@ -117,13 +212,41 @@ def logistic_model(
     # SAGA is a good solver for large datasets  both the number of samples
     # and the number of features) and supports l1 penalty.
     # https://stackoverflow.com/questions/38640109/logistic-regression-python-solvers-defintions
-    lr = LogisticRegression(
-        penalty='l1',
-        solver='saga',  # ‘liblinear’ and ‘saga’ also handle L1 penalty
-        C=sparsity,
-        n_jobs=n_jobs
-    )
-    lr.fit(X_train, y_train)
+    if use_dask:
+        # lr = dlm.LogisticRegression(
+        #     penalty='l1',
+        #     C=sparsity
+        # )
+        lr = LogisticRegression(
+            penalty='l1',
+            solver='saga',  # ‘liblinear’ and ‘saga’ also handle L1 penalty
+            C=sparsity,
+            n_jobs=-1
+        )
+        # NOTE: Could add scater = [X_train] to joblib call to give a
+        # local copy of X_train to each node.
+        # NOTE: If no nodes are yet available in Client, code below will throw
+        # error.
+        with joblib.parallel_backend('dask'):
+            with performance_report(
+                filename='{}-dask-ml-performance_report.html'.format(
+                    out_file
+                )
+            ):
+                with get_task_stream(
+                    filename='{}-dask-ml-task_stream.html'.format(
+                        out_file
+                    )
+                ):
+                    lr.fit(X_train, y_train)
+    else:
+        lr = LogisticRegression(
+            penalty='l1',
+            solver='saga',  # ‘liblinear’ and ‘saga’ also handle L1 penalty
+            C=sparsity,
+            n_jobs=n_jobs
+        )
+        lr.fit(X_train, y_train)
     if verbose:
         print('Completed: LogisticRegression.')
         print('Number of genes with > 0 coefficients:\t{}'.format(
@@ -138,9 +261,11 @@ def logistic_model(
     # supports this. Within sklearn, one could use bootstrapping instead
     # as well.
 
-    # y_prob = lr.predict_proba(X_test)
+    y_prob = lr.predict_proba(X_test)
+    # if use_dask:
+    #     y_prob = lr.predict_proba(X_test).compute()
     y_prob = pd.DataFrame(
-        lr.predict_proba(X_test),
+        y_prob,
         columns=lr.classes_
     )
     y_prob['cell_label_true'] = y_test
@@ -148,10 +273,16 @@ def logistic_model(
         print('Completed: predict_proba.')
 
     # Check out the performance of the model
-    # lr.score(X_train, y_train)
-    # lr.score(X_test, y_test)
+    score_train = lr.score(X_train, y_train)
+    score_test = lr.score(X_test, y_test)
+    # if use_dask:
+    #     score_train = score_train.compute()
+    #     score_test = score_test.compute()
+    if verbose:
+        print('Training score:{}'.format(str(score_train)))
+        print('Test score: {}'.format(str(score_test)))
 
-    return lr, y_prob
+    return lr, y_prob, score_train, score_test
 
 
 def main():
@@ -186,6 +317,8 @@ def main():
             (default: no downsampling)'
     )
 
+    # NOTE: could potentially use a grid search estimator to set this
+    # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV
     parser.add_argument(
         '-s', '--sparsity',
         action='store',
@@ -215,6 +348,16 @@ def main():
         default=4,
         type=int,
         help='Number of CPUs to use.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-d', '--dask_scale',
+        action='store',
+        dest='dask_scale',
+        default=0,
+        type=int,
+        help='Scale using Dask if > 0.\
             (default: %(default)s)'
     )
 
@@ -273,10 +416,10 @@ def main():
             adata.n_obs
         ))
 
+    # Set X to log1p_cp10k
+    adata.X = adata.layers['log1p_cp10k']
     # Set X to raw counts
-    adata.X = adata.layers['counts']
-    # Alternative: set X to log1p_cp10k
-    # adata.X = adata.layers['log1p_cp10k']
+    # adata.X = adata.layers['counts']
 
     # Ensure un-informative genes are filtered
     # sc.pp.filter_genes(adata, min_cells=5)
@@ -299,21 +442,33 @@ def main():
     # NOTE: no need to make dense with sklearn... can keep spase
     # X = pd.DataFrame(X.toarray())
 
+    use_dask = False
+    n_jobs = options.ncpu
+    if options.dask_scale > 0:
+        cluster, client = start_dask_lsfcluster(options.dask_scale)
+        use_dask = True
+        n_jobs = int(options.dask_scale*1.25)
+        print(client)
+
     # Here sparsity or C is the C param from
     # sklearn.linear_model.LogisticRegression
     # Inverse of regularization strength; must be a positive float.
     # Like in support vector machines, smaller values specify
     # stronger regularization.
-    lr, test_results = logistic_model(
+    lr, test_results, score_train, score_test = logistic_model(
         adata.X,
         adata.obs['cluster'].values,
         sparsity=options.sparsity,
         test_size=options.test_size,
-        n_jobs=options.ncpu,
+        n_jobs=n_jobs,
         standarize=True,
         with_mean=True,
-        verbose=verbose
+        verbose=verbose,
+        use_dask=use_dask,
+        out_file=out_file_base
     )
+    if use_dask:
+        cluster.close()
 
     # Save the model
     out_f = '{}-lr_model.joblib.gz'.format(out_file_base)

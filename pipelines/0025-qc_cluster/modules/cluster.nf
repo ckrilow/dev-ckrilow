@@ -168,6 +168,7 @@ process cluster_validate_resolution {
         echo "cluster_validate_resolution: ${process_info}"
         0057-scanpy_cluster_validate_resolution.py \
             --h5_anndata ${file__anndata} \
+            --dask_scale 500 \
             --number_cells ${number_cells} \
             --sparsity ${sparsity} \
             --test_size ${test_size} \
