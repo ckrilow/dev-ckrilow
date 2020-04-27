@@ -65,6 +65,11 @@ harmony:
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
+    number_neighbors:
+        description: 'Number of neighbors. If <= 0, uses number of unqiue
+            experiment_id.'
+        value:
+            - 15
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:

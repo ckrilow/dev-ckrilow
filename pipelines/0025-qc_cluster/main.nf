@@ -61,6 +61,7 @@ params.harmony = [
 ]
 // Default parameters for cluster calculations.
 params.cluster = [
+    number_neighbors: [value: [15, 20]],
     methods: [value: ["leiden", "louvain"]],
     resolutions: [value: [1.0, 3.0]]
 ]
@@ -327,6 +328,7 @@ workflow {
             subset_pcs.out.metadata,
             subset_pcs.out.pcs,
             subset_pcs.out.reduced_dims,
+            params.cluster.number_neighbors.value,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
             params.cluster_validate_resolution.number_cells.value,
@@ -344,6 +346,7 @@ workflow {
             harmony.out.metadata,
             harmony.out.pcs,
             harmony.out.reduced_dims,
+            params.cluster.number_neighbors.value,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
             params.cluster_validate_resolution.number_cells.value,
