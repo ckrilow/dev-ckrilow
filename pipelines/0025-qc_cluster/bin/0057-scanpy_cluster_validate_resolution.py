@@ -8,7 +8,7 @@ __version__ = '0.0.1'
 import argparse
 import os
 import numpy as np
-import scipy as sci
+import scipy as sp
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -90,7 +90,7 @@ def _create_colors(lr):
     n_cts = lr.classes_.shape[0]
     color_norm = colors.Normalize(vmin=-n_cts / 3, vmax=n_cts)
     ct_arr = np.arange(n_cts)
-    ct_colors = cm.YlOrRd(color_norm(ct_arr))
+    ct_colors = cm.YlGnBu(color_norm(ct_arr))
 
     return ct_colors
 
@@ -108,11 +108,147 @@ def plot_roc(y_prob, y_test, lr):
     plt.ylabel('TPR')
 
 
+def class_report(y_true, y_pred, y_score=None, average='macro'):
+    """
+    Build a text report showing the main classification metrics.
+
+    Replaces sklearn.metrics.classification_report.
+
+    Derived from:
+    https://stackoverflow.com/questions/39685740/calculate-sklearn-roc-auc-score-for-multi-class
+    """
+    if y_true.shape != y_pred.shape:
+        raise Exception(
+            'Error! y_true {} is not the same shape as y_pred {}'.format(
+                y_true.shape,
+                y_pred.shape
+            )
+        )
+
+    # Value counts of predictions
+    labels, cnt = np.unique(y_pred, return_counts=True)
+    n_classes = len(labels)
+    pred_cnt = pd.Series(cnt, index=labels)
+
+    # Compute precision, recall, F-measure and support for each class  The
+    # precision is the ratio tp / (tp + fp) where tp is the number of true
+    # positives and fp the number of false positives. The precision is
+    # intuitively the ability of the classifier not to label as positive a
+    # sample that is negative.  The recall is the ratio tp / (tp + fn) where tp
+    # is the number of true positives and fn the number of false negatives. The
+    # recall is intuitively the ability of the classifier to find all the
+    # positive samples.  The F-beta score can be interpreted as a weighted
+    # harmonic mean of the precision and recall, where an F-beta score reaches
+    # its best value at 1 and worst score at 0.   The F-beta score weights
+    # recall more than precision by a factor of beta. beta == 1.0 means recall
+    # and precision are equally important.
+    metrics_summary = metrics.precision_recall_fscore_support(
+        y_true=y_true,
+        y_pred=y_pred,
+        labels=labels
+    )
+    avg = list(metrics.precision_recall_fscore_support(
+        y_true=y_true,
+        y_pred=y_pred,
+        average='weighted'
+    ))
+
+    metrics_sum_index = ['precision', 'recall', 'f1-score', 'support']
+    class_report_df = pd.DataFrame(
+        list(metrics_summary),
+        index=metrics_sum_index,
+        columns=labels
+    )
+
+    support = class_report_df.loc['support']
+    total = support.sum()
+    class_report_df['avg / total'] = avg[:-1] + [total]
+
+    class_report_df = class_report_df.T
+    class_report_df['pred'] = pred_cnt
+    class_report_df['pred'].iloc[-1] = total
+
+    if not (y_score is None):
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for label_it, label in enumerate(labels):
+            fpr[label], tpr[label], _ = metrics.roc_curve(
+                (y_true == label).astype(int),
+                y_score[:, label_it]
+            )
+            roc_auc[label] = metrics.auc(fpr[label], tpr[label])
+
+        # NOTE: Micro will fail if we have a classification that is missing
+        # a prediction in the lm, for instance if it was not included in
+        # the training set. If this happens, then
+        # lb.transform(y_true).ravel() != y_score[:, 1].ravel()
+        if average == 'micro':
+            lb = preprocessing.LabelBinarizer()
+            if len(y_true.shape) == 1:
+                lb.fit(y_true)
+            elif average == 'micro':
+                raise Exception('Error with LabelBinarizer')
+
+            if n_classes <= 2:
+                fpr['avg / total'], tpr['avg / total'], _ = metrics.roc_curve(
+                    lb.transform(y_true).ravel(),
+                    y_score[:, 1].ravel()
+                )
+            else:
+                fpr['avg / total'], tpr['avg / total'], _ = metrics.roc_curve(
+                    lb.transform(y_true).ravel(),
+                    y_score.ravel()
+                )
+            roc_auc['avg / total'] = metrics.auc(
+                fpr['avg / total'],
+                tpr['avg / total']
+            )
+        elif average == 'macro':
+            # First aggregate all false positive rates
+            all_fpr = np.unique(np.concatenate([
+                fpr[i] for i in labels]
+            ))
+            # Then interpolate all ROC curves at this points
+            mean_tpr = np.zeros_like(all_fpr)
+            for i in labels:
+                mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+            # Finally average it and compute AUC
+            mean_tpr /= n_classes
+
+            fpr['macro'] = all_fpr
+            tpr['macro'] = mean_tpr
+
+            roc_auc['avg / total'] = metrics.auc(fpr['macro'], tpr['macro'])
+
+        class_report_df['AUC'] = pd.Series(roc_auc)
+
+    # Catch the case where true label not predicted in lr, perhaps because
+    # too few training cases.
+    for i in np.unique(y_true):
+        if i not in class_report_df.index:
+            print(
+                'Adding category ({}) from {}.'.format(
+                    i,
+                    'truth with no prediction to report'
+                )
+            )
+            class_report_df = class_report_df.append(pd.Series(
+                [np.nan]*len(class_report_df.columns),
+                index=class_report_df.columns,
+                name=i
+            ))
+
+    class_report_df = class_report_df.sort_index()
+
+    return class_report_df
+
+
 def logistic_model(
     X,
     cell_labels,
     sparsity=1.0,
-    test_size=0.25,
+    train_size_fraction=0.75,
     n_jobs=None,
     standarize=True,
     with_mean=False,
@@ -144,7 +280,7 @@ def logistic_model(
             with_mean=with_mean,
             with_std=True
         )
-        if with_mean and sci.sparse.issparse(X):
+        if with_mean and sp.sparse.issparse(X):
             X = X.todense()
         X_std = scaler.fit_transform(X)
         # X_std = (X / X.std()).dropna(1)  # Does not handle sparse matrix
@@ -173,12 +309,17 @@ def logistic_model(
     #     X_std = da.from_array(X_std, chunks=({0: 'auto', 1: -1}))
 
     # Split the data into training and test data.
-    # NOTE: does it make sense to stratify splitting by cell_lables?
+    # NOTE: If one does not use stratify, it is possible that a specific cell
+    #       type label will be completely missing in the final dataframe.
+    #       The stratify parameter makes a split so that the proportion of
+    #       values in the sample produced will be the same as the proportion
+    #       of values provided to parameter stratify.
     X_train, X_test, y_train, y_test = model_selection.train_test_split(
         X_std,
         cell_labels,
-        # stratify=cell_labels,
-        test_size=test_size
+        stratify=cell_labels,
+        random_state=61,
+        train_size=train_size_fraction
     )
     # if use_dask:
     #     # Calling dask.persist will preserve our data in memory, so no
@@ -217,11 +358,15 @@ def logistic_model(
         #     penalty='l1',
         #     C=sparsity
         # )
+        # NOTE: multi_class='ovr' may scale better than multinomial since
+        # each model is fit independantly?
         lr = LogisticRegression(
             penalty='l1',
             solver='saga',  # ‘liblinear’ and ‘saga’ also handle L1 penalty
             C=sparsity,
-            n_jobs=-1
+            random_state=23,
+            n_jobs=-1,
+            multi_class='multinomial'
         )
         # NOTE: Could add scater = [X_train] to joblib call to give a
         # local copy of X_train to each node.
@@ -244,14 +389,14 @@ def logistic_model(
             penalty='l1',
             solver='saga',  # ‘liblinear’ and ‘saga’ also handle L1 penalty
             C=sparsity,
-            n_jobs=n_jobs
+            n_jobs=n_jobs,
+            random_state=23,
+            # max_iter=4,  # Useful for debugging.
+            multi_class='multinomial'
         )
         lr.fit(X_train, y_train)
     if verbose:
         print('Completed: LogisticRegression.')
-        print('Number of genes with > 0 coefficients:\t{}'.format(
-            (lr.coef_ > 0).sum(1)
-        ))
 
     # NOTE: P-value estimation
     # https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
@@ -264,13 +409,30 @@ def logistic_model(
     y_prob = lr.predict_proba(X_test)
     # if use_dask:
     #     y_prob = lr.predict_proba(X_test).compute()
-    y_prob = pd.DataFrame(
+    y_prob_df = pd.DataFrame(
         y_prob,
         columns=lr.classes_
     )
-    y_prob['cell_label_true'] = y_test
+    y_prob_df['cell_label_true'] = y_test
     if verbose:
         print('Completed: predict_proba.')
+
+    # Make a classifier report
+    model_report = class_report(
+        y_true=y_test,
+        y_pred=lr.predict(X_test),
+        y_score=y_prob
+    )
+    # Add the number of cells in each class (index) in the
+    # (a) full dataset and (b) training dataset.
+    categories, counts = np.unique(cell_labels, return_counts=True)
+    cat_counts = dict(zip(categories, counts))
+    model_report['n_cells_full_dataset'] = model_report.index.map(cat_counts)
+    categories, counts = np.unique(y_train, return_counts=True)
+    cat_counts = dict(zip(categories, counts))
+    model_report['n_cells_training_dataset'] = model_report.index.map(
+        cat_counts
+    )
 
     # Check out the performance of the model
     score_train = lr.score(X_train, y_train)
@@ -279,10 +441,10 @@ def logistic_model(
     #     score_train = score_train.compute()
     #     score_test = score_test.compute()
     if verbose:
-        print('Training score:{}'.format(str(score_train)))
-        print('Test score: {}'.format(str(score_test)))
+        print('Training score:\t{}'.format(str(score_train)))
+        print('Test score:\t{}'.format(str(score_test)))
 
-    return lr, y_prob, score_train, score_test
+    return lr, model_report, y_prob_df, score_train, score_test
 
 
 def main():
@@ -332,12 +494,24 @@ def main():
     )
 
     parser.add_argument(
-        '-ts', '--test_size',
+        '-tsf', '--train_size_fraction',
         action='store',
-        dest='test_size',
-        default=0.33,
+        dest='train_size_fraction',
+        default=0.67,
         type=float,
-        help='Fraction of the data to use for test set.\
+        help='Fraction of the data to use for training set.\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-tsc', '--train_size_cells',
+        action='store',
+        dest='train_size_cells',
+        default=0,
+        type=int,
+        help='Number of cells to use for training set. If > 0 all\
+            remaining cells not randomly selected for training will be used\
+            for the test set. Overrides <train_size_fraction>.\
             (default: %(default)s)'
     )
 
@@ -345,7 +519,7 @@ def main():
         '-ncpu', '--number_cpu',
         action='store',
         dest='ncpu',
-        default=4,
+        default=1,
         type=int,
         help='Number of CPUs to use.\
             (default: %(default)s)'
@@ -368,7 +542,7 @@ def main():
         default='',
         help='Basename of output files, assuming output in current working \
             directory.\
-            (default: <h5_anndata>)'
+            (default: <h5_anndata_file_name>)'
     )
 
     options = parser.parse_args()
@@ -386,7 +560,7 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}'.format(
-            os.path.basename(options.h5.rstrip('.h5ad'))
+            os.path.basename(options.h5.rstrip('h5ad')).rstrip('.')
         )
 
     # Load the AnnData file.
@@ -409,12 +583,18 @@ def main():
         sc.pp.subsample(
             adata,
             n_obs=options.ncells,
+            random_state=231,
             copy=False
         )
         print('Cell downsample applied: {} dropped, {} remain.'.format(
             n_cells_start - adata.n_obs,
             adata.n_obs
         ))
+    categories, counts = np.unique(
+        adata.obs['cluster'].values,
+        return_counts=True
+    )
+    assert min(counts > 1), 'ERROR: smallest cluster has 1 cell.'
 
     # Set X to log1p_cp10k
     adata.X = adata.layers['log1p_cp10k']
@@ -442,12 +622,32 @@ def main():
     # NOTE: no need to make dense with sklearn... can keep spase
     # X = pd.DataFrame(X.toarray())
 
+    # If train_size_cells, override the fraction so that the total number of
+    # cells in the training set will be equal to train_size_cells.
+    train_size_fraction = options.train_size_fraction
+    if options.train_size_cells > 0:
+        if options.train_size_cells >= adata.n_obs:
+            raise Exception('Invalid train_size_cells.')
+        train_size_fraction = (
+            1 - ((adata.n_obs-options.train_size_cells)/adata.n_obs)
+        )
+        if verbose:
+            print('Set train_size_fraction to: {}.'.format(
+                train_size_fraction
+            ))
+    if verbose:
+        print('Number cells training ({}) and testing ({}).'.format(
+            int(train_size_fraction*adata.n_obs),
+            int((1-train_size_fraction)*adata.n_obs)
+        ))
+
+    # Set up dask cluster if needed.
     use_dask = False
     n_jobs = options.ncpu
     if options.dask_scale > 0:
         cluster, client = start_dask_lsfcluster(options.dask_scale)
         use_dask = True
-        n_jobs = int(options.dask_scale*1.25)
+        n_jobs = -1
         print(client)
 
     # Here sparsity or C is the C param from
@@ -455,11 +655,11 @@ def main():
     # Inverse of regularization strength; must be a positive float.
     # Like in support vector machines, smaller values specify
     # stronger regularization.
-    lr, test_results, score_train, score_test = logistic_model(
-        adata.X,
-        adata.obs['cluster'].values,
+    lr, model_report, test_results, score_train, score_test = logistic_model(
+        X=adata.X,
+        cell_labels=adata.obs['cluster'].values,
         sparsity=options.sparsity,
-        test_size=options.test_size,
+        train_size_fraction=train_size_fraction,
         n_jobs=n_jobs,
         standarize=True,
         with_mean=True,
@@ -486,8 +686,8 @@ def main():
 
     # Save the test results - each row is a cell and the columns are the prob
     # of that cell belonging to a particular class.
-    out_f = '{}-test_result.tsv.gz'.format(out_file_base)
-    test_results.to_csv(
+    out_f = '{}-model_report.tsv.gz'.format(out_file_base)
+    model_report.to_csv(
         out_f,
         sep='\t',
         index=False,
@@ -498,7 +698,56 @@ def main():
     if verbose:
         print('Completed: save {}.'.format(out_f))
 
-    # Save the ROC of the test and truth.
+    # Save the test results - each row is a cell and the columns are the prob
+    # of that cell belonging to a particular class.
+    out_f = '{}-test_result.tsv.gz'.format(out_file_base)
+    test_results.to_csv(
+        out_f,
+        sep='\t',
+        index=True,
+        index_label='class',
+        quoting=csv.QUOTE_NONNUMERIC,
+        na_rep='',
+        compression='gzip'
+    )
+    if verbose:
+        print('Completed: save {}.'.format(out_f))
+
+    # Plot the number of features with non-zero coefficients in each cluster.
+    out_f = '{}-n_features.pdf'.format(out_file_base)
+    df_plt = pd.DataFrame({
+        'classes': lr.classes_,
+        'features': (lr.coef_ > 0).sum(1)
+    })
+    df_plt = df_plt.set_index('classes')
+    # Add in catgories with no predictive model (e.g., becuase they were too
+    # few in training).
+    for i in adata.obs['cluster'].cat.categories:
+        if i not in df_plt.index:
+            df_plt = df_plt.append(pd.Series(
+                [0],
+                index=df_plt.columns,
+                name=i
+            ))
+    fig = plt.figure(figsize=(max(0.5*len(df_plt.index), 5), 4))
+    # plt.bar(lr.classes_, n_features)
+    plt.bar(df_plt.index, df_plt['features'])
+    plt.xlabel('Cluster')
+    plt.ylabel('Features with coefficient > 0')
+    plt.xticks(rotation=90)
+    for i in df_plt.index:
+        plt.annotate(
+            str(df_plt.loc[i, 'features']),
+            xy=(i, df_plt.loc[i, 'features'])
+        )
+    fig.savefig(
+        out_f,
+        dpi=300,
+        bbox_inches='tight'
+    )
+    plt.close(fig)
+
+    # Plot ROC of the test and truth.
     out_f = '{}-roc.pdf'.format(out_file_base)
     fig = plt.figure()
     cell_label_true = test_results.pop('cell_label_true')
@@ -508,6 +757,38 @@ def main():
         dpi=300,
         bbox_inches='tight'
     )
+    plt.close(fig)
+    if verbose:
+        print('Completed: save {}.'.format(out_f))
+
+    # Plot the AUC vs cluster size to see if smaller clusters have poorer AUC.
+    out_f = '{}-cluster_size_auc.pdf'.format(out_file_base)
+    df_plt = model_report.drop('avg / total').fillna(0)
+    fig = plt.figure()
+    plt.scatter(df_plt['n_cells_full_dataset'], df_plt['AUC'], alpha=0.5)
+    plt.xlabel('Number of cells in cluster (full dataset)')
+    plt.ylabel('AUC in training data')
+    fig.savefig(
+        out_f,
+        dpi=300,
+        bbox_inches='tight'
+    )
+    plt.xscale('log', basex=10)
+    # Add annotation of the cluster
+    for index, row in df_plt.iterrows():
+        plt.annotate(
+            index,  # this is the text
+            (row['n_cells_full_dataset'], row['AUC']),  # the point to label
+            textcoords='offset points',  # how to position the text
+            xytext=(0, 10),  # distance from text to points (x,y)
+            ha='center'   # horizontal alignment can be left, right or center
+        )
+    fig.savefig(
+        '{}-cluster_size_auc_log10.pdf'.format(out_file_base),
+        dpi=300,
+        bbox_inches='tight'
+    )
+    plt.close(fig)
     if verbose:
         print('Completed: save {}.'.format(out_f))
 
@@ -531,6 +812,50 @@ def main():
     )
     if verbose:
         print('Completed: save {}.'.format(out_f))
+
+
+def dev():
+    adata = sc.read_h5ad(filename='adata-normalized_pca-clustered.h5ad')
+    # sc.pp.subsample(
+    #     adata,
+    #     n_obs=2000,
+    #     copy=False
+    # )
+    categories, counts = np.unique(
+        adata.obs['cluster'].values,
+        return_counts=True
+    )
+    assert min(counts > 1), 'ERROR: smallest cluster has 1 cell.'
+
+    adata.X = adata.layers['log1p_cp10k']
+
+    X=adata.X
+    cell_labels=adata.obs['cluster'].values
+    sparsity=0.1
+    train_size_fraction=0.05
+    n_jobs=1
+    standarize=True
+    with_mean=True
+    verbose=True
+    use_dask=False
+    out_file='test'
+
+    lr = LogisticRegression(
+        penalty='l1',
+        solver='saga',  # ‘liblinear’ and ‘saga’ also handle L1 penalty
+        C=sparsity,
+        n_jobs=n_jobs,
+        max_iter=4,
+        multi_class='ovr'
+    )
+    lr.fit(X_train, y_train)
+
+    y_true=y_test
+    y_pred=lr.predict(X_test)
+    y_score=lr.predict_proba(X_test)
+
+    a, b = np.unique(y_pred, return_counts=True)
+    print(len(b))
 
 
 if __name__ == '__main__':

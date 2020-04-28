@@ -67,9 +67,10 @@ params.cluster = [
 ]
 // Default parameters for cluster resolution validation.
 params.cluster_validate_resolution = [
-    number_cells: [value: ["10000", "-1"]],
-    sparsity: [value: ["0.25", "0.1"]],
-    test_size: [value: ["0.33"]]
+    sparsity: [value: [0.25, 0.1]],
+    train_size_cells: [value: [10000, -1]],
+    //number_cells: [value: [10000, -1]],
+    //train_size_fraction: [value: [0.33]]
 ]
 // Default parameters for cluster marker gene calculations.
 params.cluster_marker = [
@@ -331,9 +332,10 @@ workflow {
             params.cluster.number_neighbors.value,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
-            params.cluster_validate_resolution.number_cells.value,
             params.cluster_validate_resolution.sparsity.value,
-            params.cluster_validate_resolution.test_size.value,
+            params.cluster_validate_resolution.train_size_cells.value,
+            // params.cluster_validate_resolution.number_cells.value,
+            // params.cluster_validate_resolution.train_size_fraction.value,
             params.cluster_marker.methods.value,
             params.umap.n_neighbors.value,
             params.umap.umap_init.value,
@@ -349,9 +351,10 @@ workflow {
             params.cluster.number_neighbors.value,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
-            params.cluster_validate_resolution.number_cells.value,
             params.cluster_validate_resolution.sparsity.value,
-            params.cluster_validate_resolution.test_size.value,
+            params.cluster_validate_resolution.train_size_cells.value,
+            // params.cluster_validate_resolution.number_cells.value,
+            // params.cluster_validate_resolution.train_size_fraction.value,
             params.cluster_marker.methods.value,
             params.umap.n_neighbors.value,
             params.umap.umap_init.value,

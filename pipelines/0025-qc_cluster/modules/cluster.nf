@@ -125,9 +125,10 @@ process cluster_validate_resolution {
         path(file__pcs)
         path(file__reduced_dims)
         path(file__clusters)
-        each number_cells
         each sparsity
-        each test_size
+        each train_size_cells
+        // each number_cells_downsample
+        // each train_size_fraction
 
     output:
         val(outdir, emit: outdir)
@@ -155,15 +156,29 @@ process cluster_validate_resolution {
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        // Add downsampling information.
         n_cells_downsample_txt = "none"
-        if (number_cells != "-1") {
-            n_cells_downsample_txt = "${number_cells}"
-        }
+        // cmd__dask = "--dask_scale 500"
+        // if (number_cells_downsample > 0) { // If downsample cells no dask
+        //     n_cells_downsample_txt = "${number_cells_downsample}"
+        //     cmd__dask = ""
+        // }
         outfile = "${outfile}-n_cells_downsample=${n_cells_downsample_txt}"
+        // Add sparsity information.
         sparsity_txt = "${sparsity}".replaceAll("\\.", "pt")
         outfile = "${outfile}-sparsity=${sparsity_txt}"
-        test_size_txt = "${test_size}".replaceAll("\\.", "pt")
-        outfile = "${outfile}-test_size=${test_size_txt}"
+        // Add training cell count size.
+        train_size_cells_txt = "none"
+        cmd__dask = "--dask_scale 500"
+        cmd__train_cells = ""
+        if (train_size_cells > 0) {
+            train_size_cells_txt = "${train_size_cells}"
+            cmd__train_cells = "--train_size_cells ${train_size_cells}"
+            cmd__dask = ""
+        }
+        outfile = "${outfile}-train_size_cells=${train_size_cells}"
+        // train_size_txt = "${train_size_fraction}".replaceAll("\\.", "pt")
+        // outfile = "${outfile}-train_size_fraction=${train_size_txt}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -171,16 +186,17 @@ process cluster_validate_resolution {
         echo "cluster_validate_resolution: ${process_info}"
         0057-scanpy_cluster_validate_resolution.py \
             --h5_anndata ${file__anndata} \
-            --dask_scale 500 \
-            --number_cells ${number_cells} \
             --sparsity ${sparsity} \
-            --test_size ${test_size} \
+            ${cmd__dask} \
+            ${cmd__train_cells} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
         """
+        // --number_cells ${number_cells_downsample} \
+        // --train_size_fraction ${train_size_fraction} \
 }
 
 
@@ -321,9 +337,10 @@ workflow wf__cluster {
         cluster__number_neighbors
         cluster__methods
         cluster__resolutions
-        cluster_validate_resolution__number_cells
         cluster_validate_resolution__sparsity
-        cluster_validate_resolution__test_size
+        cluster_validate_resolution__train_size_cells
+        // cluster_validate_resolution__number_cells
+        // cluster_validate_resolution__test_size
         cluster_marker__methods
         n_neighbors
         umap_init
@@ -349,9 +366,10 @@ workflow wf__cluster {
             cluster.out.pcs,
             cluster.out.reduced_dims,
             cluster.out.clusters,
-            cluster_validate_resolution__number_cells,
             cluster_validate_resolution__sparsity,
-            cluster_validate_resolution__test_size
+            cluster_validate_resolution__train_size_cells
+            // cluster_validate_resolution__number_cells,
+            // cluster_validate_resolution__test_size
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
