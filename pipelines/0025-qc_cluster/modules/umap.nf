@@ -33,12 +33,24 @@ process umap_calculate {
 
     output:
         val(outdir, emit: outdir)
-        path("${runid}-${outfile}.h5ad", emit: anndata)
-        path(file__reduced_dims, emit: reduced_dims)
+        tuple(
+            val("${in_file_id}"),
+            file("${runid}-${outfile}.h5ad"),
+            emit: anndata
+        )
 
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}"
+        // Get a unique identifier for the input file that will be later
+        // used as a key to merge umap jobs on the same input.
+        //
+        // Here the unique identifier is file__reduced_dims, since the reduced
+        // dims function does not change anndata but just writes a tsv file.
+        //
+        // If file__reduced_dims == file object, then use
+        // file__reduced_dims.name...
+        in_file_id = file__reduced_dims.toString().tokenize('-').get(0)
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
@@ -78,7 +90,7 @@ process umap_gather {
 
     input:
         val(outdir_prev)
-        path(files__anndata)
+        tuple(val(key), path(files__anndata))
 
     output:
         val(outdir, emit: outdir)
@@ -267,10 +279,12 @@ workflow wf__umap {
             umap_spread
         )
         // Gather step.
-        // umap_calculate.out.anndata.collect().view()
+        // Gather by tuple ... if we just to a collect, then will get all
+        // umap_calculate calls, not split by reduced_dims. See link below:
+        // http://nextflow-io.github.io/patterns/index.html#_process_outputs_into_groups
         umap_gather(
             outdir,
-            umap_calculate.out.anndata.collect()
+            umap_calculate.out.anndata.groupTuple()
         )
         // Make plots
         umap_plot_swarm(
