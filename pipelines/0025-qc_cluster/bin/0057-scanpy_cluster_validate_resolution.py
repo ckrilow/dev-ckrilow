@@ -768,6 +768,7 @@ def main():
     plt.scatter(df_plt['n_cells_full_dataset'], df_plt['AUC'], alpha=0.5)
     plt.xlabel('Number of cells in cluster (full dataset)')
     plt.ylabel('AUC in training data')
+    plt.ylim(0, 1)
     fig.savefig(
         out_f,
         dpi=300,
