@@ -51,7 +51,6 @@ def main():
 
     # Save normalized matrix
     out_f = '{}_X.h5'.format(opt.od)
-
     hf = h5py.File(out_f, 'w')
     hf.create_dataset('df', data=df, compression='gzip')
     hf.create_dataset('genes', data=df.columns, compression='gzip')
@@ -59,8 +58,9 @@ def main():
     hf.close()
 
     # Save metadata with cluster information
-    metadata = pd.DataFrame(adata.obs)
-    metadata.to_csv('obs.csv', sep='\t')
+    out_f1 = '{}obs.csv'.format(opt.od)
+    df1 = pd.DataFrame(adata.obs)
+    df1.to_csv(out_f1, sep='\t')
 
 
 if __name__ == '__main__':
