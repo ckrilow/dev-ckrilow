@@ -9,15 +9,13 @@ library(optparse)
 optionList <- list(
      optparse::make_option(c("-od", "--output_dir"),
                            type = "character",
-                           help = paste0("Basename of output files,
-                           assuming output in current working  directory."
+                           help = paste0("Output directory"
                            )
      ),
 
      optparse::make_option(c("-of", "--output_file"),
                            type = "character",
-                           help = paste0("Basename of output files,
-                           assuming output in current working  directory."
+                           help = paste0("Basename of output files"
                            )
      ),
 
