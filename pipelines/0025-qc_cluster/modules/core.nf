@@ -351,7 +351,8 @@ process harmony {
         outdir = "${outdir_prev}/reduced_dims-harmony"
         outdir = "${outdir}.n_pcs=${n_pcs}"
         outdir = "${outdir}.variables=${variables_and_thetas.variable}"
-        outdir = "${outdir}.thetas=${variables_and_thetas.theta}"
+        theta_str = "${variables_and_thetas.theta}" // .replaceAll("\\.", "pt")
+        outdir = "${outdir}.thetas=${theta_str}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"

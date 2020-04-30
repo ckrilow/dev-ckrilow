@@ -78,6 +78,17 @@ def main():
     )
 
     parser.add_argument(
+        '-nn', '--number_neighbors',
+        action='store',
+        dest='number_neighbors',
+        default=25,
+        type=int,
+        help='Number of neighbors. If <= 0, sets to the number of unique\
+            "experiment_id".\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
         '-ncpu', '--number_cpu',
         action='store',
         dest='ncpu',
@@ -150,10 +161,13 @@ def main():
     adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
 
     # Calculate neighbors for on the specified PCs.
+    number_neighbors = options.number_neighbors
+    if number_neighbors <= 0:
+        number_neighbors = len(adata.obs['experiment_id'].cat.categories)
     sc.pp.neighbors(
         adata,
         use_rep='X_pca',
-        # n_neighbors=10,
+        n_neighbors=options.number_neighbors,
         n_pcs=n_pcs,
         copy=False
     )
