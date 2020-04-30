@@ -288,7 +288,7 @@ workflow {
             normalize_and_pca.out.outdir,
             normalize_and_pca.out.metadata,
             params.lisi.variables.value,
-            subset_pcs.out.reduced_dims_params.collect()
+            lisi_input
         )
         // Scatter-gather UMAP plots
         wf__umap(
