@@ -60,6 +60,10 @@ params.harmony = [
         [variable: "experiment_id,bead_version", theta: "1.0,0.2"]
     ]]
 ]
+// Default parameters for lisi
+params.lisi = [
+    variables: [value: ["experiment_id,bead_version"]]
+]
 // Default parameters for cluster calculations.
 params.cluster = [
     number_neighbors: [value: [15, 20]],
@@ -283,7 +287,7 @@ workflow {
         lisi(
             normalize_and_pca.out.outdir,
             normalize_and_pca.out.metadata,
-            'experiment_id,ack_lysis_buffer',
+            params.lisi.variables.value,
             subset_pcs.out.reduced_dims_params.collect()
         )
         // Scatter-gather UMAP plots
