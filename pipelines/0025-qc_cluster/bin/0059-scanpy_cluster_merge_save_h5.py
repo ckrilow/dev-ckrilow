@@ -16,10 +16,8 @@ def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read AnnData object with cluster information. Merges clusters
-            based on number of DE genes between them (maximum_de). Saves
-            AnnData with additional columns that corresponds to cluster updates
-            through the merging iterations.
+            Read AnnData object with cluster information. Saves normalized \
+            matrix and cluster information as h5 and csv files.
             """
     )
 
