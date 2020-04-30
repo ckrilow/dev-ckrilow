@@ -7,7 +7,14 @@ library(hdf5r)
 library(optparse)
 
 optionList <- list(
-     optparse::make_option(c("-o", "--output_dir"),
+     optparse::make_option(c("-od", "--output_dir"),
+                           type = "character",
+                           help = paste0("Basename of output files,
+                           assuming output in current working  directory."
+                           )
+     ),
+
+     optparse::make_option(c("-of", "--output_file"),
                            type = "character",
                            help = paste0("Basename of output files,
                            assuming output in current working  directory."
@@ -31,7 +38,8 @@ optionList <- list(
 
 opt = parse_args(OptionParser(option_list=optionList))
 
-output.path=opt$o
+output.path=opt$od
+basename=opt$of
 max_de=opt$m #Maximum differentially expressed genes
 auc_diff=opt$a #Difference for AUC, truncate de genes
               #with: AUC < 0 + auc_diff and AUC > 1 - auc_diff
@@ -138,5 +146,5 @@ merging_progress=do.call(cbind,merging_progress)
 colnames(merging_progress) <- paste0("merge_step_",0:(k-1))
 rownames(merging_progress) <- colnames(seur)
 write.table(merging_progress,
-  file=file.path(output.path, 'merging_progress.tsv'),
+  file=file.path(output.path, basename),
   sep='\t')
