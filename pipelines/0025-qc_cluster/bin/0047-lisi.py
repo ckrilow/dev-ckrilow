@@ -225,13 +225,18 @@ def main():
             color='label',
         ))
         gplt = gplt + plt9.theme_bw(base_size=12)
-        gplt = gplt + plt9.stat_ecdf(alpha=0.5)
+        gplt = gplt + plt9.stat_ecdf(alpha=0.8)
         gplt = gplt + plt9.labs(
             x='LISI',
             y='Cumulative density',
             # color='Reduction',
             title=''
         )
+        if n_labels != 0 and n_labels < 9:
+            gplt = gplt + plt9.scale_color_brewer(
+                palette='Dark2',
+                type='qual'
+            )
         gplt.save(
             '{}-{}-ecdf.pdf'.format(out_file_base, lisi_column),
             dpi=300,
