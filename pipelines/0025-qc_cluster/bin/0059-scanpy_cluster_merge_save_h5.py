@@ -2,14 +2,15 @@
 
 
 __author__ = 'Monika Krzak'
-__date__ = '2020-04-29'
+__date__ = '2020-05-01'
 __version__ = '0.0.1'
 
 
 import argparse
-import pandas as pd
 import scanpy as sc
 import h5py
+import os
+import pandas as pd
 
 
 def main():
@@ -29,36 +30,26 @@ def main():
          help='H5 AnnData file.'
      )
 
-    parser.add_argument(
-        '-od', '--output_dir',
-        action='store',
-        dest='od',
-        default='tenx_from_adata',
-        help='Basename of output directory.\
-            (default: %(default)s)'
-    )
-
     opt = parser.parse_args()
 
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=opt.h5)
 
-    df = pd.DataFrame(adata._X)
-    df.index = adata.obs.index
-    df.columns = adata.var.index
-
-    # Save normalized matrix
-    out_f = '{}_X.h5'.format(opt.od)
-    hf = h5py.File(out_f, 'w')
-    hf.create_dataset('df', data=df, compression='gzip')
-    hf.create_dataset('genes', data=df.columns, compression='gzip')
-    hf.create_dataset('cells', data=df.index, compression='gzip')
+    # Save log1p cp10k matrix
+    out_file_base = os.path.basename('{}'.format(os.path.splitext(opt.h5)[0]))
+    hf = h5py.File('{}.h5'.format(out_file_base), 'w')
+    hf.create_dataset(
+                    'X',
+                    data=adata.layers['log1p_cp10k'].todense(),
+                    compression='gzip'
+    )
+    hf.create_dataset('genes', data=adata.var.index, compression='gzip')
+    hf.create_dataset('cells', data=adata.obs.index, compression='gzip')
+    hf.create_dataset(
+                    'cluster',
+                    data=pd.DataFrame(data=adata.obs['cluster']),
+                    compression='gzip')
     hf.close()
-
-    # Save metadata with cluster information
-    out_f1 = '{}obs.csv'.format(opt.od)
-    df1 = pd.DataFrame(adata.obs)
-    df1.to_csv(out_f1, sep='\t')
 
 
 if __name__ == '__main__':
