@@ -38,6 +38,11 @@ harmony:
               theta: '1.0'
             - variable: 'sanger_sample_id'
               theta: '2.0'
+lisi:
+    description: 'Parameters for Local Inverse Simpsons Index (LISI).'
+    variables:
+        description: 'Metadata variables to compute LISI over.'
+        value: 'sanger_sample_id,disease_status'
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
