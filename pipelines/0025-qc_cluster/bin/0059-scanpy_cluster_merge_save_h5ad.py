@@ -9,6 +9,7 @@ __version__ = '0.0.1'
 import argparse
 import pandas as pd
 import scanpy as sc
+import os
 
 
 def main():
@@ -29,17 +30,10 @@ def main():
      )
 
     parser.add_argument(
-        '-m', '--merging_progress_file',
+        '-m', '--merging_file',
         action='store',
         dest='od',
         help='Merging progress file.'
-    )
-
-    parser.add_argument(
-            '-o', '--output_dir',
-            action='store',
-            dest='od',
-            help='Output file directory.'
     )
 
     opt = parser.parse_args()
@@ -53,7 +47,8 @@ def main():
     adata.obs = pd.concat([adata.obs, merging_progress], axis=1)
 
     # Save Anndata to .h5ad
-    adata.write('{}adata_merged.h5ad'.format(opt.o), compression='gzip')
+    out_file_base = os.path.basename('{}'.format(os.path.splitext(opt.h5)[0]))
+    adata.write('{}_merged.h5ad'.format(out_file_base), compression='gzip')
 
 if __name__ == '__main__':
     main()
