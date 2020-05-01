@@ -1,5 +1,3 @@
-#!/usr/bin/env Rscript
-
 library(dmm)
 library(Seurat)
 library(ggplot2)
@@ -7,46 +5,48 @@ library(hdf5r)
 library(optparse)
 
 optionList <- list(
-     optparse::make_option(c("-od", "--output_dir"),
-                           type = "character",
-                           help = paste0("Output directory"
-                           )
-     ),
+  optparse::make_option(c("-i", "--input_file"),
+                        type = "character",
+                        help = paste0("Input h5 file"
+                        )
+  ),
 
-     optparse::make_option(c("-of", "--output_file"),
-                           type = "character",
-                           help = paste0("Basename of output files"
-                           )
-     ),
+  optparse::make_option(c("-o", "--output_file_basename"),
+                        type = "character",
+                        help = paste0("Basename of output file"
+                        )
+  ),
 
-    optparse::make_option(c("-m", "--maximum_de"),
-                          type = "numeric",
-                          help = paste0(
-                            ""
-                          )
-    ),
+  optparse::make_option(c("-m", "--maximum_de"),
+                        type = "numeric",
+                        help = paste0(
+                          ""
+                        )
+  ),
 
-    optparse::make_option(c("-a", "--auc_difference"),
-                          type="float",
-                          help = paste0(
-                            ""
-                          )
-    )
-    )
+  optparse::make_option(c("-a", "--auc_difference"),
+                        type="float",
+                        help = paste0(
+                          ""
+                        )
+  )
+)
+
 
 opt = parse_args(OptionParser(option_list=optionList))
 
-output.path=opt$od
-basename=opt$of
+input.file=opt$i
+output.file.basename=opt$o
 max_de=opt$m #Maximum differentially expressed genes
 auc_diff=opt$a #Difference for AUC, truncate de genes
-              #with: AUC < 0 + auc_diff and AUC > 1 - auc_diff
+#with: AUC < 0 + auc_diff and AUC > 1 - auc_diff
+
 
 
 # Data
-X=file.path(output.path, "_X.csv")
-X <- H5File$new(file.path(output.path, "_X.h5"), mode="r")
-M=X[['df']][1:X[['df']]$dims[1],1:X[['df']]$dims[2]]
+
+X <- H5File$new(input.file, mode="r")
+M=X[['X']][1:X[['X']]$dims[1],1:X[['X']]$dims[2]]
 cells=X[['cells']][1:X[['cells']]$dims]
 genes=X[['genes']][1:X[['genes']]$dims]
 df=as.data.frame(M)
@@ -54,13 +54,14 @@ colnames(df) <- cells
 rownames(df) <- genes
 
 # Metadata
-obs.file=file.path(output.path, "obs.csv")
-obs=read.csv(file = obs.file, sep = "\t",
-                              stringsAsFactors = FALSE,
-                              row.names = 1)
+
+obs=data.frame("cluster"=X[['cluster']][1, 1:X[['cluster']]$dims[2]])
+rownames(obs) <- cells
+
+# Seurat object
 
 seur <- CreateSeuratObject(counts=df, assay = "RNA", meta.data = obs)
-Idents(object=seur) <- factor(seur$leiden)
+Idents(object=seur) <- factor(seur$cluster)
 
 # Initialize
 
@@ -79,7 +80,7 @@ merging_progress[[k]] <- clusters_active
 while(update_min<max_de) {
 
   mmm=matrix(data=NA, nrow=length(clusters_unique),
-                      ncol=length(clusters_unique))
+             ncol=length(clusters_unique))
 
   for(j in 1:length(clusters_unique)){
     for(i in 1:length(clusters_unique)){
@@ -116,13 +117,13 @@ while(update_min<max_de) {
 
   if(length(cond) == 2){
     clusters_active=replace(clusters_active,
-      clusters_active==clusters_unique[cond[1]],
-      clusters_unique[cond[2]]) # merge clusters
+                            clusters_active==clusters_unique[cond[1]],
+                            clusters_unique[cond[2]]) # merge clusters
 
   } else if (length(cond) > 2){
     clusters_active=replace(clusters_active,
-      clusters_active==clusters_unique[cond[1,][1]],
-      clusters_unique[cond[1,][2]])  # merge clusters
+                            clusters_active==clusters_unique[cond[1,][1]],
+                            clusters_unique[cond[1,][2]])  # merge clusters
 
   }
 
@@ -144,5 +145,5 @@ merging_progress=do.call(cbind,merging_progress)
 colnames(merging_progress) <- paste0("merge_step_",0:(k-1))
 rownames(merging_progress) <- colnames(seur)
 write.table(merging_progress,
-  file=file.path(output.path, basename),
-  sep='\t')
+            file=paste0(output.file.basename, ".tsv"),
+            sep='\t')
