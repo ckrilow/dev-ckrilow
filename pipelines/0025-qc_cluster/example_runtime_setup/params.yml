@@ -87,12 +87,12 @@ cluster:
             - 3.0
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
-    number_cells:
-        description: 'Downsample number of cells to this number of total cells.
-            Set to -1 for no downsampling.'
+    train_size_cells:
+        description: 'Number of cells to use for training. Set to -1 for
+            to use defualt of 2/3 of total cells.'
         value:
             - -1
-            - 5000
+            - 4000
     sparsity:
         description: 'LogisticRegression sparsity or inverse of regularization
             strength; must be a positive float. Like in support vector
@@ -100,11 +100,6 @@ cluster_validate_resolution:
         value:
             - 0.1
             - 0.01
-            - 0.001
-    test_size:
-        description: 'Fraction of the data to use for test set.'
-        value:
-            - 0.33
 cluster_marker:
     description: 'Parameters for identifying cluster marker features.'
     methods:
