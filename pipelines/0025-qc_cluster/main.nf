@@ -15,6 +15,7 @@ include {
     normalize_and_pca;
     subset_pcs;
     harmony;
+    bbknn;
     lisi;
 } from "./modules/core.nf"
 include {
@@ -278,17 +279,29 @@ workflow {
             params.reduced_dims.n_dims.value,
             params.harmony.variables_and_thetas.value
         )
+        // Run BBKNN
+        bbknn(
+            normalize_and_pca.out.outdir,
+            normalize_and_pca.out.anndata,
+            normalize_and_pca.out.metadata,
+            normalize_and_pca.out.pcs,
+            normalize_and_pca.out.param_details,
+            params.reduced_dims.n_dims.value,
+            'experiment_id'
+        )
         // TODO: There is a bug below where lisi will be called for each
         // normalize_and_pca call. It just means there will be some duplicate
         // output files in each normalize_and_pca dir and a bit of wasted CPU.
         lisi_input = subset_pcs.out.reduced_dims_params.collect().mix(
             harmony.out.reduced_dims_params.collect()
+        ).mix(
+            bbknn.out.reduced_dims_params.collect()
         )
         lisi(
             normalize_and_pca.out.outdir,
             normalize_and_pca.out.metadata,
             params.lisi.variables.value,
-            lisi_input
+            lisi_input.collect()
         )
         // Scatter-gather UMAP plots
         wf__umap(

@@ -403,6 +403,75 @@ process harmony {
 }
 
 
+process bbknn {
+    // Calulates bbknn neighbors and saves UMAPS of these
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("normalized_pca.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("${param_details}.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        path(file__metadata)
+        path(file__pcs)
+        val(params__pcs)
+        each n_pcs
+        each batch_var
+
+    output:
+        val(outdir, emit: outdir)
+        path("*-bbknn.h5ad", emit: anndata)
+        path(file__metadata, emit: metadata)
+        path(file__pcs, emit: pcs)
+        path("${runid}-reduced_dims.tsv.gz", emit: reduced_dims)
+        // NOTE: passing the param details as an unpublished file is messy,
+        // but I could not get collect of ${param_details} and file to work.
+        path(
+            "reduced_dims-${param_details}.tsv.gz",
+            emit: reduced_dims_params
+        )
+
+    script:
+        runid = random_hex(16)
+        param_details = "${params__pcs}-bbknn"
+        param_details = "${param_details}.batch=${batch_var}"
+        param_details = "${param_details}.n_pcs=${n_pcs}"
+        outdir = "${outdir_prev}/reduced_dims-${param_details}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "bbknn: ${process_info}"
+        0045-bbknn.py \
+            --h5_anndata ${file__anndata} \
+            --batch_key ${batch_var} \
+            --n_pcs ${n_pcs} \
+            --output_file ${runid}-reduced_dims
+        cp ${runid}-reduced_dims.tsv.gz \
+            reduced_dims-${param_details}.tsv.gz
+        """
+}
+
+
 process lisi {
     // Takes a list of reduced_dims and calculates lisi
     // ------------------------------------------------------------------------

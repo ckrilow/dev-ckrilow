@@ -138,6 +138,7 @@ process cluster_validate_resolution {
         path(file__reduced_dims, emit: reduced_dims)
         path(file__clusters, emit: clusters)
         path("${runid}-${outfile}-lr_model.joblib.gz", emit: model)
+        path("${runid}-${outfile}-model_report.tsv.gz", emit: model_report)
         path(
             "${runid}-${outfile}-test_result.tsv.gz",
             emit: model_test_result
