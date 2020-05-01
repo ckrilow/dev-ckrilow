@@ -692,7 +692,7 @@ def main():
         col_add = 'cluster__{}'.format(key)
         model_report[col_add] = value
     # Add neighbors parameters.
-    for key, value in adata.uns['neighbors']['params']:
+    for key, value in adata.uns['neighbors']['params'].items():
         col_add = 'neighbors__{}'.format(key)
         model_report[col_add] = value
     # Save.
