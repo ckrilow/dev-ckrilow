@@ -596,8 +596,8 @@ def main():
     )
     assert min(counts > 1), 'ERROR: smallest cluster has 1 cell.'
 
-    # Set X to log1p_cp10k
-    adata.X = adata.layers['log1p_cp10k']
+    # Set X to cp10k
+    adata.X = np.expm1(adata.layers['log1p_cp10k'])
     # Set X to raw counts
     # adata.X = adata.layers['counts']
 
@@ -684,13 +684,24 @@ def main():
     if verbose:
         print('Completed: save {}.'.format(out_f))
 
-    # Save the test results - each row is a cell and the columns are the prob
-    # of that cell belonging to a particular class.
+    # Save the model_report - each row cluster.
+    # Add details on this call to the model report.
+    model_report['sparsity'] = options.sparsity
+    # Add resolution used to generate these clusters.
+    for key, value in adata.uns['cluster']['params'].items():
+        col_add = 'cluster__{}'.format(key)
+        model_report[col_add] = value
+    # Add neighbors parameters.
+    for key, value in adata.uns['neighbors']['params']:
+        col_add = 'neighbors__{}'.format(key)
+        model_report[col_add] = value
+    # Save.
     out_f = '{}-model_report.tsv.gz'.format(out_file_base)
     model_report.to_csv(
         out_f,
         sep='\t',
-        index=False,
+        index=True,
+        index_label='class',
         quoting=csv.QUOTE_NONNUMERIC,
         na_rep='',
         compression='gzip'
@@ -704,8 +715,8 @@ def main():
     test_results.to_csv(
         out_f,
         sep='\t',
-        index=True,
-        index_label='class',
+        # index=True,   # NOTE: Not adding the label to test_result index.
+        # index_label='cell_label',
         quoting=csv.QUOTE_NONNUMERIC,
         na_rep='',
         compression='gzip'
