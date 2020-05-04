@@ -223,8 +223,8 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}-{}-umap'.format(
-            os.path.basename(options.h5.rstrip('.h5ad')),
-            os.path.basename(options.pc.rstrip('.tsv.gz'))
+            os.path.basename(options.h5.rstrip('h5ad').rstrip('.')),
+            os.path.basename(options.pc.rstrip('tsv.gz').rstript('.'))
         )
 
     # Parse the neighbors iterations.
@@ -279,6 +279,9 @@ def main():
                 'Not calculating neighbors (ignoring n_neighbors parameter).'
             )
         )
+        # If we are using the pre-calculated neighbors drop npcs note.
+        if 'n_pcs' in adata.uns['neighbors']['params']:
+            n_pcs = adata.uns['neighbors']['params']['n_pcs']
     # adata.uns['neighbors__{}'.format(plt__label)] = adata.uns['neighbors']
 
     # TODO: add paga
