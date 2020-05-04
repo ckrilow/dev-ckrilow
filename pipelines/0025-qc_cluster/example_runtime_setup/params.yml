@@ -92,7 +92,7 @@ cluster_validate_resolution:
             to use defualt of 2/3 of total cells.'
         value:
             - -1
-            - 4000
+            - 1000
     sparsity:
         description: 'LogisticRegression sparsity or inverse of regularization
             strength; must be a positive float. Like in support vector
