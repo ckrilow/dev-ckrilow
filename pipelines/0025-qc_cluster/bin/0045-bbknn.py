@@ -17,8 +17,8 @@ def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read anndata object. Normalize, calculate PCs. Save new anndata
-            object along with csv file of PCs.
+            Read anndata object. Runs BBKNN. Assumes PCS have already been
+            calculated.
             """
     )
 
@@ -101,6 +101,7 @@ def main():
         n_pcs=n_pcs
     )
     adata.uns['neighbors']['bbknn'] = True
+    adata.uns['neighbors']['n_pcs'] = n_pcs
 
     # Save the resulting adata.
     adata.write(
