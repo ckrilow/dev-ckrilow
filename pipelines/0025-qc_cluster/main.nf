@@ -15,6 +15,7 @@ include {
     normalize_and_pca;
     subset_pcs;
     harmony;
+    bbknn;
     lisi;
 } from "./modules/core.nf"
 include {
@@ -25,6 +26,7 @@ include {
 include {
     wf__umap;
     wf__umap as wf__umap_harmony;
+    wf__umap as wf__umap_bbknn;
     // umap_calculate_and_plot;
     // umap_calculate_and_plot as umap_calculate_and_plot__harmony;
 } from "./modules/umap.nf"
@@ -278,17 +280,29 @@ workflow {
             params.reduced_dims.n_dims.value,
             params.harmony.variables_and_thetas.value
         )
+        // Run BBKNN
+        bbknn(
+            normalize_and_pca.out.outdir,
+            normalize_and_pca.out.anndata,
+            normalize_and_pca.out.metadata,
+            normalize_and_pca.out.pcs,
+            normalize_and_pca.out.param_details,
+            params.reduced_dims.n_dims.value,
+            'experiment_id'
+        )
         // TODO: There is a bug below where lisi will be called for each
         // normalize_and_pca call. It just means there will be some duplicate
         // output files in each normalize_and_pca dir and a bit of wasted CPU.
         lisi_input = subset_pcs.out.reduced_dims_params.collect().mix(
             harmony.out.reduced_dims_params.collect()
+        ).mix(
+            bbknn.out.reduced_dims_params.collect()
         )
         lisi(
             normalize_and_pca.out.outdir,
             normalize_and_pca.out.metadata,
             params.lisi.variables.value,
-            lisi_input
+            lisi_input.collect()
         )
         // Scatter-gather UMAP plots
         wf__umap(
@@ -311,6 +325,22 @@ workflow {
             // harmony.out.pcs,
             harmony.out.reduced_dims,
             params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value,
+            params.umap.colors_quantitative.value,
+            params.umap.colors_categorical.value
+        )
+        // NOTE: for BBKNN, we specifically pass the PCs to the reduced dims
+        ///      slot not the UMAPS.
+        // NOTE: for BBKNN n_neighbors is not needed since already calculated
+        wf__umap_bbknn(
+            bbknn.out.outdir,
+            bbknn.out.anndata,
+            // bbknn.out.metadata,
+            bbknn.out.pcs,
+            // bbknn.out.reduced_dims,
+            ['-1'],
             params.umap.umap_init.value,
             params.umap.umap_min_dist.value,
             params.umap.umap_spread.value,
