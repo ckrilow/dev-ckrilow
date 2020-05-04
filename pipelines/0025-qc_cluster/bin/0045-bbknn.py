@@ -7,12 +7,10 @@ __version__ = '0.0.1'
 
 import argparse
 import os
-import numpy as np
+# import numpy as np
 import pandas as pd
 import scanpy as sc
-import csv
-import time
-from datetime import timedelta
+# import csv
 
 
 def main():
@@ -102,7 +100,7 @@ def main():
         # neighbors_within_batch=5
         n_pcs=n_pcs
     )
-    adata.uns['neighbors']['backend'] = 'bbknn'
+    adata.uns['neighbors']['bbknn'] = True
 
     # Save the resulting adata.
     adata.write(
