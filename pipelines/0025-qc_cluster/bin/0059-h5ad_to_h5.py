@@ -28,15 +28,25 @@ def main():
          dest='h5',
          required=True,
          help='H5 AnnData file.'
-     )
+    )
 
-    opt = parser.parse_args()
+    parser.add_argument(
+         '-of', '--output_file',
+         action='store',
+         dest='of',
+         default='adata-log1p_cp10k',
+         help='Basename of output files, assuming output in current working \
+             directory.\
+             (default: %(default)s)'
+    )
+
+    options = parser.parse_args()
 
     # Load the AnnData file.
-    adata = sc.read_h5ad(filename=opt.h5)
+    adata = sc.read_h5ad(filename=options.h5)
 
     # Save log1p cp10k matrix
-    out_file_base = os.path.basename('{}'.format(os.path.splitext(opt.h5)[0]))
+    out_file_base = options.of
     hf = h5py.File('{}.h5'.format(out_file_base), 'w')
     hf.create_dataset(
                     'X',
