@@ -94,7 +94,7 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}-harmony'.format(
-            os.path.basename(options.pc.rstrip('.tsv.gz'))
+            os.path.basename(options.pc.rstrip('tsv.gz').rstrip('.'))
         )
 
     # Load the PCs.
