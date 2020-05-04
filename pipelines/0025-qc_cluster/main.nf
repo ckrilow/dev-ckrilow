@@ -26,6 +26,7 @@ include {
 include {
     wf__umap;
     wf__umap as wf__umap_harmony;
+    wf__umap as wf__umap_bbknn;
     // umap_calculate_and_plot;
     // umap_calculate_and_plot as umap_calculate_and_plot__harmony;
 } from "./modules/umap.nf"
@@ -324,6 +325,22 @@ workflow {
             // harmony.out.pcs,
             harmony.out.reduced_dims,
             params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value,
+            params.umap.colors_quantitative.value,
+            params.umap.colors_categorical.value
+        )
+        // NOTE: for BBKNN, we specifically pass the PCs to the reduced dims
+        ///      slot not the UMAPS.
+        // NOTE: for BBKNN n_neighbors is not needed since already calculated
+        wf__umap_bbknn(
+            bbknn.out.outdir,
+            bbknn.out.anndata,
+            // bbknn.out.metadata,
+            bbknn.out.pcs,
+            // bbknn.out.reduced_dims,
+            ['-1'],
             params.umap.umap_init.value,
             params.umap.umap_min_dist.value,
             params.umap.umap_spread.value,
