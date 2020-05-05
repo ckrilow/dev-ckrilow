@@ -276,6 +276,63 @@ process cluster_markers {
 }
 
 
+process merge_clusters {
+    // Merges clusters.
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        each maximum_de
+        each auc_difference
+
+    output:
+        val(outdir, emit: outdir)
+        path("${runid}-${outfile}-merged_clusters.h5ad", emit: anndata)
+        path("${runid}-${outfile}-merged_clusters.tsv.gz", emit: clusters)
+        path("plots/*.pdf") optional true
+        path("plots/*.png") optional true
+
+    script:
+        runid = random_hex(16)
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        outdir = "${outdir_prev}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "merge_clusters: ${process_info}"
+        0059-h5ad_to_h5.py \
+            --h5_anndata ${file__anndata} \
+            --output_file ${runid}-temp
+        0059-seurat_cluster_merge.R \
+            --input_file ${runid}-temp.h5 \
+            --output_file_basename ${runid}-${outfile}-merged_clusters \
+            --maximum_de ${maximum_de} \
+            --auc_difference ${auc_difference}
+        add_tsv_anndata_obs.py \
+            --h5_anndata ${file__anndata} \
+            --tsv_file ${runid}-${outfile}-merged_clusters.tsv.gz \
+            --out_file ${runid}-${outfile}-merged_clusters
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 process convert_seurat {
     // Converts anndata h5 file to a Seurat data object.
     // TODO: automatically add reduced_dims to Seurat data object.
@@ -398,5 +455,12 @@ workflow wf__cluster {
             cluster.out.reduced_dims,
             cluster.out.clusters,
             cluster_marker__methods
+        )
+        // Merge clusters
+        merge_clusters(
+            cluster.out.outdir,
+            cluster.out.anndata,
+            ['5'],
+            ['0.1']
         )
 }

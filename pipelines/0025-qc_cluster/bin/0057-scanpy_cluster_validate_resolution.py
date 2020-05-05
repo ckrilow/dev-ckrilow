@@ -434,6 +434,14 @@ def logistic_model(
         cat_counts
     )
 
+    # Compute p-values
+    # https://github.com/pachterlab/NYMP_2018/blob/master/10x_example-logR/10x_example_logR-TCC_notebook.ipynb
+    # k = 1
+    # gene_score = log_loss(logr_labels,pred)
+    # llf = -gene_score*(N1+N2)
+    # llr = llf-llnull
+    # llr_pval = stats.chi2.sf(2*llr, k) #survival function defined as 1-cdf
+
     # Check out the performance of the model
     score_train = lr.score(X_train, y_train)
     score_test = lr.score(X_test, y_test)
