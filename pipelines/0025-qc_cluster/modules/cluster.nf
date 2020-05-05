@@ -170,7 +170,8 @@ process cluster_validate_resolution {
         outfile = "${outfile}-sparsity=${sparsity_txt}"
         // Add training cell count size.
         train_size_cells_txt = "none"
-        cmd__dask = "--dask_scale 500"
+        // cmd__dask = "--dask_scale 20" // NOTE: uncomment to enable dask
+        cmd__dask = ""
         cmd__train_cells = ""
         if (train_size_cells > 0) {
             train_size_cells_txt = "${train_size_cells}"
