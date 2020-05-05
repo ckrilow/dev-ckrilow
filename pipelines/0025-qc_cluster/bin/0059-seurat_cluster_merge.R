@@ -131,8 +131,7 @@ main <- function() {
     merging_progress[[k]] <- clusters_active
 
 
-    #while(update_min<max_de) { # TODO change
-    while(k==1) {
+    while(update_min<max_de) { 
       print(paste0("k=",k))
       mmm=matrix(data=NA, nrow=length(clusters_unique),
                  ncol=length(clusters_unique))
