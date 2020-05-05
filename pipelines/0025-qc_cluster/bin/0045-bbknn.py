@@ -69,7 +69,7 @@ def main():
         '-of', '--output_file',
         action='store',
         dest='of',
-        default='adata-normalize_pca-reduced_dims',
+        default='adata-normalize_pca-bbknn',
         help='Directory and basename of output files.\
             (default: %(default)s)'
     )
@@ -105,8 +105,9 @@ def main():
 
     # Save the resulting adata.
     adata.write(
-        '{}-bbknn.h5ad'.format(
-            os.path.basename(options.h5.rstrip('h5ad').rstrip('.'))
+        '{}.h5ad'.format(
+            # os.path.basename(options.h5.rstrip('h5ad').rstrip('.'))
+            output_file
         ),
         compression='gzip'
     )
@@ -144,7 +145,7 @@ def main():
         ]
     )
     df_reduced_dims.to_csv(
-        '{}.tsv.gz'.format(output_file),
+        '{}-reduced_dims.tsv.gz'.format(output_file),
         sep='\t',
         index=True,
         index_label='cell_barcode',
