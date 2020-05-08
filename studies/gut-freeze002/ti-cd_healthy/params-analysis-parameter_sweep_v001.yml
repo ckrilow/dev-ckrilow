@@ -3,7 +3,8 @@ plots_qc:
         pairwise combinations of facet_columns and
         variable_columns_distribution_plots will be performed.'
     facet_columns:
-        description: 'Column to facet all QC plots by.'
+        description: 'Column to facet all QC plots by. Use "" to give no
+            facets'
         value:
             - ''
             - 'sanger_sample_id,sex,disease_status'
@@ -28,21 +29,28 @@ reduced_dims:
             harmony corrected PCs, and clusters.'
         value:
             - 30
-            - 50
 harmony:
     description: 'Parameters for harmony.'
     variables_and_thetas:
         description: 'Tuples of metadata columns and corresponding thetas.'
         value:
             - variable: 'sanger_sample_id'
-              theta: '0.5'
-            - variable: 'sanger_sample_id'
               theta: '1.0'
             - variable: 'sanger_sample_id'
               theta: '2.0'
+lisi:
+    description: 'Parameters for Local Inverse Simpsons Index (LISI).'
+    variables:
+        description: 'Metadata variables to compute LISI over.'
+        value: 'sanger_sample_id,disease_status'
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
+    number_neighbors:
+        description: 'Number of neighbors. If <= 0, uses number of unqiue
+            experiment_id.'
+        value:
+            - 33
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
@@ -50,21 +58,41 @@ cluster:
     resolutions:
         description: 'Clustering resolution.'
         value:
+            - 0.25
+            - 0.5
             - 1.0
+            - 1.5
+            - 2.0
             - 3.0
+cluster_validate_resolution:
+    description: 'Parameters for cluster resolution validation.'
+    train_size_cells:
+        description: 'Number of cells to use for training. Set to -1 for
+            to use defualt of 2/3 of total cells.'
+        value:
+            - 25000
+            - 50000
+            - 75000
+    sparsity:
+        description: 'LogisticRegression sparsity or inverse of regularization
+            strength; must be a positive float. Like in support vector
+            machines, smaller values specify stronger regularization.'
+        value:
+            - 0.1
+            - 0.01
+            - 0.005
 cluster_marker:
     description: 'Parameters for identifying cluster marker features.'
     methods:
         description: 'Method for marker detection.'
         value:
             - 'wilcoxon'
-            - 'logreg'
 umap:
     description: 'Parameters for umap.'
     colors_quantitative:
         description: 'Comma seperated string of quantitative variables that
             will be used to color points.'
-        value: 'total_reads,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
+        value: 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
     colors_categorical:
         description: 'Comma seperated string of categorical variables that
             will be used to color points.'
@@ -76,7 +104,9 @@ umap:
             this number to the number of experiments/samples is a good palce to
             start.'
         value:
-            - '15,25,33,50,75'
+            - 25
+            - 33
+            - 50
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
         value:
@@ -86,10 +116,16 @@ umap:
             Recommended value between 0-1. Note: values seperated with a comma
             will be run within the same script call (rather than swarm).'
         value:
-            - '0.0,0.25,0.5,1.0'
+            - 0.0
+            - 0.25
+            - 0.5
+            - 0.75
+            - 1.0
     umap_spread:
         description: 'The effective scale of embedded points.
             Recommended value between 0-3. Note: values seperated with a comma
             will be run within the same script call (rather than swarm).'
         value:
-            - '0.5,1.0,2.5'
+            - 0.5
+            - 1.0
+            - 2.5

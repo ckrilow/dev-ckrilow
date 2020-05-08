@@ -46,7 +46,7 @@ reduced_dims:
             indicate no regssion is to be performed.'
         value:
             - ''
-            - 'total_counts,lane'
+            - 'total_counts,pct_counts_mito_gene'
     n_dims:
         description: 'Number of dimensions to use for calculating PCs,
             harmony corrected PCs, and clusters.'
@@ -62,9 +62,19 @@ harmony:
               theta: '1.0'
             - variable: 'experiment_id,ack_lysis_buffer'
               theta: '1.0,0.2'
+lisi:
+    description: 'Parameters for Local Inverse Simpsons Index (LISI).'
+    variables:
+        description: 'Metadata variables to compute LISI over.'
+        value: 'sanger_sample_id,ack_lysis_buffer'
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
+    number_neighbors:
+        description: 'Number of neighbors. If <= 0, uses number of unqiue
+            experiment_id.'
+        value:
+            - 15
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
@@ -75,6 +85,21 @@ cluster:
         value:
             - 1.0
             - 3.0
+cluster_validate_resolution:
+    description: 'Parameters for cluster resolution validation.'
+    train_size_cells:
+        description: 'Number of cells to use for training. Set to -1 for
+            to use defualt of 2/3 of total cells.'
+        value:
+            - -1
+            - 1000
+    sparsity:
+        description: 'LogisticRegression sparsity or inverse of regularization
+            strength; must be a positive float. Like in support vector
+            machines, smaller values specify stronger regularization.'
+        value:
+            - 0.1
+            - 0.01
 cluster_marker:
     description: 'Parameters for identifying cluster marker features.'
     methods:
@@ -85,19 +110,19 @@ cluster_marker:
 umap:
     description: 'Parameters for umap.'
     colors_quantitative:
-        description: 'Comma seperated string of quantitative variables that
+        description: 'Comma separated string of quantitative variables that
             will be used to color points.'
-        value: 'total_reads'
+        value: 'total_reads,pct_counts_mito_gene'
     colors_categorical:
-        description: 'Comma seperated string of categorical variables that
+        description: 'Comma separated string of categorical variables that
             will be used to color points.'
-        value: 'experiment_id,ack_lysis_buffer'
+        value: 'experiment_id'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.
             Recommended value between 2-100. If you expect each cell type
             cluster to be shared across all experiments/samples, then setting
-            this number to the number of experiments/samples is a good palce to
-            start. Note: values seperated with a comma will be run within the
+            this number to the number of experiments/samples is a good place to
+            start. Note: values separated with a comma will be run within the
             same script call (rather than swarm).'
         value:
             - 15
@@ -110,7 +135,7 @@ umap:
             - 'spectral'
     umap_min_dist:
         description: 'The effective minimum distance between embedded points.
-            Recommended value between 0-1. Note: values seperated with a comma
+            Recommended value between 0-1. Note: values separated with a comma
             will be run within the same script call (rather than swarm).'
         value:
             - 0.0
@@ -118,7 +143,7 @@ umap:
             - 1.0
     umap_spread:
         description: 'The effective scale of embedded points.
-            Recommended value between 0-3. Note: values seperated with a comma
+            Recommended value between 0-3. Note: values separated with a comma
             will be run within the same script call (rather than swarm).'
         value:
             - 0.5

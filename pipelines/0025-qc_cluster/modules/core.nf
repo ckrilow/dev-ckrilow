@@ -95,7 +95,8 @@ process plot_qc {
         outdir = "${outdir_prev}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
         // Append run_id to output file.
         outfile = "${runid}-${outfile}"
         // Figure out if we are facetting the plot and update accordingly.
@@ -161,6 +162,7 @@ process normalize_and_pca {
             "${runid}-adata-normalized_pca-counts.h5ad",
             emit: anndata_filtered_counts
         )
+        val("${param_details}", emit: param_details)
         path("plots/*.pdf")
         path("plots/*.png") optional true
         // tuple(
@@ -173,15 +175,15 @@ process normalize_and_pca {
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}/normalize=total_count"
         // Add any variables we are regressing to the output dir.
+        param_details="vars_to_regress=none"
         if (vars_to_regress == "") {
-            outdir = "${outdir}.vars_to_regress=none"
             cmd__vars_to_regress = ""
         } else {
-            outdir = "${outdir}.vars_to_regress=${vars_to_regress}"
+            param_details = "vars_to_regress=${vars_to_regress}"
             cmd__vars_to_regress = "--vars_to_regress ${vars_to_regress}"
         }
+        outdir = "${outdir_prev}/normalize=total_count.${param_details}"
         // Add details on the genes we are exlcuding from hgv list.
         file_vge = "${file__genes_exclude_hvg.getSimpleName()}"
         outdir = "${outdir}.hvg_exclude=${file_vge}"
@@ -256,6 +258,8 @@ process subset_pcs {
                         null
                     } else if(filename.endsWith("pcs.tsv.gz")) {
                         null
+                    } else if(filename.endsWith("${param_details}.tsv.gz")) {
+                        null
                     } else {
                         filename.replaceAll("${runid}-", "")
                     }
@@ -268,6 +272,7 @@ process subset_pcs {
         path(file__anndata)
         path(file__metadata)
         path(file__pcs)
+        val(params__pcs)
         each n_pcs
 
     output:
@@ -276,6 +281,12 @@ process subset_pcs {
         path(file__metadata, emit: metadata)
         path(file__pcs, emit: pcs)
         path("${runid}-reduced_dims.tsv.gz", emit: reduced_dims)
+        // NOTE: passing the param details as an unpublished file is messy,
+        // but I could not get collect of ${param_details} and file to work.
+        path(
+            "reduced_dims-${param_details}.tsv.gz",
+            emit: reduced_dims_params
+        )
         // val(n_pcs, emit: n_pcs)
         // tuple(
         //     val(outdir),
@@ -285,8 +296,9 @@ process subset_pcs {
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}/reduced_dims-pca"
-        outdir = "${outdir}.n_pcs=${n_pcs}"
+        param_details = "${params__pcs}-pca"
+        param_details = "${param_details}.n_pcs=${n_pcs}"
+        outdir = "${outdir_prev}/reduced_dims-${param_details}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -296,6 +308,8 @@ process subset_pcs {
             --tsv_pcs ${file__pcs} \
             --number_pcs ${n_pcs} \
             --output_file ${runid}-reduced_dims
+        cp ${runid}-reduced_dims.tsv.gz \
+            reduced_dims-${param_details}.tsv.gz
         """
 }
 
@@ -303,6 +317,170 @@ process subset_pcs {
 process harmony {
     // Takes PCs (rows = cell barcodes) and metadata (rows = cell barcodes),
     // runs Harmony
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("normalized_pca.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("${param_details}.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        path(file__metadata)
+        path(file__pcs)
+        val(params__pcs)
+        each n_pcs
+        each variables_and_thetas
+
+    output:
+        val(outdir, emit: outdir)
+        path(file__anndata, emit: anndata)
+        path(file__metadata, emit: metadata)
+        path(file__pcs, emit: pcs)
+        path("${runid}-reduced_dims.tsv.gz", emit: reduced_dims)
+        // NOTE: passing the param details as an unpublished file is messy,
+        // but I could not get collect of ${param_details} and file to work.
+        path(
+            "reduced_dims-${param_details}.tsv.gz",
+            emit: reduced_dims_params
+        )
+        // val(n_pcs, emit: n_pcs)
+        // tuple(
+        //     val(outdir),
+        //     path("${runid}-reduced_dims.tsv.gz"),
+        //     val(n_pcs),
+        //     emit: results
+        // )
+
+    script:
+        runid = random_hex(16)
+        param_details = "${params__pcs}-harmony"
+        param_details = "${param_details}.n_pcs=${n_pcs}"
+        param_details = "${param_details}.variables=${variables_and_thetas.variable}"
+        outdir = "${outdir_prev}/reduced_dims-${param_details}"
+        outdir = "${outdir}.thetas=${variables_and_thetas.theta}"
+        theta_str = "${variables_and_thetas.theta}".replaceAll("\\.", "pt")
+        param_details = "${param_details}.thetas=${theta_str}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "harmony: ${process_info}"
+        0045-harmony_process_pcs.py \
+            --pca_file ${file__pcs} \
+            --metadata_file ${file__metadata} \
+            --metadata_columns ${variables_and_thetas.variable} \
+            --theta ${variables_and_thetas.theta} \
+            --n_pcs ${n_pcs} \
+            --out_file ${runid}-reduced_dims
+        cp ${runid}-reduced_dims.tsv.gz \
+            reduced_dims-${param_details}.tsv.gz
+        """
+        // NOTE: below code for harmony in R
+        // 0045-harmony_process_pcs.R \
+        //     --pca_file ${file__pcs} \
+        //     --metadata_file ${file__metadata} \
+        //     --metadata_columns ${variables_and_thetas.variable} \
+        //     --theta ${variables_and_thetas.theta} \
+        //     --n_pcs ${n_pcs} \
+        //     --out_file ${runid}-reduced_dims
+}
+
+
+process bbknn {
+    // Calulates bbknn neighbors and saves UMAPS of these
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("normalized_pca.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("${param_details}.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        path(file__metadata)
+        path(file__pcs)
+        val(params__pcs)
+        each n_pcs
+        each batch_var
+
+    output:
+        val(outdir, emit: outdir)
+        path("${runid}-${outfile}-bbknn.h5ad", emit: anndata)
+        path(file__metadata, emit: metadata)
+        path(file__pcs, emit: pcs)
+        path("${runid}-reduced_dims.tsv.gz", emit: reduced_dims)
+        // NOTE: passing the param details as an unpublished file is messy,
+        // but I could not get collect of ${param_details} and file to work.
+        path(
+            "reduced_dims-${param_details}.tsv.gz",
+            emit: reduced_dims_params
+        )
+
+    script:
+        runid = random_hex(16)
+        param_details = "${params__pcs}-bbknn"
+        param_details = "${param_details}.batch=${batch_var}"
+        param_details = "${param_details}.n_pcs=${n_pcs}"
+        outdir = "${outdir_prev}/reduced_dims-${param_details}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "bbknn: ${process_info}"
+        0045-bbknn.py \
+            --h5_anndata ${file__anndata} \
+            --batch_key ${batch_var} \
+            --n_pcs ${n_pcs} \
+            --output_file ${runid}-${outfile}-bbknn
+        cp ${runid}-${outfile}-bbknn-reduced_dims.tsv.gz \
+            reduced_dims-${param_details}.tsv.gz
+        mv ${runid}-${outfile}-bbknn-reduced_dims.tsv.gz \
+            ${runid}-reduced_dims.tsv.gz
+        """
+}
+
+
+process lisi {
+    // Takes a list of reduced_dims and calculates lisi
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
@@ -326,50 +504,43 @@ process harmony {
 
     input:
         val(outdir_prev)
-        path(file__anndata)
         path(file__metadata)
-        path(file__pcs)
-        each n_pcs
-        each variables_and_thetas
+        val(variables)
+        file(file__reduced_dims)
+        //tuple(val(label__reduced_dims), file(file__reduced_dims))
 
     output:
         val(outdir, emit: outdir)
-        path(file__anndata, emit: anndata)
         path(file__metadata, emit: metadata)
-        path(file__pcs, emit: pcs)
-        path("${runid}-reduced_dims.tsv.gz", emit: reduced_dims)
-        // val(n_pcs, emit: n_pcs)
-        // tuple(
-        //     val(outdir),
-        //     path("${runid}-reduced_dims.tsv.gz"),
-        //     val(n_pcs),
-        //     emit: results
-        // )
+        path("${runid}-${outfile}-lisi.tsv.gz", emit: clusters)
+        path("plots/*.pdf") optional true
+        path("plots/*.png") optional true
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}/reduced_dims-harmony"
-        outdir = "${outdir}.n_pcs=${n_pcs}"
-        outdir = "${outdir}.variables=${variables_and_thetas.variable}"
-        outdir = "${outdir}.thetas=${variables_and_thetas.theta}"
+        outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__metadata job.
+        outfile = "${file__metadata}".minus(".tsv.gz")
+            .split("-").drop(1).join("-")
+        file__reduced_dims = file__reduced_dims.join("::")
+        label__reduced_dims = file__reduced_dims
+            .replaceAll("reduced_dims-", "")
+            .replaceAll(".tsv.gz", "")
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "harmony: ${process_info}"
-        0045-harmony_process_pcs.py \
-            --pca_file ${file__pcs} \
-            --metadata_file ${file__metadata} \
-            --metadata_columns ${variables_and_thetas.variable} \
-            --theta ${variables_and_thetas.theta} \
-            --n_pcs ${n_pcs} \
-            --out_file ${runid}-reduced_dims
+        echo "lisi: ${process_info}"
+        0047-lisi.py \
+            --reduced_dims_tsv ${file__reduced_dims} \
+            --reduced_dims_tsv_labels ${label__reduced_dims} \
+            --metadata_tsv ${file__metadata} \
+            --metadata_columns ${variables} \
+            --perplexity 30 \
+            --output_file ${runid}-${outfile}-lisi
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
-        // 0045-harmony_process_pcs.R \
-        //     --pca_file ${file__pcs} \
-        //     --metadata_file ${file__metadata} \
-        //     --metadata_columns ${variables_and_thetas.variable} \
-        //     --theta ${variables_and_thetas.theta} \
-        //     --n_pcs ${n_pcs} \
-        //     --out_file ${runid}-reduced_dims
 }

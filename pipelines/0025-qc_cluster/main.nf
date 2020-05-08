@@ -15,15 +15,19 @@ include {
     normalize_and_pca;
     subset_pcs;
     harmony;
+    bbknn;
+    lisi;
 } from "./modules/core.nf"
 include {
     convert_seurat;
     wf__cluster;
     wf__cluster as wf__cluster_harmony;
+    wf__cluster as wf__cluster_bbknn;
 } from "./modules/cluster.nf"
 include {
     wf__umap;
     wf__umap as wf__umap_harmony;
+    wf__umap as wf__umap_bbknn;
     // umap_calculate_and_plot;
     // umap_calculate_and_plot as umap_calculate_and_plot__harmony;
 } from "./modules/umap.nf"
@@ -59,10 +63,22 @@ params.harmony = [
         [variable: "experiment_id,bead_version", theta: "1.0,0.2"]
     ]]
 ]
+// Default parameters for lisi
+params.lisi = [
+    variables: [value: ["experiment_id,bead_version"]]
+]
 // Default parameters for cluster calculations.
 params.cluster = [
+    number_neighbors: [value: [15, 20]],
     methods: [value: ["leiden", "louvain"]],
-    resolutions: [value: [1.0, 3.0]],
+    resolutions: [value: [1.0, 3.0]]
+]
+// Default parameters for cluster resolution validation.
+params.cluster_validate_resolution = [
+    sparsity: [value: [0.25, 0.1]],
+    train_size_cells: [value: [10000, -1]],
+    //number_cells: [value: [10000, -1]],
+    //train_size_fraction: [value: [0.33]]
 ]
 // Default parameters for cluster marker gene calculations.
 params.cluster_marker = [
@@ -214,7 +230,6 @@ workflow {
             // For some reason cannot use path here, must use file.
             file_cellmetadata = file(params.file_cellmetadata)
         }
-
         // Merge the samples, perform cell + gene filtering, add metadata.
         file_sample_qc = file(params.file_sample_qc)
         merge_samples(
@@ -253,6 +268,7 @@ workflow {
             normalize_and_pca.out.anndata,
             normalize_and_pca.out.metadata,
             normalize_and_pca.out.pcs,
+            normalize_and_pca.out.param_details,
             params.reduced_dims.n_dims.value
         )
         // "Correct" PCs using Harmony
@@ -261,8 +277,33 @@ workflow {
             normalize_and_pca.out.anndata,
             normalize_and_pca.out.metadata,
             normalize_and_pca.out.pcs,
+            normalize_and_pca.out.param_details,
             params.reduced_dims.n_dims.value,
             params.harmony.variables_and_thetas.value
+        )
+        // Run BBKNN
+        bbknn(
+            normalize_and_pca.out.outdir,
+            normalize_and_pca.out.anndata,
+            normalize_and_pca.out.metadata,
+            normalize_and_pca.out.pcs,
+            normalize_and_pca.out.param_details,
+            params.reduced_dims.n_dims.value,
+            'experiment_id'
+        )
+        // TODO: There is a bug below where lisi will be called for each
+        // normalize_and_pca call. It just means there will be some duplicate
+        // output files in each normalize_and_pca dir and a bit of wasted CPU.
+        lisi_input = subset_pcs.out.reduced_dims_params.collect().mix(
+            harmony.out.reduced_dims_params.collect()
+        ).mix(
+            bbknn.out.reduced_dims_params.collect()
+        )
+        lisi(
+            normalize_and_pca.out.outdir,
+            normalize_and_pca.out.metadata,
+            params.lisi.variables.value,
+            lisi_input.collect()
         )
         // Scatter-gather UMAP plots
         wf__umap(
@@ -291,7 +332,23 @@ workflow {
             params.umap.colors_quantitative.value,
             params.umap.colors_categorical.value
         )
-        // // Make UMAPs of the reduced dimensions - no scatter gather
+        // NOTE: for BBKNN, we specifically pass the PCs to the reduced dims
+        ///      slot not the UMAPS.
+        // NOTE: for BBKNN n_neighbors is not needed since already calculated
+        wf__umap_bbknn(
+            bbknn.out.outdir,
+            bbknn.out.anndata,
+            // bbknn.out.metadata,
+            bbknn.out.pcs,
+            // bbknn.out.reduced_dims,
+            ['-1'],  // params.cluster.number_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value,
+            params.umap.colors_quantitative.value,
+            params.umap.colors_categorical.value
+        )
+        // Make UMAPs of the reduced dimensions - no scatter gather
         // umap_calculate_and_plot(
         //     subset_pcs.out.outdir,
         //     subset_pcs.out.anndata,
@@ -322,8 +379,13 @@ workflow {
             subset_pcs.out.metadata,
             subset_pcs.out.pcs,
             subset_pcs.out.reduced_dims,
+            params.cluster.number_neighbors.value,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
+            params.cluster_validate_resolution.sparsity.value,
+            params.cluster_validate_resolution.train_size_cells.value,
+            // params.cluster_validate_resolution.number_cells.value,
+            // params.cluster_validate_resolution.train_size_fraction.value,
             params.cluster_marker.methods.value,
             params.umap.n_neighbors.value,
             params.umap.umap_init.value,
@@ -336,10 +398,34 @@ workflow {
             harmony.out.metadata,
             harmony.out.pcs,
             harmony.out.reduced_dims,
+            params.cluster.number_neighbors.value,
             params.cluster.methods.value,
             params.cluster.resolutions.value,
+            params.cluster_validate_resolution.sparsity.value,
+            params.cluster_validate_resolution.train_size_cells.value,
+            // params.cluster_validate_resolution.number_cells.value,
+            // params.cluster_validate_resolution.train_size_fraction.value,
             params.cluster_marker.methods.value,
             params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value
+        )
+        wf__cluster_bbknn(
+            bbknn.out.outdir,
+            bbknn.out.anndata,
+            bbknn.out.metadata,
+            bbknn.out.pcs,
+            bbknn.out.reduced_dims,
+            ['-1'],  // params.cluster.number_neighbors.value,
+            params.cluster.methods.value,
+            params.cluster.resolutions.value,
+            params.cluster_validate_resolution.sparsity.value,
+            params.cluster_validate_resolution.train_size_cells.value,
+            // params.cluster_validate_resolution.number_cells.value,
+            // params.cluster_validate_resolution.train_size_fraction.value,
+            params.cluster_marker.methods.value,
+            ['-1'],  // params.umap.n_neighbors.value,
             params.umap.umap_init.value,
             params.umap.umap_min_dist.value,
             params.umap.umap_spread.value
