@@ -287,6 +287,16 @@ def main():
     )
 
     parser.add_argument(
+        '--force_recalculate_neighbors',
+        action='store_true',
+        dest='calculate_neighbors',
+        default=False,
+        help='Calculate neighbor graph even if it already exists in the\
+            AnnData (which it my do so if you already ran BBKNN).\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
         '-ncpu', '--number_cpu',
         action='store',
         dest='ncpu',
@@ -363,8 +373,8 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}-{}-umap'.format(
-            os.path.basename(options.h5.rstrip('.h5ad')),
-            os.path.basename(options.pc.rstrip('.tsv.gz'))
+            os.path.basename(options.h5.rstrip('h5ad').rstrip('.')),
+            os.path.basename(options.pc.rstrip('tsv.gz').rstrip('.'))
         )
     # Append the parameters to the output file.
     out_file_base = '{},number_pcs={}'.format(
@@ -433,20 +443,23 @@ def main():
             # Recommended in parameter documentation:
             # https://umap-learn.readthedocs.io/en/latest/api.html
             warnings.warn(
-                'WARNING: it is suggested to set n_neighbors to a value',
-                'between 2-100.'
+                'WARNING: it is suggested to set n_neighbors to a {}'.format(
+                    'value between 2-100.'
+                )
             )
         if not (0.0 <= i__min_dist <= 1.0):
             # Recommended here: https://github.com/lmcinnes/umap/issues/249
             warnings.warn(
-                'WARNING: it is suggested to set umap_min_dist to a value',
-                'between 0-1.'
+                'WARNING: it is suggested to set umap_min_dist to a {}'.format(
+                    'value between 0-1.'
+                )
             )
         if not (0.0 <= i__spread <= 3.0):
             # Recommendation based on single cell experience.
             warnings.warn(
-                'WARNING: it is suggested to set umap_spread to a value',
-                'between 0-3.'
+                'WARNING: it is suggested to set umap_spread to a {}'.format(
+                    'value between 0-3.'
+                )
             )
 
         # Set the plot label.
@@ -469,13 +482,28 @@ def main():
 
         # Calculate neighbors for on the specified PCs.
         # By default saved to adata.uns['neighbors']
-        sc.pp.neighbors(
-            adata,
-            use_rep='X_pca',
-            n_pcs=n_pcs,
-            n_neighbors=i__n_neighbors,  # Scanpy default = 15
-            copy=False
-        )
+        #
+        # First, however, check to see if adata.uns['neighbors'] already exists
+        # ...and unless the user tells us not to, use that slot, not calculate
+        # neighbors. This default behaviour is to accommodate the instance when
+        # bbknn has been run on the data.
+        if 'neighbors' not in adata.uns or options.calculate_neighbors:
+            sc.pp.neighbors(
+                adata,
+                use_rep='X_pca',
+                n_pcs=n_pcs,
+                n_neighbors=i__n_neighbors,  # Scanpy default = 15
+                copy=False
+            )
+        else:
+            warnings.warn(
+                'WARNING: found neighbors slot in adata.uns. {}'.format(
+                    'Not calculating neighbors (ignoring n_neighbors).'
+                )
+            )
+            # If we are using the pre-calculated neighbors drop npcs note.
+            if 'n_pcs' in adata.uns['neighbors']['params']:
+                n_pcs = adata.uns['neighbors']['params']['n_pcs']
         adata.uns['neighbors__{}'.format(plt__label)] = adata.uns['neighbors']
 
         # TODO: add paga

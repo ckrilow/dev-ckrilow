@@ -22,6 +22,7 @@ include {
     convert_seurat;
     wf__cluster;
     wf__cluster as wf__cluster_harmony;
+    wf__cluster as wf__cluster_bbknn;
 } from "./modules/cluster.nf"
 include {
     wf__umap;
@@ -340,7 +341,7 @@ workflow {
             // bbknn.out.metadata,
             bbknn.out.pcs,
             // bbknn.out.reduced_dims,
-            ['-1'],
+            ['-1'],  // params.cluster.number_neighbors.value,
             params.umap.umap_init.value,
             params.umap.umap_min_dist.value,
             params.umap.umap_spread.value,
@@ -406,6 +407,25 @@ workflow {
             // params.cluster_validate_resolution.train_size_fraction.value,
             params.cluster_marker.methods.value,
             params.umap.n_neighbors.value,
+            params.umap.umap_init.value,
+            params.umap.umap_min_dist.value,
+            params.umap.umap_spread.value
+        )
+        wf__cluster_bbknn(
+            bbknn.out.outdir,
+            bbknn.out.anndata,
+            bbknn.out.metadata,
+            bbknn.out.pcs,
+            bbknn.out.reduced_dims,
+            ['-1'],  // params.cluster.number_neighbors.value,
+            params.cluster.methods.value,
+            params.cluster.resolutions.value,
+            params.cluster_validate_resolution.sparsity.value,
+            params.cluster_validate_resolution.train_size_cells.value,
+            // params.cluster_validate_resolution.number_cells.value,
+            // params.cluster_validate_resolution.train_size_fraction.value,
+            params.cluster_marker.methods.value,
+            ['-1'],  // params.umap.n_neighbors.value,
             params.umap.umap_init.value,
             params.umap.umap_min_dist.value,
             params.umap.umap_spread.value

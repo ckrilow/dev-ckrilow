@@ -10,6 +10,7 @@ import os
 import pandas as pd
 import scanpy as sc
 import csv
+import warnings
 import plotnine as plt9
 
 
@@ -89,6 +90,16 @@ def main():
     )
 
     parser.add_argument(
+        '--force_recalculate_neighbors',
+        action='store_true',
+        dest='calculate_neighbors',
+        default=False,
+        help='Calculate neighbor graph even if it already exists in the\
+            AnnData (which it my do so if you already ran BBKNN).\
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
         '-ncpu', '--number_cpu',
         action='store',
         dest='ncpu',
@@ -160,17 +171,34 @@ def main():
     # Add the reduced dimensions to the AnnData object.
     adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
 
+    # Check if BBKNN
     # Calculate neighbors for on the specified PCs.
-    number_neighbors = options.number_neighbors
-    if number_neighbors <= 0:
-        number_neighbors = len(adata.obs['experiment_id'].cat.categories)
-    sc.pp.neighbors(
-        adata,
-        use_rep='X_pca',
-        n_neighbors=options.number_neighbors,
-        n_pcs=n_pcs,
-        copy=False
-    )
+    # By default saved to adata.uns['neighbors']
+    #
+    # First, however, check to see if adata.uns['neighbors'] already exists
+    # ...and unless the user tells us not to, use that slot, not calculating
+    # neighbors. This default behaviour is to accommodate the instance when
+    # bbknn has been run on the data.
+    if 'neighbors' not in adata.uns or options.calculate_neighbors:
+        number_neighbors = options.number_neighbors
+        if number_neighbors <= 0:
+            number_neighbors = len(adata.obs['experiment_id'].cat.categories)
+        sc.pp.neighbors(
+            adata,
+            use_rep='X_pca',
+            n_neighbors=options.number_neighbors,
+            n_pcs=n_pcs,
+            copy=False
+        )
+    else:
+        warnings.warn(
+            'WARNING: found neighbors slot in adata.uns. {}'.format(
+                'Not calculating neighbors (ignoring n_neighbors parameter).'
+            )
+        )
+        # If we are using the pre-calculated neighbors drop npcs note.
+        if 'n_pcs' in adata.uns['neighbors']['params']:
+            n_pcs = adata.uns['neighbors']['params']['n_pcs']
 
     # Run the clustering, choosing either leiden or louvain algorithms
     cluster_method = options.cm
@@ -241,131 +269,6 @@ def main():
         width=4,
         height=4
     )
-
-    # if verbose:
-    # print('Finished clustering and saved clustered AnnData.')
-    # # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
-    # #
-    # # Identify cell type makers.
-    # # Wilcoxon is recommended over t-test in this paper:
-    # # https://www.nature.com/articles/nmeth.4612.
-    # # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
-    # #       'scores', 'names', 'logfoldchanges', 'pvals', 'pvals_adj']
-    # sc.tl.rank_genes_groups(
-    #     adata,
-    #     groupby='cluster',
-    #     groups='all',
-    #     reference='rest',
-    #     method='wilcoxon',
-    #     n_genes=100,
-    #     corr_method='bonferroni'
-    # )
-    #
-    # # Other options for cell type marker identification:
-    # # MAST, limma, DESeq2, diffxpy, logreg
-    #
-    # # Rank genes by logistic regression (multi-variate appraoch), suggested by:
-    # # https://doi.org/10.1101/258566
-    # # NOTE: adata.uns['rank_genes_groups'].keys() = ['params',
-    # #       'scores', 'names']
-    # # sc.tl.rank_genes_groups(
-    # #     adata,
-    # #     groupby=cluster_method,
-    # #     groups='all',
-    # #     reference='rest',
-    # #     method='logreg'
-    # # )
-    #
-    # # Save the ranks.
-    # results_dict = dict()
-    # for cluster_i in adata.uns['rank_genes_groups']['names'].dtype.names:
-    #     # print(cluster_i)
-    #     # Get keys that we want from the dataframe.
-    #     data_keys = list(
-    #         set(['names', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj']) &
-    #         set(adata.uns['rank_genes_groups'].keys())
-    #     )
-    #     # Build a table using these keys.
-    #     key_i = data_keys.pop()
-    #     results_dict[cluster_i] = pd.DataFrame(
-    #         row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
-    #     )
-    #     results_dict[cluster_i].columns = [key_i]
-    #     for key_i in data_keys:
-    #         results_dict[cluster_i][key_i] = [
-    #             row[cluster_i] for row in adata.uns['rank_genes_groups'][key_i]
-    #         ]
-    #     results_dict[cluster_i]['cluster'] = cluster_i
-    # marker_df = pd.concat(results_dict, ignore_index=True)
-    #
-    # # Clean up naming.
-    # marker_df = marker_df.rename(
-    #     columns={'names': 'ensembl_gene_id'},
-    #     inplace=False
-    # )
-    #
-    # # Add gene_symbols.
-    # marker_df = marker_df.set_index('ensembl_gene_id', inplace=False)
-    # marker_df = marker_df.join(
-    #     adata.var[['gene_symbols']],
-    #     how='left'
-    # )
-    # marker_df = marker_df.reset_index(drop=False)
-    # marker_df = marker_df.rename(
-    #     columns={'index': 'ensembl_gene_id'},
-    #     inplace=False
-    # )
-    #
-    # # Save the marker dataframe.
-    # marker_df.to_csv(
-    #     '{}-cluster_markers.tsv.gz'.format(out_file_base),
-    #     sep='\t',
-    #     index=True,
-    #     quoting=csv.QUOTE_NONNUMERIC,
-    #     na_rep='',
-    #     compression='gzip'
-    # )
-    #
-    # # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
-    # # Plot cell type makers.
-    # # Annoyingly, prefix hardcoded as rank_genes_groups_<cluster_id>.
-    # sc.pl.rank_genes_groups(
-    #     adata,
-    #     gene_symbols='gene_symbols',
-    #     n_genes=25,
-    #     sharey=False,
-    #     show=False,
-    #     save='-{}.pdf'.format(out_file_base)
-    # )
-    #
-    # # Plot cell type markers in dotplot.
-    # # Annoyingly, prefix hardcoded as dotplot.
-    # # sc.pl.rank_genes_groups_dotplot(
-    # #     adata,
-    # #     n_genes=25,
-    # #     sharey=False,
-    # #     show=False,
-    # #     save='-{}.pdf'.format(out_file_base)
-    # # )
-    #
-    # # Sort by scores: same order as p-values except most methods return scores.
-    # marker_df = marker_df.sort_values(by=['scores'], ascending=False)
-    # # Make dataframe of the top 5 markers per cluster
-    # marker_df_plt = marker_df.groupby('cluster').head(3)
-    #
-    # # TODO: Check what data is being used here: raw, lognorm, or norm+scaled?
-    # # Plot cell type markers in dotplot.
-    # # Annoyingly, prefix hardcoded as dotplot.
-    # sc.pl.dotplot(
-    #     adata,
-    #     marker_df_plt['ensembl_gene_id'].to_list(),
-    #     groupby='cluster',
-    #     dendrogram=True,
-    #     # gene_symbols='gene_symbols',
-    #     use_raw=True,
-    #     show=False,
-    #     save='_ensembl-{}.pdf'.format(out_file_base)
-    # )
 
 
 if __name__ == '__main__':

@@ -95,7 +95,8 @@ process plot_qc {
         outdir = "${outdir_prev}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
         // Append run_id to output file.
         outfile = "${runid}-${outfile}"
         // Figure out if we are facetting the plot and update accordingly.
@@ -439,7 +440,7 @@ process bbknn {
 
     output:
         val(outdir, emit: outdir)
-        path("*-bbknn.h5ad", emit: anndata)
+        path("${runid}-${outfile}-bbknn.h5ad", emit: anndata)
         path(file__metadata, emit: metadata)
         path(file__pcs, emit: pcs)
         path("${runid}-reduced_dims.tsv.gz", emit: reduced_dims)
@@ -456,6 +457,10 @@ process bbknn {
         param_details = "${param_details}.batch=${batch_var}"
         param_details = "${param_details}.n_pcs=${n_pcs}"
         outdir = "${outdir_prev}/reduced_dims-${param_details}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -465,9 +470,11 @@ process bbknn {
             --h5_anndata ${file__anndata} \
             --batch_key ${batch_var} \
             --n_pcs ${n_pcs} \
-            --output_file ${runid}-reduced_dims
-        cp ${runid}-reduced_dims.tsv.gz \
+            --output_file ${runid}-${outfile}-bbknn
+        cp ${runid}-${outfile}-bbknn-reduced_dims.tsv.gz \
             reduced_dims-${param_details}.tsv.gz
+        mv ${runid}-${outfile}-bbknn-reduced_dims.tsv.gz \
+            ${runid}-reduced_dims.tsv.gz
         """
 }
 
