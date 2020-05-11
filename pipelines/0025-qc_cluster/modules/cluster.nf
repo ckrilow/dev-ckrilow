@@ -295,6 +295,63 @@ process cluster_validate_resolution_keras {
 }
 
 
+process plot_resolution_by_auc {
+    // Plot the AUC from validation models across resolutions
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("clustered.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("reduced_dims.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("clustered.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(files__model_report)
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png") optional true
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        files__model_report = files__model_report.join('::')
+        outfile = "resolution_tuning"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_resolution_by_auc: ${process_info}"
+        0058-plot_resolution.py \
+            --model_reports ${files__model_report} \
+            --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 process cluster_markers {
     // Find markers for clusters.
     // ------------------------------------------------------------------------
@@ -531,6 +588,11 @@ workflow wf__cluster {
             cluster.out.reduced_dims,
             cluster.out.clusters,
             "0.0001"
+        )
+        // Plot the AUC across the resolutions
+        plot_resolution_by_auc(
+            outdir,
+            cluster_validate_resolution_keras.out.model_report.collect()
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
