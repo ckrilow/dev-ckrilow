@@ -90,7 +90,7 @@ process cluster {
 }
 
 
-process cluster_validate_resolution {
+process cluster_validate_resolution_sklearn {
     // Validate the resolution for clusters.
     // ------------------------------------------------------------------------
     //tag { output_dir }
@@ -186,7 +186,7 @@ process cluster_validate_resolution {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "cluster_validate_resolution: ${process_info}"
-        0057-scanpy_cluster_validate_resolution.py \
+        0057-scanpy_cluster_validate_resolution-sklearn.py \
             --h5_anndata ${file__anndata} \
             --sparsity ${sparsity} \
             ${cmd__dask} \
@@ -199,6 +199,156 @@ process cluster_validate_resolution {
         """
         // --number_cells ${number_cells_downsample} \
         // --train_size_fraction ${train_size_fraction} \
+}
+
+
+process cluster_validate_resolution_keras {
+    // Validate the resolution for clusters.
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    //maxForks 2         // hard to control memory usage. limit to 3 concurrent
+    label 'gpu'        // use GPU
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("clustered.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("reduced_dims.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("clustered.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        path(file__metadata)
+        path(file__pcs)
+        path(file__reduced_dims)
+        path(file__clusters)
+        each sparsity
+
+    output:
+        val(outdir, emit: outdir)
+        path(file__anndata, emit: anndata)
+        path(file__metadata, emit: metadata)
+        path(file__pcs, emit: pcs)
+        path(file__reduced_dims, emit: reduced_dims)
+        path(file__clusters, emit: clusters)
+        path("${runid}-${outfile}.h5", emit: model)
+        path("${runid}-${outfile}.yml", emit: model_yaml)
+        path("${runid}-${outfile}-weights.h5", emit: model_weights)
+        path("${runid}-${outfile}-model_report.tsv.gz", emit: model_report)
+        path(
+            "${runid}-${outfile}-test_result.tsv.gz",
+            emit: model_test_result
+        )
+        path(
+            "${runid}-${outfile}-weights.tsv.gz",
+            emit: model_weights_tsv
+        )
+        path("plots/*.png") optional true
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}/validate_resolution"
+        // outdir = "${outdir}.method=${method}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
+        // Add sparsity information.
+        sparsity_txt = "${sparsity}".replaceAll("\\.", "pt")
+        outfile = "${outfile}-sparsity_l1=${sparsity_txt}"
+        // Job info
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        tf_memory = "${task.memory}".replaceAll(" GB", "")
+        """
+        echo "cluster_validate_resolution: ${process_info}"
+        0057-scanpy_cluster_validate_resolution-keras.py \
+            --h5_anndata ${file__anndata} \
+            --sparsity_l1 ${sparsity} \
+            --number_epoch 25 \
+            --batch_size 32 \
+            --memory_limit ${tf_memory} \
+            --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
+process plot_resolution_by_auc {
+    // Plot the AUC from validation models across resolutions
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("clustered.h5ad")) {
+                        null
+                    } else if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("reduced_dims.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("clustered.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(files__model_report)
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png") optional true
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        files__model_report = files__model_report.join('::')
+        outfile = "resolution_tuning"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_resolution_by_auc: ${process_info}"
+        0058-plot_resolution.py \
+            --model_reports ${files__model_report} \
+            --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
 }
 
 
@@ -418,17 +568,31 @@ workflow wf__cluster {
             cluster__resolutions
         )
         // Validate the resolution
-        cluster_validate_resolution(
+        // cluster_validate_resolution_sklearn(
+        //     cluster.out.outdir,
+        //     cluster.out.anndata,
+        //     cluster.out.metadata,
+        //     cluster.out.pcs,
+        //     cluster.out.reduced_dims,
+        //     cluster.out.clusters,
+        //     cluster_validate_resolution__sparsity,
+        //     cluster_validate_resolution__train_size_cells
+        //     // cluster_validate_resolution__number_cells,
+        //     // cluster_validate_resolution__test_size
+        // )
+        cluster_validate_resolution_keras(
             cluster.out.outdir,
             cluster.out.anndata,
             cluster.out.metadata,
             cluster.out.pcs,
             cluster.out.reduced_dims,
             cluster.out.clusters,
-            cluster_validate_resolution__sparsity,
-            cluster_validate_resolution__train_size_cells
-            // cluster_validate_resolution__number_cells,
-            // cluster_validate_resolution__test_size
+            "0.0001"
+        )
+        // Plot the AUC across the resolutions
+        plot_resolution_by_auc(
+            outdir,
+            cluster_validate_resolution_keras.out.model_report.collect()
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
@@ -457,11 +621,11 @@ workflow wf__cluster {
             cluster.out.clusters,
             cluster_marker__methods
         )
-        // Merge clusters
-        merge_clusters(
-            cluster.out.outdir,
-            cluster.out.anndata,
-            ['5'],
-            ['0.1']
-        )
+        // // Merge clusters
+        // merge_clusters(
+        //     cluster.out.outdir,
+        //     cluster.out.anndata,
+        //     ['5'],
+        //     ['0.1']
+        // )
 }

@@ -17,7 +17,7 @@ def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Fits logistic regression to predict labels in adata.obs["cluster"]'
+            Plots AUC from model_report.tsv.gz
             """
     )
 
@@ -28,11 +28,11 @@ def main():
     )
 
     parser.add_argument(
-        '-tr', '--test_result_tsv',
+        '-mr', '--model_reports',
         action='store',
-        dest='test_result',
+        dest='model_reports',
         required=True,
-        help='List of tab-delimited files of logistic regression test_results\
+        help='List of tab-delimited files of model_reports.\
             List should be split by "::" (e.g. file1.tsv.gz::file2.tsv.gz).'
     )
 
@@ -40,7 +40,7 @@ def main():
         '-of', '--output_file',
         action='store',
         dest='of',
-        default='logistic_regression_resolution_auc',
+        default='resolution_auc',
         help='Basename of output files, assuming output in current working \
             directory.\
             (default: %(default)s)'
@@ -77,22 +77,59 @@ def main():
         compression='gzip'
     )
 
-    # TODO: check for multiple reduced dims or something.
+    if 'resolution' not in df_modelreport.columns:
+        if 'cluster__resolution' in df_modelreport.columns:
+            df_modelreport['resolution'] = df_modelreport[
+                'cluster__resolution'
+            ]
+        # else:
+        #     df_modelreport['resolution'] = df_modelreport['file']
+
+    # Make sure resolution is set to a categorical variable.
+    df_modelreport['resolution'] = df_modelreport['resolution'].astype(
+        'category'
+    )
+
+    # Make sure we just get cluster variables as there is other info included
+    # in model reports
+    df_modelreport = df_modelreport[df_modelreport['is_cluster'] == True]
 
     # Plot the data.
     len_x = len(np.unique(df_modelreport['resolution']))
-    len_x2 = len(np.unique(df_modelreport['sparsity']))
-    gplt = plt9.ggplot(df_modelreport, plt9.aes(
-        fill='sparsity',
-        x='resolution',
-        y='AUC',
-    ))
+    if 'sparsity_l1' in df_modelreport.columns:
+        df_modelreport['Sparsity'] = df_modelreport['sparsity_l1']
+        len_x2 = len(np.unique(df_modelreport['Sparsity']))
+    else:
+        len_x2 = 0
+    if len_x2 > 1:
+        gplt = plt9.ggplot(df_modelreport, plt9.aes(
+            fill='Sparsity',
+            x='resolution',
+            y='AUC',
+        ))
+        gplt = gplt + plt9.geom_boxplot(
+            alpha=0.8,
+            outlier_alpha=0
+        )
+        gplt = gplt + plt9.geom_jitter(
+            plt9.aes(color='Sparsity'),
+            alpha=0.25,
+            width=0.2
+        )
+    else:
+        gplt = plt9.ggplot(df_modelreport, plt9.aes(
+            x='resolution',
+            y='AUC',
+        ))
+        gplt = gplt + plt9.geom_boxplot(
+            alpha=0.8,
+            outlier_alpha=0
+        )
+        gplt = gplt + plt9.geom_jitter(
+            alpha=0.25,
+            width=0.2
+        )
     gplt = gplt + plt9.theme_bw(base_size=12)
-    gplt = gplt + plt9.geom_boxplot(alpha=0.9)
-    gplt = gplt + plt9.geom_jitter(
-        plt9.aes(color='sparsity'),
-        alpha=0.45
-    )
     # gplt = gplt + plt9.facet_grid('{} ~ .'.format(label))
     gplt = gplt + plt9.labs(
         x='Resolution',
