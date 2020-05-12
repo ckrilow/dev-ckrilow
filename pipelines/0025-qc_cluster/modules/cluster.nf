@@ -329,6 +329,10 @@ process plot_resolution_by_auc {
 
     output:
         val(outdir, emit: outdir)
+        path(
+            "${runid}-${outfile}-resolution_tuning.tsv.gz",
+            emit: merged_model_report
+        )
         path("plots/*.png") optional true
         path("plots/*.pdf") optional true
 
