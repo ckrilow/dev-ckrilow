@@ -326,12 +326,17 @@ process plot_resolution_by_auc {
     input:
         val(outdir_prev)
         path(files__model_report)
+        path(files__y_prob_df)
 
     output:
         val(outdir, emit: outdir)
         path(
-            "${runid}-${outfile}-resolution_tuning.tsv.gz",
+            "${runid}-${outfile}-resolution_tuning-merged_model_reports.tsv.gz",
             emit: merged_model_report
+        )
+        path(
+            "${runid}-${outfile}-resolution_tuning-merged_test_result.tsv.gz",
+            emit: merged_test_result
         )
         path("plots/*.png") optional true
         path("plots/*.pdf") optional true
@@ -340,15 +345,19 @@ process plot_resolution_by_auc {
         runid = random_hex(16)
         outdir = "${outdir_prev}"
         files__model_report = files__model_report.join('::')
+        files__y_prob_df = files__y_prob_df.join('::')
         outfile = "resolution_tuning"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "plot_resolution_by_auc: ${process_info}"
-        0058-plot_resolution.py \
+        0058-plot_resolution_auc.py \
             --model_reports ${files__model_report} \
             --output_file ${runid}-${outfile}
+        0058-plot_resolution_curve.py \
+             --y_prob_dfs ${files__y_prob_df} \
+             --output_file ${runid}-${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
@@ -596,7 +605,8 @@ workflow wf__cluster {
         // Plot the AUC across the resolutions
         plot_resolution_by_auc(
             outdir,
-            cluster_validate_resolution_keras.out.model_report.collect()
+            cluster_validate_resolution_keras.out.model_report.collect(),
+            cluster_validate_resolution_keras.out.model_test_result.collect()
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
