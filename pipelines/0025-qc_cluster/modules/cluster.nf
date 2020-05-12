@@ -331,11 +331,11 @@ process plot_resolution_by_auc {
     output:
         val(outdir, emit: outdir)
         path(
-            "${runid}-${outfile}-resolution_tuning-merged_model_reports.tsv.gz",
+            "${runid}-${outfile}-merged_model_report.tsv.gz",
             emit: merged_model_report
         )
         path(
-            "${runid}-${outfile}-resolution_tuning-merged_test_result.tsv.gz",
+            "${runid}-${outfile}-merged_test_result.tsv.gz",
             emit: merged_test_result
         )
         path("plots/*.png") optional true

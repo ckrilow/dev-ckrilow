@@ -69,7 +69,7 @@ def main():
 
     # Save the results
     df_modelreport.to_csv(
-        '{}-merged_model_reports.tsv.gz'.format(out_file_base),
+        '{}-merged_model_report.tsv.gz'.format(out_file_base),
         sep='\t',
         index=False,
         quoting=csv.QUOTE_NONNUMERIC,
