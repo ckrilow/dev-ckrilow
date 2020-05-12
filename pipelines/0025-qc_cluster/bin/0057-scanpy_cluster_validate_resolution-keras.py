@@ -293,10 +293,12 @@ def fit_model_keras(
     # Get a matrix of predictions on the test set
     y_prob_df = pd.DataFrame(
         y_test_proba,
-        columns=encoder.classes_
+        columns=['class__{}'.format(i) for i in encoder.classes_]
     )
     y_prob_df['cell_label_predicted'] = y_test_pred
     y_prob_df['cell_label_true'] = y_test
+    for i in ['cell_label_predicted', 'cell_label_true']:
+        y_prob_df[i] = 'class__' + y_prob_df[i].astype(str)
 
     score = model.evaluate(X_test, Y_test_onehot, verbose=0)
     print('Test score:', score[0])
@@ -772,8 +774,8 @@ def main():
             else:
                 is_cluster.append(False)
         model_report['is_cluster'] = is_cluster
-        model_report['sparsity_l1'] = sparsity_l1
         # Add in extra data
+        model_report['sparsity_l1'] = sparsity_l1
         if dict_add:
             for key, value in dict_add.items():
                 model_report[key] = value
@@ -793,6 +795,11 @@ def main():
 
         # Save the test results - each row is a cell and the columns are the
         # prob of that cell belonging to a particular class.
+        # Add in extra data
+        y_prob_df['sparsity_l1'] = sparsity_l1
+        if dict_add:
+            for key, value in dict_add.items():
+                y_prob_df[key] = value
         out_f = '{}-test_result.tsv.gz'.format(out_file_base)
         y_prob_df.to_csv(
             out_f,
@@ -870,7 +877,10 @@ def main():
         out_f = '{}-roc.pdf'.format(out_file_base)
         fig = plt.figure()
         cell_label_true = y_prob_df.pop('cell_label_true')
-        del y_prob_df['cell_label_predicted']
+        # Drop columns that are not cell type labels
+        for i in y_prob_df.columns:
+            if 'class__' not in i:
+                del y_prob_df[i]
         plot_roc(y_prob_df.values, cell_label_true.values, y_prob_df.columns)
         fig.savefig(
             out_f,
