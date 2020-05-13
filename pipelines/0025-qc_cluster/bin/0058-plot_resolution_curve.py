@@ -159,6 +159,9 @@ def main():
         # else:
         #     df['resolution'] = df['file']
 
+    # Get a sorted list of our resolutions
+    resolutions = np.sort(df['resolution'].unique())
+
     # Make sure resolution is set to a categorical variable.
     df['resolution'] = df['resolution'].astype(
         'category'
@@ -166,12 +169,12 @@ def main():
 
     # Make a grid of ROC plots for each resolution.
     ncols = 5
-    nrows = math.ceil(len(df['resolution'].unique()) / ncols)
+    nrows = math.ceil(len(resolutions) / ncols)
     fig, grid = panel_grid(
-        hspace=0.125*len(df['resolution'].unique()),
+        hspace=0.05*len(resolutions),
         wspace=None,
         ncols=ncols,
-        num_panels=len(df['resolution'].unique())
+        num_panels=len(resolutions)
     )
     # fig, axs = plt.subplots(
     #     len(df['resolution'].unique()),
@@ -180,7 +183,7 @@ def main():
     # )
     i__ax = 0
     i__row = 0
-    for i__res in df['resolution'].unique():
+    for i__res in resolutions:
         # Get the subset of data
         df_tmp = df[df['resolution'] == i__res]
         # Drop extra cell type columns for clusters not found at this
@@ -188,6 +191,19 @@ def main():
         df_tmp = df_tmp.dropna(axis='columns')
         # Get classification / cell type columns
         df_class_cols = [i for i in df_tmp.columns if 'class__' in i]
+        df_nonclass_cols = [
+            i for i in df_tmp.columns if i not in df_class_cols
+        ]
+
+        # For dev if multiple files
+        # df_tmp = df_tmp[df_tmp['file'] == df_tmp['file'].values[-1]]
+        # Check to make sure we have the right data ... for every non-class
+        # column, there should be only one value. Otherwise, we are not
+        # plotting a unique run.
+        for index, value in df_tmp[df_nonclass_cols].nunique().items():
+            if 'cell_label' not in index and value > 1:
+                print(index, value)
+                raise Exception('ERROR: multiple resolution files combined.')
 
         # Set the facet title.
         plt_title = '{} resolution'.format(i__res)
@@ -197,7 +213,7 @@ def main():
         ax = fig.add_subplot(grid[i__ax])
         # Add ROC plot
         plot_roc(
-            # axs[i__ax],
+            # axs[i__ax],  # If use subplots
             ax,
             df_tmp[df_class_cols].values,
             df_tmp['cell_label_true'].values,
@@ -221,22 +237,15 @@ def main():
     plt.close(fig)
 
     # Make a grid of precision-recall plots for each resolution.
-    ncols = 5
-    nrows = math.ceil(len(df['resolution'].unique()) / ncols)
     fig, grid = panel_grid(
-        hspace=0.125*len(df['resolution'].unique()),
+        hspace=0.05*len(resolutions),
         wspace=None,
         ncols=ncols,
-        num_panels=len(df['resolution'].unique())
+        num_panels=len(resolutions)
     )
-    # fig, axs = plt.subplots(
-    #     len(df['resolution'].unique()),
-    #     sharex=True,
-    #     sharey=True
-    # )
     i__ax = 0
     i__row = 0
-    for i__res in df['resolution'].unique():
+    for i__res in resolutions:
         # Get the subset of data
         df_tmp = df[df['resolution'] == i__res]
         # Drop extra cell type columns for clusters not found at this
@@ -244,6 +253,17 @@ def main():
         df_tmp = df_tmp.dropna(axis='columns')
         # Get classification / cell type columns
         df_class_cols = [i for i in df_tmp.columns if 'class__' in i]
+        df_nonclass_cols = [
+            i for i in df_tmp.columns if i not in df_class_cols
+        ]
+
+        # Check to make sure we have the right data ... for every non-class
+        # column, there should be only one value. Otherwise, we are not
+        # plotting a unique run.
+        for index, value in df_tmp[df_nonclass_cols].nunique().items():
+            if 'cell_label' not in index and value > 1:
+                print(index, value)
+                raise Exception('ERROR: multiple resolution files combined.')
 
         # Set the facet title.
         plt_title = '{} resolution'.format(i__res)
@@ -253,7 +273,6 @@ def main():
         ax = fig.add_subplot(grid[i__ax])
         # Add plot
         plot_prec_recall(
-            # axs[i__ax],
             ax,
             df_tmp[df_class_cols].values,
             df_tmp['cell_label_true'].values,
