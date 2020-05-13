@@ -57,6 +57,7 @@ process cluster {
         path(file__pcs, emit: pcs)
         path(file__reduced_dims, emit: reduced_dims)
         path("${runid}-${outfile}-clustered.tsv.gz", emit: clusters)
+        val(outdir_prev, emit: outdir__reduced_dims)
         path("plots/*.pdf") optional true
         path("plots/*.png") optional true
 
@@ -90,116 +91,117 @@ process cluster {
 }
 
 
-process cluster_validate_resolution_sklearn {
-    // Validate the resolution for clusters.
-    // ------------------------------------------------------------------------
-    //tag { output_dir }
-    //cache false        // cache results from run
-    scratch false      // use tmp directory
-    echo true          // echo output from script
-
-    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-    publishDir  path: "${outdir}",
-                saveAs: {filename ->
-                    if (filename.endsWith("clustered.h5ad")) {
-                        null
-                    } else if(filename.endsWith("metadata.tsv.gz")) {
-                        null
-                    } else if(filename.endsWith("pcs.tsv.gz")) {
-                        null
-                    } else if(filename.endsWith("reduced_dims.tsv.gz")) {
-                        null
-                    } else if(filename.endsWith("clustered.tsv.gz")) {
-                        null
-                    } else {
-                        filename.replaceAll("${runid}-", "")
-                    }
-                },
-                mode: "copy",
-                overwrite: "true"
-
-    input:
-        val(outdir_prev)
-        path(file__anndata)
-        path(file__metadata)
-        path(file__pcs)
-        path(file__reduced_dims)
-        path(file__clusters)
-        each sparsity
-        each train_size_cells
-        // each number_cells_downsample
-        // each train_size_fraction
-
-    output:
-        val(outdir, emit: outdir)
-        path(file__anndata, emit: anndata)
-        path(file__metadata, emit: metadata)
-        path(file__pcs, emit: pcs)
-        path(file__reduced_dims, emit: reduced_dims)
-        path(file__clusters, emit: clusters)
-        path("${runid}-${outfile}-lr_model.joblib.gz", emit: model)
-        path("${runid}-${outfile}-model_report.tsv.gz", emit: model_report)
-        path(
-            "${runid}-${outfile}-test_result.tsv.gz",
-            emit: model_test_result
-        )
-        path(
-            "${runid}-${outfile}-lr_coef.tsv.gz",
-            emit: model_coefficient
-        )
-        path("plots/*.png") optional true
-        path("plots/*.pdf") optional true
-
-    script:
-        runid = random_hex(16)
-        outdir = "${outdir_prev}/validate_resolution"
-        // outdir = "${outdir}.method=${method}"
-        // For output file, use anndata name. First need to drop the runid
-        // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
-        // Add downsampling information.
-        n_cells_downsample_txt = "none"
-        // cmd__dask = "--dask_scale 500"
-        // if (number_cells_downsample > 0) { // If downsample cells no dask
-        //     n_cells_downsample_txt = "${number_cells_downsample}"
-        //     cmd__dask = ""
-        // }
-        outfile = "${outfile}-n_cells_downsample=${n_cells_downsample_txt}"
-        // Add sparsity information.
-        sparsity_txt = "${sparsity}".replaceAll("\\.", "pt")
-        outfile = "${outfile}-sparsity=${sparsity_txt}"
-        // Add training cell count size.
-        train_size_cells_txt = "none"
-        // cmd__dask = "--dask_scale 20" // NOTE: uncomment to enable dask
-        cmd__dask = ""
-        cmd__train_cells = ""
-        if (train_size_cells > 0) {
-            train_size_cells_txt = "${train_size_cells}"
-            cmd__train_cells = "--train_size_cells ${train_size_cells}"
-            cmd__dask = ""
-        }
-        outfile = "${outfile}-train_size_cells=${train_size_cells}"
-        // train_size_txt = "${train_size_fraction}".replaceAll("\\.", "pt")
-        // outfile = "${outfile}-train_size_fraction=${train_size_txt}"
-        process_info = "${runid} (runid)"
-        process_info = "${process_info}, ${task.cpus} (cpus)"
-        process_info = "${process_info}, ${task.memory} (memory)"
-        """
-        echo "cluster_validate_resolution: ${process_info}"
-        0057-scanpy_cluster_validate_resolution-sklearn.py \
-            --h5_anndata ${file__anndata} \
-            --sparsity ${sparsity} \
-            ${cmd__dask} \
-            ${cmd__train_cells} \
-            --number_cpu ${task.cpus} \
-            --output_file ${runid}-${outfile}
-        mkdir plots
-        mv *pdf plots/ 2>/dev/null || true
-        mv *png plots/ 2>/dev/null || true
-        """
-        // --number_cells ${number_cells_downsample} \
-        // --train_size_fraction ${train_size_fraction} \
-}
+// TODO: update this.
+// process cluster_validate_resolution_sklearn {
+//     // Validate the resolution for clusters.
+//     // ------------------------------------------------------------------------
+//     //tag { output_dir }
+//     //cache false        // cache results from run
+//     scratch false      // use tmp directory
+//     echo true          // echo output from script
+//
+//     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+//     publishDir  path: "${outdir}",
+//                 saveAs: {filename ->
+//                     if (filename.endsWith("clustered.h5ad")) {
+//                         null
+//                     } else if(filename.endsWith("metadata.tsv.gz")) {
+//                         null
+//                     } else if(filename.endsWith("pcs.tsv.gz")) {
+//                         null
+//                     } else if(filename.endsWith("reduced_dims.tsv.gz")) {
+//                         null
+//                     } else if(filename.endsWith("clustered.tsv.gz")) {
+//                         null
+//                     } else {
+//                         filename.replaceAll("${runid}-", "")
+//                     }
+//                 },
+//                 mode: "copy",
+//                 overwrite: "true"
+//
+//     input:
+//         val(outdir_prev)
+//         path(file__anndata)
+//         path(file__metadata)
+//         path(file__pcs)
+//         path(file__reduced_dims)
+//         path(file__clusters)
+//         each sparsity
+//         each train_size_cells
+//         // each number_cells_downsample
+//         // each train_size_fraction
+//
+//     output:
+//         val(outdir, emit: outdir)
+//         path(file__anndata, emit: anndata)
+//         path(file__metadata, emit: metadata)
+//         path(file__pcs, emit: pcs)
+//         path(file__reduced_dims, emit: reduced_dims)
+//         path(file__clusters, emit: clusters)
+//         path("${runid}-${outfile}-lr_model.joblib.gz", emit: model)
+//         path("${runid}-${outfile}-model_report.tsv.gz", emit: model_report)
+//         path(
+//             "${runid}-${outfile}-test_result.tsv.gz",
+//             emit: model_test_result
+//         )
+//         path(
+//             "${runid}-${outfile}-lr_coef.tsv.gz",
+//             emit: model_coefficient
+//         )
+//         path("plots/*.png") optional true
+//         path("plots/*.pdf") optional true
+//
+//     script:
+//         runid = random_hex(16)
+//         outdir = "${outdir_prev}/validate_resolution"
+//         // outdir = "${outdir}.method=${method}"
+//         // For output file, use anndata name. First need to drop the runid
+//         // from the file__anndata job.
+//         outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+//         // Add downsampling information.
+//         n_cells_downsample_txt = "none"
+//         // cmd__dask = "--dask_scale 500"
+//         // if (number_cells_downsample > 0) { // If downsample cells no dask
+//         //     n_cells_downsample_txt = "${number_cells_downsample}"
+//         //     cmd__dask = ""
+//         // }
+//         outfile = "${outfile}-n_cells_downsample=${n_cells_downsample_txt}"
+//         // Add sparsity information.
+//         sparsity_txt = "${sparsity}".replaceAll("\\.", "pt")
+//         outfile = "${outfile}-sparsity=${sparsity_txt}"
+//         // Add training cell count size.
+//         train_size_cells_txt = "none"
+//         // cmd__dask = "--dask_scale 20" // NOTE: uncomment to enable dask
+//         cmd__dask = ""
+//         cmd__train_cells = ""
+//         if (train_size_cells > 0) {
+//             train_size_cells_txt = "${train_size_cells}"
+//             cmd__train_cells = "--train_size_cells ${train_size_cells}"
+//             cmd__dask = ""
+//         }
+//         outfile = "${outfile}-train_size_cells=${train_size_cells}"
+//         // train_size_txt = "${train_size_fraction}".replaceAll("\\.", "pt")
+//         // outfile = "${outfile}-train_size_fraction=${train_size_txt}"
+//         process_info = "${runid} (runid)"
+//         process_info = "${process_info}, ${task.cpus} (cpus)"
+//         process_info = "${process_info}, ${task.memory} (memory)"
+//         """
+//         echo "cluster_validate_resolution: ${process_info}"
+//         0057-scanpy_cluster_validate_resolution-sklearn.py \
+//             --h5_anndata ${file__anndata} \
+//             --sparsity ${sparsity} \
+//             ${cmd__dask} \
+//             ${cmd__train_cells} \
+//             --number_cpu ${task.cpus} \
+//             --output_file ${runid}-${outfile}
+//         mkdir plots
+//         mv *pdf plots/ 2>/dev/null || true
+//         mv *png plots/ 2>/dev/null || true
+//         """
+//         // --number_cells ${number_cells_downsample} \
+//         // --train_size_fraction ${train_size_fraction} \
+// }
 
 
 process cluster_validate_resolution_keras {
@@ -240,6 +242,7 @@ process cluster_validate_resolution_keras {
         path(file__reduced_dims)
         path(file__clusters)
         each sparsity
+        val(outdir__reduced_dims)
 
     output:
         val(outdir, emit: outdir)
@@ -261,7 +264,7 @@ process cluster_validate_resolution_keras {
             emit: model_weights_tsv
         )
         tuple(
-            val("${outdir_prev}"),
+            val("${outdir__reduced_dims}"),
             file("${runid}-${outfile}-model_report.tsv.gz",),
             file("${runid}-${outfile}-test_result.tsv.gz",),
             emit: plot_input
@@ -611,7 +614,8 @@ workflow wf__cluster {
             cluster.out.pcs,
             cluster.out.reduced_dims,
             cluster.out.clusters,
-            "0.0001"
+            "0.0001",
+            cluster.out.outdir__reduced_dims
         )
         // Plot the AUC across the resolutions
         // NOTE: cannot just run a collect() in output, because there might
