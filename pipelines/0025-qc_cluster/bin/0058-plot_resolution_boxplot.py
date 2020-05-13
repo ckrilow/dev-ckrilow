@@ -90,6 +90,26 @@ def main():
         'category'
     )
 
+    # Check the data
+    not_unique_columns = [
+        'cell_label', 'precision', 'recall', 'f1-score',
+        'support', 'AUC', 'n_cells_full_dataset', 'n_cells_training_dataset',
+        'is_cluster'
+    ]
+    unique_columns = [
+        i for i in df_modelreport.columns if i not in not_unique_columns
+    ]
+    for i__res in df_modelreport['resolution'].unique():
+        # Get the subset of data
+        df_tmp = df_modelreport[df_modelreport['resolution'] == i__res]
+        # Check to make sure we have the right data ... for every non-class
+        # column, there should be only one value. Otherwise, we are not
+        # plotting a unique run.
+        for index, value in df_tmp[unique_columns].nunique().items():
+            if 'cell_label' not in index and value > 1:
+                print(index, value)
+                raise Exception('ERROR: multiple resolution files combined.')
+
     # Make sure we just get cluster variables as there is other info included
     # in model reports.
     df_modelreport = df_modelreport[df_modelreport['is_cluster']]
