@@ -36,7 +36,6 @@ cluster:
             experiment_id.'
         value:
             - 15
-            - 25
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
@@ -44,9 +43,6 @@ cluster:
     resolutions:
         description: 'Clustering resolution.'
         value:
-            - 0.05
-            - 0.15
-            - 0.25
             - 1.0
             - 2.0
             - 3.0
@@ -78,7 +74,7 @@ umap:
     colors_quantitative:
         description: 'Comma separated string of quantitative variables that
             will be used to color points.'
-        value: 'total_reads,pct_counts_mito_gene'
+        value: 'pct_counts_mito_gene'
     colors_categorical:
         description: 'Comma separated string of categorical variables that
             will be used to color points.'
