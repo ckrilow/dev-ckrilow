@@ -260,6 +260,12 @@ process cluster_validate_resolution_keras {
             "${runid}-${outfile}-weights.tsv.gz",
             emit: model_weights_tsv
         )
+        tuple(
+            val("${outdir_prev}"),
+            file("${runid}-${outfile}-model_report.tsv.gz",),
+            file("${runid}-${outfile}-test_result.tsv.gz",),
+            emit: plot_input
+        )
         path("plots/*.png") optional true
         path("plots/*.pdf") optional true
 
@@ -295,7 +301,7 @@ process cluster_validate_resolution_keras {
 }
 
 
-process plot_resolution_by_auc {
+process plot_resolution_validate {
     // Plot the AUC from validation models across resolutions
     // ------------------------------------------------------------------------
     //tag { output_dir }
@@ -324,9 +330,14 @@ process plot_resolution_by_auc {
                 overwrite: "true"
 
     input:
-        val(outdir_prev)
-        path(files__model_report)
-        path(files__y_prob_df)
+        tuple(
+            val(outdir_prev),
+            path(files__model_report),
+            path(files__y_prob_df)
+        )
+        // val(outdir_prev)
+        // path(files__model_report)
+        // path(files__y_prob_df)
 
     output:
         val(outdir, emit: outdir)
@@ -351,8 +362,8 @@ process plot_resolution_by_auc {
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "plot_resolution_by_auc: ${process_info}"
-        0058-plot_resolution_auc.py \
+        echo "plot_resolution: ${process_info}"
+        0058-plot_resolution_boxplot.py \
             --model_reports ${files__model_report} \
             --output_file ${runid}-${outfile}
         0058-plot_resolution_curve.py \
@@ -603,10 +614,10 @@ workflow wf__cluster {
             "0.0001"
         )
         // Plot the AUC across the resolutions
-        plot_resolution_by_auc(
-            outdir,
-            cluster_validate_resolution_keras.out.model_report.collect(),
-            cluster_validate_resolution_keras.out.model_test_result.collect()
+        // NOTE: cannot just run a collect() in output, because there might
+        // not be a unique call - e.g. harmony with multiple theta
+        plot_resolution_validate(
+            cluster_validate_resolution_keras.out.plot_input.groupTuple()
         )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
