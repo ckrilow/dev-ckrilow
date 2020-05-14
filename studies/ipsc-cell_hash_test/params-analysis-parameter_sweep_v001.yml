@@ -35,7 +35,9 @@ cluster:
         description: 'Number of neighbors. If <= 0, uses number of unique
             experiment_id.'
         value:
+            - 7
             - 15
+            - 30
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
@@ -43,6 +45,11 @@ cluster:
     resolutions:
         description: 'Clustering resolution.'
         value:
+            - 0.125
+            - 0.25
+            - 0.375
+            - 0.5
+            - 0.75
             - 1.0
             - 2.0
             - 3.0
