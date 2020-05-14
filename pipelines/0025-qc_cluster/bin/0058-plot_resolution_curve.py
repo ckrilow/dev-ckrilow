@@ -109,14 +109,12 @@ def _make_plots(
     # iters = [(x, y) for x in resolutions for y in n_neighbors]
     iters = [(x, y) for x in n_neighbors for y in resolutions]
 
-    hspace = 0.05
-    if len(n_neighbors) > 1:
-        hspace = 0.125
+    hspace = 0.5
     # Make a grid of ROC plots for each resolution.
     ncols = 5
     nrows = math.ceil(len(iters) / ncols)
     fig, grid = panel_grid(
-        hspace=hspace*len(iters),
+        hspace=hspace,
         wspace=None,
         ncols=ncols,
         num_panels=len(iters)
@@ -153,12 +151,13 @@ def _make_plots(
                 raise Exception('ERROR: multiple resolution files combined.')
 
         # Set the facet title.
-        plt_title = '{} resolution\n'.format(i__res)
+        plt_title = '{} resolution'.format(i__res)
         if len(n_neighbors) > 1:
-            plt_title = '{}\n{} n_neighbors\n'.format(
+            plt_title = '{}\n{} n_neighbors'.format(
                 plt_title,
                 i__n_neighbors
             )
+        plt_title = '{}\n{} clusters'.format(plt_title, len(df_class_cols))
         plt_title = plt_title.rstrip()
 
         # Get the proper axis for this plot.
@@ -182,7 +181,7 @@ def _make_plots(
         i__ax += 1
 
     fig.savefig(
-        '{}-resolution_roc.pdf'.format(out_file_base),
+        '{}-resolution_roc.png'.format(out_file_base),
         dpi=300,
         bbox_inches='tight'
     )
@@ -190,7 +189,7 @@ def _make_plots(
 
     # Make a grid of precision-recall plots for each resolution.
     fig, grid = panel_grid(
-        hspace=hspace*len(iters),
+        hspace=hspace,
         wspace=None,
         ncols=ncols,
         num_panels=len(iters)
@@ -222,10 +221,11 @@ def _make_plots(
         # Set the facet title.
         plt_title = '{} resolution'.format(i__res)
         if len(n_neighbors) > 1:
-            plt_title = '{}\n{} n_neighbors\n'.format(
+            plt_title = '{}\n{} n_neighbors'.format(
                 plt_title,
                 i__n_neighbors
             )
+        plt_title = '{}\n{} clusters'.format(plt_title, len(df_class_cols))
         plt_title = plt_title.rstrip()
 
         # Get the proper axis for this plot.
@@ -248,7 +248,7 @@ def _make_plots(
         i__ax += 1
 
     fig.savefig(
-        '{}-resolution_precision_recall.pdf'.format(out_file_base),
+        '{}-resolution_precision_recall.png'.format(out_file_base),
         dpi=300,
         bbox_inches='tight'
     )
