@@ -20,8 +20,8 @@ reduced_dims:
         and harmony calculations). All pairwise combinations of
         vars_to_regress and n_dims will be performed.'
     vars_to_regress:
-        description: 'Comma seperated string of variables to regress. Use "" to
-            indicate no regssion is to be performed.'
+        description: 'Comma separated string of variables to regress. Use "" to
+            indicate no regression is to be performed.'
         value:
             - ''
     n_dims:
@@ -30,27 +30,33 @@ reduced_dims:
         value:
             - 30
 harmony:
+    run_process: true
     description: 'Parameters for harmony.'
     variables_and_thetas:
         description: 'Tuples of metadata columns and corresponding thetas.'
         value:
             - variable: 'sanger_sample_id'
+              theta: '0.5'
+            - variable: 'sanger_sample_id'
               theta: '1.0'
             - variable: 'sanger_sample_id'
               theta: '2.0'
 lisi:
+    run_process: true
     description: 'Parameters for Local Inverse Simpsons Index (LISI).'
     variables:
         description: 'Metadata variables to compute LISI over.'
         value: 'sanger_sample_id,disease_status'
+bbknn:
+    run_process: true
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
     number_neighbors:
-        description: 'Number of neighbors. If <= 0, uses number of unqiue
+        description: 'Number of neighbors. If <= 0, uses number of unique
             experiment_id.'
         value:
-            - 33
+            - 30
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
@@ -58,29 +64,31 @@ cluster:
     resolutions:
         description: 'Clustering resolution.'
         value:
+            - 0.05
+            - 0.15
             - 0.25
+            - 0.35
             - 0.5
             - 1.0
             - 1.5
             - 2.0
             - 3.0
+            - 5.0
+            - 10.0
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
-    train_size_cells:
-        description: 'Number of cells to use for training. Set to -1 for
-            to use defualt of 2/3 of total cells.'
-        value:
-            - 25000
-            - 50000
-            - 75000
     sparsity:
         description: 'LogisticRegression sparsity or inverse of regularization
             strength; must be a positive float. Like in support vector
             machines, smaller values specify stronger regularization.'
         value:
-            - 0.1
-            - 0.01
-            - 0.005
+            - 0.0001
+    train_size_cells:
+        description: 'Number of cells to use for training. Set to -1 for
+            to use default of 2/3 of total cells. Do not change this parameter
+            unless you know what you are doing.'
+        value:
+            - -1
 cluster_marker:
     description: 'Parameters for identifying cluster marker features.'
     methods:
@@ -88,32 +96,35 @@ cluster_marker:
         value:
             - 'wilcoxon'
 umap:
+    run_process: true
     description: 'Parameters for umap.'
     colors_quantitative:
-        description: 'Comma seperated string of quantitative variables that
+        description: 'Comma separated string of quantitative variables that
             will be used to color points.'
         value: 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
     colors_categorical:
-        description: 'Comma seperated string of categorical variables that
+        description: 'Comma separated string of categorical variables that
             will be used to color points.'
         value: 'sanger_sample_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.
             Recommended value between 2-100. If you expect each cell type
             cluster to be shared across all experiments/samples, then setting
-            this number to the number of experiments/samples is a good palce to
+            this number to the number of experiments/samples is a good place to
             start.'
         value:
             - 25
+            - 30
             - 33
             - 50
+            - 100
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
         value:
             - 'spectral'
     umap_min_dist:
         description: 'The effective minimum distance between embedded points.
-            Recommended value between 0-1. Note: values seperated with a comma
+            Recommended value between 0-1. Note: values separated with a comma
             will be run within the same script call (rather than swarm).'
         value:
             - 0.0
@@ -123,7 +134,7 @@ umap:
             - 1.0
     umap_spread:
         description: 'The effective scale of embedded points.
-            Recommended value between 0-3. Note: values seperated with a comma
+            Recommended value between 0-3. Note: values separated with a comma
             will be run within the same script call (rather than swarm).'
         value:
             - 0.5
