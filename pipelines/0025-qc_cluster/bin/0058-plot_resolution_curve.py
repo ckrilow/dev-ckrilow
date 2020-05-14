@@ -87,6 +87,174 @@ def plot_prec_recall(ax, y_prob, y_test, classes):
     # ax.plot([0, 1], [0, 1], color='k', ls=':')
 
 
+def _make_plots(
+    df,
+    out_file_base
+):
+    # Get a sorted list of our resolutions
+    resolutions = np.sort(df['cluster__resolution'].unique())
+    # Make sure resolution is set to a categorical variable.
+    df['resolution'] = df['cluster__resolution'].astype(
+        'category'
+    )
+
+    # Get a sorted list of the number of neighbors used in clustering graph
+    n_neighbors = np.sort(df['neighbors__n_neighbors'].unique())
+    # Make sure resolution is set to a categorical variable.
+    df['n_neighbors'] = df['neighbors__n_neighbors'].astype(
+        'category'
+    )
+
+    # get all pairwise combinations of resolutions and neighbors
+    # iters = [(x, y) for x in resolutions for y in n_neighbors]
+    iters = [(x, y) for x in n_neighbors for y in resolutions]
+
+    hspace = 0.05
+    if len(n_neighbors) > 1:
+        hspace = 0.125
+    # Make a grid of ROC plots for each resolution.
+    ncols = 5
+    nrows = math.ceil(len(iters) / ncols)
+    fig, grid = panel_grid(
+        hspace=hspace*len(iters),
+        wspace=None,
+        ncols=ncols,
+        num_panels=len(iters)
+    )
+    # fig, axs = plt.subplots(
+    #     len(df['resolution'].unique()),
+    #     sharex=True,
+    #     sharey=True
+    # )
+    i__ax = 0
+    i__row = 0
+    # for i__res, i__n_neighbors in iters:
+    for i__n_neighbors, i__res in iters:
+        # Get the subset of data
+        df_tmp = df[df['resolution'] == i__res]
+        df_tmp = df_tmp[df_tmp['n_neighbors'] == i__n_neighbors]
+        # Drop extra cell type columns for clusters not found at this
+        # resolution.
+        df_tmp = df_tmp.dropna(axis='columns')
+        # Get classification / cell type columns
+        df_class_cols = [i for i in df_tmp.columns if 'class__' in i]
+        df_nonclass_cols = [
+            i for i in df_tmp.columns if i not in df_class_cols
+        ]
+
+        # For dev if multiple files
+        # df_tmp = df_tmp[df_tmp['file'] == df_tmp['file'].values[-1]]
+        # Check to make sure we have the right data ... for every non-class
+        # column, there should be only one value. Otherwise, we are not
+        # plotting a unique run.
+        for index, value in df_tmp[df_nonclass_cols].nunique().items():
+            if 'cell_label' not in index and value > 1:
+                print(index, value)
+                raise Exception('ERROR: multiple resolution files combined.')
+
+        # Set the facet title.
+        plt_title = '{} resolution\n'.format(i__res)
+        if len(n_neighbors) > 1:
+            plt_title = '{}\n{} n_neighbors\n'.format(
+                plt_title,
+                i__n_neighbors
+            )
+        plt_title = plt_title.rstrip()
+
+        # Get the proper axis for this plot.
+        ax = fig.add_subplot(grid[i__ax])
+        # Add ROC plot
+        plot_roc(
+            # axs[i__ax],  # If use subplots
+            ax,
+            df_tmp[df_class_cols].values,
+            df_tmp['cell_label_true'].values,
+            df_class_cols
+        )
+        ax.set_title(plt_title)
+
+        if i__ax % ncols == 0:
+            i__row += 1
+            plt.ylabel('TPR')
+        if i__row == nrows:
+            plt.xlabel('FPR')
+
+        i__ax += 1
+
+    fig.savefig(
+        '{}-resolution_roc.pdf'.format(out_file_base),
+        dpi=300,
+        bbox_inches='tight'
+    )
+    plt.close(fig)
+
+    # Make a grid of precision-recall plots for each resolution.
+    fig, grid = panel_grid(
+        hspace=hspace*len(iters),
+        wspace=None,
+        ncols=ncols,
+        num_panels=len(iters)
+    )
+    i__ax = 0
+    i__row = 0
+    # for i__res, i__n_neighbors in iters:
+    for i__n_neighbors, i__res in iters:
+        # Get the subset of data
+        df_tmp = df[df['resolution'] == i__res]
+        df_tmp = df_tmp[df_tmp['n_neighbors'] == i__n_neighbors]
+        # Drop extra cell type columns for clusters not found at this
+        # resolution.
+        df_tmp = df_tmp.dropna(axis='columns')
+        # Get classification / cell type columns
+        df_class_cols = [i for i in df_tmp.columns if 'class__' in i]
+        df_nonclass_cols = [
+            i for i in df_tmp.columns if i not in df_class_cols
+        ]
+
+        # Check to make sure we have the right data ... for every non-class
+        # column, there should be only one value. Otherwise, we are not
+        # plotting a unique run.
+        for index, value in df_tmp[df_nonclass_cols].nunique().items():
+            if 'cell_label' not in index and value > 1:
+                print(index, value)
+                raise Exception('ERROR: multiple resolution files combined.')
+
+        # Set the facet title.
+        plt_title = '{} resolution'.format(i__res)
+        if len(n_neighbors) > 1:
+            plt_title = '{}\n{} n_neighbors\n'.format(
+                plt_title,
+                i__n_neighbors
+            )
+        plt_title = plt_title.rstrip()
+
+        # Get the proper axis for this plot.
+        ax = fig.add_subplot(grid[i__ax])
+        # Add plot
+        plot_prec_recall(
+            ax,
+            df_tmp[df_class_cols].values,
+            df_tmp['cell_label_true'].values,
+            df_class_cols
+        )
+        ax.set_title(plt_title)
+
+        if i__ax % ncols == 0:
+            i__row += 1
+            plt.ylabel('Precision')
+        if i__row == nrows:
+            plt.xlabel('Recall')
+
+        i__ax += 1
+
+    fig.savefig(
+        '{}-resolution_precision_recall.pdf'.format(out_file_base),
+        dpi=300,
+        bbox_inches='tight'
+    )
+    plt.close(fig)
+
+
 def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
@@ -151,149 +319,29 @@ def main():
         compression='gzip'
     )
 
-    if 'resolution' not in df.columns:
-        if 'cluster__resolution' in df.columns:
-            df['resolution'] = df[
-                'cluster__resolution'
-            ]
-        # else:
-        #     df['resolution'] = df['file']
+    # Get resolutin column
+    # if 'resolution' not in df.columns:
+    #     if 'cluster__resolution' in df.columns:
+    #         df['resolution'] = df[
+    #             'cluster__resolution'
+    #         ]
+    #     # else:
+    #     #     df['resolution'] = df['file']
 
-    # Get a sorted list of our resolutions
-    resolutions = np.sort(df['resolution'].unique())
-
-    # Make sure resolution is set to a categorical variable.
-    df['resolution'] = df['resolution'].astype(
-        'category'
+    # Make a combined plot for all n_neighbors values
+    _make_plots(
+        df,
+        out_file_base
     )
 
-    # Make a grid of ROC plots for each resolution.
-    ncols = 5
-    nrows = math.ceil(len(resolutions) / ncols)
-    fig, grid = panel_grid(
-        hspace=0.05*len(resolutions),
-        wspace=None,
-        ncols=ncols,
-        num_panels=len(resolutions)
-    )
-    # fig, axs = plt.subplots(
-    #     len(df['resolution'].unique()),
-    #     sharex=True,
-    #     sharey=True
-    # )
-    i__ax = 0
-    i__row = 0
-    for i__res in resolutions:
-        # Get the subset of data
-        df_tmp = df[df['resolution'] == i__res]
-        # Drop extra cell type columns for clusters not found at this
-        # resolution.
-        df_tmp = df_tmp.dropna(axis='columns')
-        # Get classification / cell type columns
-        df_class_cols = [i for i in df_tmp.columns if 'class__' in i]
-        df_nonclass_cols = [
-            i for i in df_tmp.columns if i not in df_class_cols
-        ]
-
-        # For dev if multiple files
-        # df_tmp = df_tmp[df_tmp['file'] == df_tmp['file'].values[-1]]
-        # Check to make sure we have the right data ... for every non-class
-        # column, there should be only one value. Otherwise, we are not
-        # plotting a unique run.
-        for index, value in df_tmp[df_nonclass_cols].nunique().items():
-            if 'cell_label' not in index and value > 1:
-                print(index, value)
-                raise Exception('ERROR: multiple resolution files combined.')
-
-        # Set the facet title.
-        plt_title = '{} resolution'.format(i__res)
-        plt_title = plt_title.rstrip()
-
-        # Get the proper axis for this plot.
-        ax = fig.add_subplot(grid[i__ax])
-        # Add ROC plot
-        plot_roc(
-            # axs[i__ax],  # If use subplots
-            ax,
-            df_tmp[df_class_cols].values,
-            df_tmp['cell_label_true'].values,
-            df_class_cols
+    # Make separate plots for each n_neighbors values
+    n_neighbors = df['neighbors__n_neighbors'].unique()
+    for i__n_neighbors in n_neighbors:
+        df_tmp = df.loc[df['n_neighbors'] == i__n_neighbors, :].copy()
+        _make_plots(
+            df_tmp,
+            '{}-n_neighbors={}'.format(out_file_base, i__n_neighbors)
         )
-        ax.set_title(plt_title)
-
-        if i__ax % ncols == 0:
-            i__row += 1
-            plt.ylabel('TPR')
-        if i__row == nrows:
-            plt.xlabel('FPR')
-
-        i__ax += 1
-
-    fig.savefig(
-        '{}-resolution_roc.pdf'.format(out_file_base),
-        dpi=300,
-        bbox_inches='tight'
-    )
-    plt.close(fig)
-
-    # Make a grid of precision-recall plots for each resolution.
-    fig, grid = panel_grid(
-        hspace=0.05*len(resolutions),
-        wspace=None,
-        ncols=ncols,
-        num_panels=len(resolutions)
-    )
-    i__ax = 0
-    i__row = 0
-    for i__res in resolutions:
-        # Get the subset of data
-        df_tmp = df[df['resolution'] == i__res]
-        # Drop extra cell type columns for clusters not found at this
-        # resolution.
-        df_tmp = df_tmp.dropna(axis='columns')
-        # Get classification / cell type columns
-        df_class_cols = [i for i in df_tmp.columns if 'class__' in i]
-        df_nonclass_cols = [
-            i for i in df_tmp.columns if i not in df_class_cols
-        ]
-
-        # Check to make sure we have the right data ... for every non-class
-        # column, there should be only one value. Otherwise, we are not
-        # plotting a unique run.
-        for index, value in df_tmp[df_nonclass_cols].nunique().items():
-            if 'cell_label' not in index and value > 1:
-                print(index, value)
-                raise Exception('ERROR: multiple resolution files combined.')
-
-        # Set the facet title.
-        plt_title = '{} resolution'.format(i__res)
-        plt_title = plt_title.rstrip()
-
-        # Get the proper axis for this plot.
-        ax = fig.add_subplot(grid[i__ax])
-        # Add plot
-        plot_prec_recall(
-            ax,
-            df_tmp[df_class_cols].values,
-            df_tmp['cell_label_true'].values,
-            df_class_cols
-        )
-        ax.set_title(plt_title)
-
-        if i__ax % ncols == 0:
-            i__row += 1
-            plt.ylabel('Precision')
-        if i__row == nrows:
-            plt.xlabel('Recall')
-
-        i__ax += 1
-
-    fig.savefig(
-        '{}-resolution_precision_recall.pdf'.format(out_file_base),
-        dpi=300,
-        bbox_inches='tight'
-    )
-    plt.close(fig)
 
 
 if __name__ == '__main__':
