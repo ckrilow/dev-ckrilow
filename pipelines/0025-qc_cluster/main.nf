@@ -52,7 +52,9 @@ params.plots_qc = [
     ]],
 ]
 // Default parameters for reduced dimension calculations.
+// run_downstream_analysis: If false don't run clustering or umaps
 params.reduced_dims = [
+    run_downstream_analysis: false,
     vars_to_regress: [value: ["", "total_counts,pct_counts_mito_gene"]],
     n_dims: [value: [15, 30]]
 ]
@@ -323,7 +325,10 @@ workflow {
             )
         }
         // Scatter-gather UMAP plots
-        if (params.umap.run_process) {
+        if (
+            params.reduced_dims.run_downstream_analysis &
+            params.umap.run_process
+        ) {
             wf__umap(
                 subset_pcs.out.outdir,
                 subset_pcs.out.anndata,
@@ -398,24 +403,26 @@ workflow {
         // )
         // END LEGACY CODE ------------------------------------------------
         // Cluster the results, varying the resolution.
-        // Also, generate UMAPs of the results.
-        wf__cluster(
-            subset_pcs.out.outdir,
-            subset_pcs.out.anndata,
-            subset_pcs.out.metadata,
-            subset_pcs.out.pcs,
-            subset_pcs.out.reduced_dims,
-            params.cluster.number_neighbors.value,
-            params.cluster.methods.value,
-            params.cluster.resolutions.value,
-            params.cluster_validate_resolution.sparsity.value,
-            params.cluster_validate_resolution.train_size_cells.value,
-            params.cluster_marker.methods.value,
-            params.umap.n_neighbors.value,
-            params.umap.umap_init.value,
-            params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value
-        )
+        // Also, generate UMAPs of the results.i
+        if (params.reduced_dims.run_downstream_analysis) {
+            wf__cluster(
+                subset_pcs.out.outdir,
+                subset_pcs.out.anndata,
+                subset_pcs.out.metadata,
+                subset_pcs.out.pcs,
+                subset_pcs.out.reduced_dims,
+                params.cluster.number_neighbors.value,
+                params.cluster.methods.value,
+                params.cluster.resolutions.value,
+                params.cluster_validate_resolution.sparsity.value,
+                params.cluster_validate_resolution.train_size_cells.value,
+                params.cluster_marker.methods.value,
+                params.umap.n_neighbors.value,
+                params.umap.umap_init.value,
+                params.umap.umap_min_dist.value,
+                params.umap.umap_spread.value
+            )
+        }
         if (params.harmony.run_process) {
             wf__cluster_harmony(
                 harmony.out.outdir,

@@ -16,6 +16,7 @@ plots_qc:
             - 'total_counts'
             - 'pct_counts_mito_gene'
 reduced_dims:
+    run_downstream_analysis: false
     description: 'Parameters for dimensionality reduction (principal component
         and harmony calculations). All pairwise combinations of
         vars_to_regress and n_dims will be performed.'
@@ -57,6 +58,8 @@ cluster:
             experiment_id.'
         value:
             - 30
+            - 50
+            - 100
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
@@ -96,7 +99,7 @@ cluster_marker:
         value:
             - 'wilcoxon'
 umap:
-    run_process: true
+    run_process: false
     description: 'Parameters for umap.'
     colors_quantitative:
         description: 'Comma separated string of quantitative variables that
@@ -113,9 +116,7 @@ umap:
             this number to the number of experiments/samples is a good place to
             start.'
         value:
-            - 25
             - 30
-            - 33
             - 50
             - 100
     umap_init:
