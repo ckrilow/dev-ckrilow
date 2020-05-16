@@ -25,6 +25,7 @@ from sklearn import model_selection
 from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV
 
+import keras
 from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers import Dense
@@ -90,6 +91,8 @@ def class_report(y_true, y_pred, classes, y_pred_proba=None):
         fpr = dict()
         tpr = dict()
         roc_auc = dict()
+        aupc = dict()
+        mcc = dict()
         for label_it, label in enumerate(model_report.index):
             if label in classes:  # skip accuracy, macro avg, weighted avg
                 fpr[label], tpr[label], _ = metrics.roc_curve(
@@ -97,11 +100,24 @@ def class_report(y_true, y_pred, classes, y_pred_proba=None):
                     y_pred_proba[:, label_it]
                 )
                 roc_auc[label] = metrics.auc(fpr[label], tpr[label])
+                aupc[label] = metrics.average_precision_score(
+                    (y_true == label).astype(int),
+                    y_pred_proba[:, label_it],
+                    average=None  # No need since iter over labels
+                )
+                mcc[label] = metrics.matthews_corrcoef(
+                    (y_true == label).astype(int),
+                    (y_pred == label).astype(int)
+                )
             else:
                 fpr[label] = np.nan
                 tpr[label] = np.nan
                 roc_auc[label] = np.nan
+                aupc[label] = np.nan
+                mcc[label] = np.nan
         model_report['AUC'] = pd.Series(roc_auc)
+        model_report['average_precision_score'] = pd.Series(aupc)
+        model_report['MCC'] = pd.Series(mcc)
 
     # Catch the case where true label not predicted in lr, perhaps because
     # too few training cases.
@@ -148,12 +164,19 @@ def keras_grid(
     #     loss=['categorical_crossentropy', 'mean_squared_error'],
     #     sparsity_l1=[0.1, 0.01, 0.001, 0.0005]
     # )
+    # NOTE: sparse_categorical_crossentropy is for classes that are not one
+    # hot encoded.
+    # https://www.quora.com/What-is-the-difference-between-categorical_crossentropy-and-sparse_categorical-cross-entropy-when-we-do-multiclass-classification-using-convolution-neural-networks
     param_grid = dict(
         activation=['softmax'],
         optimizer=['sgd'],
         loss=['categorical_crossentropy'],
-        sparsity_l2=[0.0, 0.1, 0.01, 1e-4, 1e-6],
-        sparsity_l1=[0.1, 0.01, 1e-4, 1e-6, 1e-10, 0.0]
+        sparsity_l2__activity=[0.0, 1e-6],
+        sparsity_l1__activity=[0.1, 1e-4, 1e-10, 0.0],
+        sparsity_l2__kernel=[0.0, 1e-6],
+        sparsity_l1__kernel=[0.1, 1e-4, 1e-10, 0.0],
+        sparsity_l2__bias=[0.0, 1e-6],
+        sparsity_l1__bias=[0.1, 1e-4, 1e-10, 0.0]
     )
     n_splits = 5
     grid = GridSearchCV(
@@ -239,10 +262,10 @@ def fit_model_keras(
 
     # Training
     model = model_function(
-        sparsity_l1=sparsity_l1,
-        sparsity_l2=sparsity_l2
+        sparsity_l1__activity=sparsity_l1,
+        sparsity_l2__activity=sparsity_l2
     )
-    model.fit(
+    history = model.fit(
         X_train,
         Y_train_onehot,
         batch_size=batch_size,
@@ -304,7 +327,7 @@ def fit_model_keras(
     print('Test score:', score[0])
     print('Test accuracy:', score[1])
 
-    return model, model_report, y_prob_df
+    return model, model_report, y_prob_df, history
 
 
 def main():
@@ -557,32 +580,73 @@ def main():
         optimizer='sgd',
         activation='softmax',
         loss='categorical_crossentropy',
-        sparsity_l1=0.0001,
-        sparsity_l2=0.0
+        sparsity_l1__activity=0.0001,
+        sparsity_l2__activity=0.0,
+        sparsity_l1__kernel=0.0,
+        sparsity_l2__kernel=0.0,
+        sparsity_l1__bias=0.0,
+        sparsity_l2__bias=0.0
     ):
         # create model
         model = Sequential()
         # Use a “softmax” activation function in the output layer. This is to
         # ensure the output values are in the range of 0 and 1 and may be used
         # as predicted probabilities.
+        #
+        # https://developers.google.com/machine-learning/crash-course/multi-class-neural-networks/softmax
+        # Softmax assigns decimal probabilities to each class in a multi-class
+        # problem. Those decimal probabilities must add up to 1.0. This
+        # additional constraint helps training converge more quickly than it
+        # otherwise would. Softmax is implemented through a neural network
+        # layer just before the output layer. The Softmax layer must have the
+        # same number of nodes as the output layer.
+        # Softmax assumes that each example is a member of exactly one class.
+        #
+        # Softmax should be used for multi-class prediction with single label
+        # https://developers.google.com/machine-learning/crash-course/multi-class-neural-networks/video-lecture
         # NOTE: input dimension = number of features your data has
         model.add(Dense(
             len(encoder.classes_),  # output dim is number of classes
+            use_bias=True,  # intercept
             activation=activation,  # softmax, sigmoid
-            kernel_regularizer=L1L2(l1=sparsity_l1, l2=sparsity_l2),
+            activity_regularizer=L1L2(
+                l1=sparsity_l1__activity,
+                l2=sparsity_l2__activity
+            ),
+            kernel_regularizer=L1L2(
+                l1=sparsity_l1__kernel,
+                l2=sparsity_l2__kernel
+            ),
+            bias_regularizer=L1L2(
+                l1=sparsity_l1__bias,
+                l2=sparsity_l2__bias
+            ),
             input_dim=X.shape[1]
         ))
         # Example of adding additional layers
         # model.add(Dense(8, input_dim=4, activation='relu'))
         # model.add(Dense(3, activation='softmax'))
 
+        # Metrics to check out over training epochs
+        mets = [
+            # loss,
+            # keras.metrics.CategoricalAccuracy(name='categorical_accuracy'),
+            # keras.metrics.TruePositives(name='tp'),
+            # keras.metrics.FalsePositives(name='fp'),
+            # keras.metrics.TrueNegatives(name='tn'),
+            # keras.metrics.FalseNegatives(name='fn'),
+            # keras.metrics.Precision(name='precision'),
+            # keras.metrics.Recall(name='recall'),
+            # keras.metrics.AUC(name='auc'),
+            keras.metrics.BinaryAccuracy(name='accuracy')
+        ]
         # Use Adam gradient descent optimization algorithm with a logarithmic
         # loss function, which is called “categorical_crossentropy” in Keras.
         # UPDATE: sgd works better emperically.
         model.compile(
             optimizer=optimizer,  # adam, sgd
-            loss=loss,  # mean_squared_error
-            metrics=['accuracy']
+            loss=loss,
+            metrics=mets
         )
 
         return model
@@ -673,7 +737,7 @@ def main():
             axis_text_x=plt9.element_text(angle=-45, hjust=0)
         )
         gplt.save(
-            '{}-score.pdf'.format(out_file_base),
+            '{}-score.png'.format(out_file_base),
             dpi=300,
             width=10,
             height=4,
@@ -709,7 +773,7 @@ def main():
             axis_text_x=plt9.element_text(angle=-45, hjust=0)
         )
         gplt.save(
-            '{}-fit_time.pdf'.format(out_file_base),
+            '{}-fit_time.png'.format(out_file_base),
             dpi=300,
             width=10,
             height=4,
@@ -738,7 +802,7 @@ def main():
             )
 
         # Fit the specific model and save the results
-        model, model_report, y_prob_df = fit_model_keras(
+        model, model_report, y_prob_df, history = fit_model_keras(
             model_function=classification_model,
             encoder=encoder,
             X_std=X_std,
@@ -750,14 +814,14 @@ def main():
             train_size_fraction=train_size_fraction
         )
 
-        # Save the model and weights
+        # Save the model, weights (coefficients), and bias (intercept)
         model.save(
             '{}.h5'.format(out_file_base),
             overwrite=True,
             include_optimizer=True
         )
 
-        # Save the model and weights seperately
+        # Save the model and weights (coefficients) seperately
         # open('{}.json'.format(out_file_base), 'w').write(model.to_json())
         open('{}.yml'.format(out_file_base), 'w').write(model.to_yaml())
         model.save_weights('{}-weights.h5'.format(out_file_base))
@@ -836,45 +900,44 @@ def main():
         if verbose:
             print('Completed: save {}.'.format(out_f))
 
-        # TODO: Revisit the weights and bias values
-        # # Plot the number of features with non-zero coefficients in each
-        # # cluster.
-        # out_f = '{}-n_features.pdf'.format(out_file_base)
-        # df_plt = pd.DataFrame({
-        #     'classes': df_weights.columns,
-        #     'features': (df_weights > 0).sum(axis=0)
-        # })
-        # df_plt = df_plt.set_index('classes')
+        # Plot the number of features with non-zero coefficients in each
+        # cluster.
+        out_f = '{}-n_features.png'.format(out_file_base)
+        df_plt = pd.DataFrame({
+            'classes': df_weights.columns,
+            'features': (df_weights != 0).sum(axis=0)
+        })
+        df_plt = df_plt.set_index('classes')
         # print(df_plt)
-        # # Add in catgories with no predictive model (e.g., becuase they were
-        # # too few in training).
-        # for i in adata.obs['cluster'].cat.categories:
-        #     if i not in df_plt.index:
-        #         df_plt = df_plt.append(pd.Series(
-        #             [0],
-        #             index=df_plt.columns,
-        #             name=i
-        #         ))
-        # fig = plt.figure(figsize=(max(0.5*len(df_plt.index), 5), 4))
-        # # plt.bar(lr.classes_, n_features)
-        # plt.bar(df_plt.index, df_plt['features'])
-        # plt.xlabel('Cluster')
-        # plt.ylabel('Features with coefficient > 0')
-        # plt.xticks(rotation=90)
-        # for i in df_plt.index:
-        #     plt.annotate(
-        #         str(df_plt.loc[i, 'features']),
-        #         xy=(i, df_plt.loc[i, 'features'])
-        #     )
-        # fig.savefig(
-        #     out_f,
-        #     dpi=300,
-        #     bbox_inches='tight'
-        # )
-        # plt.close(fig)
+        # Add in catgories with no predictive model (e.g., becuase they were
+        # too few in training).
+        for i in adata.obs['cluster'].cat.categories:
+            if i not in df_plt.index:
+                df_plt = df_plt.append(pd.Series(
+                    [0],
+                    index=df_plt.columns,
+                    name=i
+                ))
+        fig = plt.figure(figsize=(max(0.5*len(df_plt.index), 5), 4))
+        # plt.bar(lr.classes_, n_features)
+        plt.bar(df_plt.index, df_plt['features'])
+        plt.xlabel('Cluster')
+        plt.ylabel('Features with coefficient != 0')
+        plt.xticks(rotation=90)
+        for i in df_plt.index:
+            plt.annotate(
+                str(df_plt.loc[i, 'features']),
+                xy=(i, df_plt.loc[i, 'features'])
+            )
+        fig.savefig(
+            out_f,
+            dpi=300,
+            bbox_inches='tight'
+        )
+        plt.close(fig)
 
         # Plot ROC of the test and truth.
-        out_f = '{}-roc.pdf'.format(out_file_base)
+        out_f = '{}-roc.png'.format(out_file_base)
         fig = plt.figure()
         cell_label_true = y_prob_df.pop('cell_label_true')
         # Drop columns that are not cell type labels
@@ -891,43 +954,62 @@ def main():
         if verbose:
             print('Completed: save {}.'.format(out_f))
 
-        # Plot the AUC vs cluster size to see if smaller clusters have poorer
-        # AUC.
-        out_f = '{}-cluster_size_auc.pdf'.format(out_file_base)
+        # Plot metrics vs cluster size to see if smaller clusters have poorer
+        # metric measures.
         df_plt = model_report.fillna(0)
         for i in df_plt.index:
             if i not in encoder.classes_:
                 df_plt = df_plt.drop(i)
-        fig = plt.figure()
-        plt.scatter(df_plt['n_cells_full_dataset'], df_plt['AUC'], alpha=0.5)
-        plt.xlabel('Number of cells in cluster (full dataset)')
-        plt.ylabel('AUC')
-        plt.ylim(0, 1)
-        # Add annotation of the cluster
-        for index, row in df_plt.iterrows():
-            if row['n_cells_full_dataset'] == 0:
-                print('ERROP: n_cells_full_dataset = 0 for {}.'.format(index))
-            plt.annotate(
-                index,  # this is the text
-                (row['n_cells_full_dataset'], row['AUC']),  # point to label
-                textcoords='offset points',  # how to position the text
-                xytext=(0, 10),  # distance from text to points (x,y)
-                ha='center'   # horizontal alignment can be left, right, center
+        for i in ['AUC', 'f1-score', 'average_precision_score', 'MCC']:
+            out_f = '{}-cluster_size_{}.png'.format(out_file_base, i)
+            fig = plt.figure()
+            plt.scatter(df_plt['n_cells_full_dataset'], df_plt[i], alpha=0.5)
+            plt.xlabel('Number of cells in cluster (full dataset)')
+            plt.ylabel(i)
+            if i in ['AUC', 'f1-score', 'average_precision_score']:
+                plt.ylim(0, 1)
+            elif i == 'MCC':
+                plt.ylim(-1, 1)
+            # Add annotation of the cluster
+            for index, row in df_plt.iterrows():
+                if row['n_cells_full_dataset'] == 0:
+                    print(
+                        'ERROP: n_cells_full_dataset = 0 for {}.'.format(index)
+                    )
+                plt.annotate(
+                    index,  # this is the text
+                    (row['n_cells_full_dataset'], row[i]),  # point to label
+                    textcoords='offset points',  # how to position the text
+                    xytext=(0, 10),  # distance from text to points (x,y)
+                    ha='center'  # horiz alignment can be left, right, center
+                )
+            fig.savefig(
+                out_f,
+                dpi=300,
+                bbox_inches='tight'
             )
-        fig.savefig(
-            out_f,
-            dpi=300,
-            bbox_inches='tight'
-        )
-        plt.xscale('log', basex=10)
-        fig.savefig(
-            '{}-cluster_size_auc_log10.pdf'.format(out_file_base),
-            dpi=300,
-            bbox_inches='tight'
-        )
-        plt.close(fig)
-        if verbose:
-            print('Completed: save {}.'.format(out_f))
+            plt.xscale('log', basex=10)
+            fig.savefig(
+                '{}-cluster_size_{}_log10.png'.format(out_file_base, i),
+                dpi=300,
+                bbox_inches='tight'
+            )
+            plt.close(fig)
+            if verbose:
+                print('Completed: save {}.'.format(out_f))
+
+        # Plot history of metrics over epochs
+        for dat_i in history.history.keys():
+            fig = plt.figure()
+            plt.plot(history.history[dat_i])
+            plt.ylabel(dat_i)
+            plt.xlabel('Epoch')
+            fig.savefig(
+                '{}-model_iter_{}.png'.format(out_file_base, dat_i),
+                dpi=300,
+                bbox_inches='tight'
+            )
+            plt.close(fig)
 
 
 if __name__ == '__main__':
