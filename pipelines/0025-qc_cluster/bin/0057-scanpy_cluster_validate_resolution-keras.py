@@ -167,16 +167,27 @@ def keras_grid(
     # NOTE: sparse_categorical_crossentropy is for classes that are not one
     # hot encoded.
     # https://www.quora.com/What-is-the-difference-between-categorical_crossentropy-and-sparse_categorical-cross-entropy-when-we-do-multiclass-classification-using-convolution-neural-networks
+    # param_grid = dict(
+    #     activation=['softmax'],
+    #     optimizer=['sgd'],
+    #     loss=['categorical_crossentropy'],
+    #     sparsity_l2__activity=[0.0, 1e-6],
+    #     sparsity_l1__activity=[0.1, 1e-4, 1e-10, 0.0],
+    #     sparsity_l2__kernel=[0.0, 1e-6],
+    #     sparsity_l1__kernel=[0.1, 1e-4, 1e-10, 0.0],
+    #     sparsity_l2__bias=[0.0, 1e-6],
+    #     sparsity_l1__bias=[0.1, 1e-4, 1e-10, 0.0]
+    # )
     param_grid = dict(
         activation=['softmax'],
         optimizer=['sgd'],
         loss=['categorical_crossentropy'],
-        sparsity_l2__activity=[0.0, 1e-6],
-        sparsity_l1__activity=[0.1, 1e-4, 1e-10, 0.0],
-        sparsity_l2__kernel=[0.0, 1e-6],
-        sparsity_l1__kernel=[0.1, 1e-4, 1e-10, 0.0],
-        sparsity_l2__bias=[0.0, 1e-6],
-        sparsity_l1__bias=[0.1, 1e-4, 1e-10, 0.0]
+        sparsity_l2__activity=[0.0],
+        sparsity_l1__activity=[0.1, 1e-4],
+        sparsity_l2__kernel=[0.0],
+        sparsity_l1__kernel=[0.1, 1e-4],
+        sparsity_l2__bias=[0.0],
+        sparsity_l1__bias=[0.1, 1e-4]
     )
     n_splits = 5
     grid = GridSearchCV(
@@ -263,7 +274,11 @@ def fit_model_keras(
     # Training
     model = model_function(
         sparsity_l1__activity=sparsity_l1,
-        sparsity_l2__activity=sparsity_l2
+        sparsity_l2__activity=sparsity_l2,
+        sparsity_l1__kernel=sparsity_l1,
+        sparsity_l2__kernel=sparsity_l2,
+        sparsity_l1__bias=sparsity_l1,
+        sparsity_l2__bias=sparsity_l2
     )
     history = model.fit(
         X_train,
@@ -515,7 +530,11 @@ def main():
     adata = sc.read_h5ad(filename=options.h5)
 
     # Set X to cp10k
-    adata.X = np.expm1(adata.layers['log1p_cp10k'])
+    # adata.X = np.expm1(adata.layers['log1p_cp10k'])
+    # Set X to ln(cp10k+1)
+    # NOTE: Testing with 100k TI dataset, we were able to achieve higher
+    # accuracy with log1p_cp10k - likely becuase better spread in distribution.
+    adata.X = adata.layers['log1p_cp10k']
     # Set X to raw counts
     # adata.X = adata.layers['counts']
 
@@ -630,7 +649,7 @@ def main():
         # Metrics to check out over training epochs
         mets = [
             # loss,
-            # keras.metrics.CategoricalAccuracy(name='categorical_accuracy'),
+            keras.metrics.CategoricalAccuracy(name='categorical_accuracy'),
             # keras.metrics.TruePositives(name='tp'),
             # keras.metrics.FalsePositives(name='fp'),
             # keras.metrics.TrueNegatives(name='tn'),
