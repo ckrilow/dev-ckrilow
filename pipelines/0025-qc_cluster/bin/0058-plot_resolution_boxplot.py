@@ -16,9 +16,9 @@ import csv
 def _make_plots(
     df_plt,
     out_file_base,
+    y='AUC',
     facet_grid=''
 ):
-    # Plot AUC.
     len_x = len(np.unique(df_plt['resolution']))
     if 'sparsity_l1' in df_plt.columns:
         df_plt['Sparsity'] = df_plt['sparsity_l1']
@@ -29,7 +29,7 @@ def _make_plots(
         gplt = plt9.ggplot(df_plt, plt9.aes(
             fill='Sparsity',
             x='resolution',
-            y='AUC',
+            y=y,
         ))
         gplt = gplt + plt9.geom_boxplot(
             alpha=0.8,
@@ -43,7 +43,7 @@ def _make_plots(
     else:
         gplt = plt9.ggplot(df_plt, plt9.aes(
             x='resolution',
-            y='AUC',
+            y=y,
         ))
         gplt = gplt + plt9.geom_boxplot(
             alpha=0.8,
@@ -56,65 +56,24 @@ def _make_plots(
     gplt = gplt + plt9.theme_bw(base_size=12)
     if facet_grid != '':
         gplt = gplt + plt9.facet_grid('{} ~ .'.format(facet_grid))
-    gplt = gplt + plt9.labs(
-        x='Resolution',
-        y='AUC',
-        title=''
-    )
-    gplt = gplt + plt9.theme(
-        # legend_position='none',
-        axis_text_x=plt9.element_text(angle=-45, hjust=0)
-    )
-    if len_x2 != 0 and len_x2 < 9:
-        gplt = gplt + plt9.scale_fill_brewer(
-            palette='Dark2',
-            type='qual'
+    if y == 'f1-score':
+        gplt = gplt + plt9.labs(
+            x='Resolution',
+            y='F1 score',
+            title=''
         )
-    gplt.save(
-        '{}-resolution_auc.pdf'.format(out_file_base),
-        dpi=300,
-        width=4*((len_x+len_x2)/4),
-        height=5,
-        limitsize=False
-    )
-
-    # Plot F1
-    if len_x2 > 1:
-        gplt = plt9.ggplot(df_plt, plt9.aes(
-            fill='Sparsity',
-            x='resolution',
-            y='f1-score',
-        ))
-        gplt = gplt + plt9.geom_boxplot(
-            alpha=0.8,
-            outlier_alpha=0
-        )
-        gplt = gplt + plt9.geom_jitter(
-            plt9.aes(color='Sparsity'),
-            alpha=0.25,
-            width=0.2
+    elif y in ['AUC', 'MCC']:
+        gplt = gplt + plt9.labs(
+            x='Resolution',
+            y=y,
+            title=''
         )
     else:
-        gplt = plt9.ggplot(df_plt, plt9.aes(
-            x='resolution',
-            y='f1-score',
-        ))
-        gplt = gplt + plt9.geom_boxplot(
-            alpha=0.8,
-            outlier_alpha=0
+        gplt = gplt + plt9.labs(
+            x='Resolution',
+            y=y.capitalize().replace('_', ' '),
+            title=''
         )
-        gplt = gplt + plt9.geom_jitter(
-            alpha=0.25,
-            width=0.2
-        )
-    gplt = gplt + plt9.theme_bw(base_size=12)
-    if facet_grid != '':
-        gplt = gplt + plt9.facet_grid('{} ~ .'.format(facet_grid))
-    gplt = gplt + plt9.labs(
-        x='Resolution',
-        y='F1 score',
-        title=''
-    )
     gplt = gplt + plt9.theme(
         # legend_position='none',
         axis_text_x=plt9.element_text(angle=-45, hjust=0)
@@ -125,7 +84,7 @@ def _make_plots(
             type='qual'
         )
     gplt.save(
-        '{}-resolution_f1score.pdf'.format(out_file_base),
+        '{}-resolution__{}.png'.format(out_file_base, y.replace('-', '_')),
         dpi=300,
         width=4*((len_x+len_x2)/4),
         height=5,
@@ -220,7 +179,7 @@ def main():
     not_unique_columns = [
         'cell_label', 'precision', 'recall', 'f1-score',
         'support', 'AUC', 'n_cells_full_dataset', 'n_cells_training_dataset',
-        'is_cluster'
+        'is_cluster', 'average_precision_score', 'MCC'
     ]
     unique_columns = [
         i for i in df_modelreport.columns if i not in not_unique_columns
@@ -241,23 +200,32 @@ def main():
     # in model reports.
     df_modelreport = df_modelreport[df_modelreport['is_cluster']]
 
+    # Columns to plot
+    cols_plot = [
+        'precision', 'recall', 'f1-score', 'support', 'AUC',
+        'average_precision_score', 'MCC'
+    ]
     # If we have multiple neighbor values, make a facet plot.
     if len(n_neighbors) > 1:
-        _make_plots(
-            df_modelreport,
-            out_file_base,
-            facet_grid='neighbors__n_neighbors'
-        )
+        for i in cols_plot:
+            _make_plots(
+                df_modelreport,
+                out_file_base,
+                i,
+                facet_grid='neighbors__n_neighbors'
+            )
     # Also make seperate plots for each n_neighbors value.
     for i__n_neighbors in df_modelreport['neighbors__n_neighbors'].unique():
         df_tmp = df_modelreport[
             df_modelreport['neighbors__n_neighbors'] == i__n_neighbors
         ]
-        _make_plots(
-            df_tmp,
-            '{}-n_neighbors={}'.format(out_file_base, i__n_neighbors),
-            facet_grid=''
-        )
+        for i in cols_plot:
+            _make_plots(
+                df_tmp,
+                '{}-n_neighbors={}'.format(out_file_base, i__n_neighbors),
+                i,
+                facet_grid=''
+            )
 
 
 if __name__ == '__main__':
