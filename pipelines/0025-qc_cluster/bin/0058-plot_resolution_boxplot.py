@@ -215,6 +215,7 @@ def main():
                 facet_grid='neighbors__n_neighbors'
             )
     # Also make seperate plots for each n_neighbors value.
+    df_cutoff_list = []
     for i__n_neighbors in df_modelreport['neighbors__n_neighbors'].unique():
         df_tmp = df_modelreport[
             df_modelreport['neighbors__n_neighbors'] == i__n_neighbors
@@ -226,6 +227,40 @@ def main():
                 i,
                 facet_grid=''
             )
+        for i__res in df_modelreport['resolution'].unique():
+            df_cutoff_dict_i = {}  # Save the below cutoffs to dataframe
+            df_cutoff_dict_i['neighbors__n_neighbors'] = i__n_neighbors
+            df_cutoff_dict_i['resolution'] = i__res
+            df_tmp2 = df_tmp[
+                df_modelreport['resolution'] == i__res
+            ]
+            out_string = 'resolution = {} ({} clusters)'.format(
+                i__res,
+                df_tmp2.shape[0]
+            )
+            for i in cols_plot:
+                df_cutoff_dict_i[
+                    'min_across_clusters__{}'.format(i)
+                ] = df_tmp2[i].min()
+                out_string = '{}\n\tmin {} = {}'.format(
+                    out_string,
+                    i,
+                    df_tmp2[i].min()
+                )
+            print(out_string)
+
+            df_cutoff_list.append(df_cutoff_dict_i)
+
+    # Save the dataframe of minimums
+    df_cutoff = pd.DataFrame(df_cutoff_list)
+    df_cutoff.to_csv(
+        '{}-merged_model_report-cutoffs.tsv.gz'.format(out_file_base),
+        sep='\t',
+        index=False,
+        quoting=csv.QUOTE_NONNUMERIC,
+        na_rep='',
+        compression='gzip'
+    )
 
 
 if __name__ == '__main__':
