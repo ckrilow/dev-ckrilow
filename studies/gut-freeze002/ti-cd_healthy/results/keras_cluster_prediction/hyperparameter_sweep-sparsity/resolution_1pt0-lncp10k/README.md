@@ -10,5 +10,5 @@ subset(dat, param_sparsity_l1__activity == 1e-04 & param_sparsity_l1__bias == 1e
 ```
 
 Notes:
-* Here we tested L1 and L2 sparsity for activation, bais, and kernel. The best setttings where when spasity set the same across all variables.
+* Here we tested L1 and L2 sparsity for activation, bais, and kernel. The best setttings where not too far off when spasity set the same across all variables.
 * We used ln(CP10k+1)
