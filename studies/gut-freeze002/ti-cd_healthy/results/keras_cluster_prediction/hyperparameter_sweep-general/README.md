@@ -9,3 +9,6 @@ The aim of this parameter sweep was to identify set activation, loss, optimizer.
 ```bash
 Best: 0.928782 using {'activation': 'softmax', 'loss': 'categorical_crossentropy', 'optimizer': 'sgd', 'sparsity_l1': 0.001}
 ```
+
+Note:
+* Here only kernel sparsity_l1 was set (not activation or bias).

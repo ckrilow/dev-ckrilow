@@ -5,9 +5,8 @@ sample_qc:
         description: 'Cell filters applied to each sample. Cells passing these
             filters are kept. Note: n_genes_by_counts == n_detected_features.'
         value:
-            - 'pct_counts_in_top_100_genes < 50'
             - 'pct_counts_mito_gene < 80 and n_genes_by_counts > 100'
-            - 'n_genes_by_counts > 2000'
+            - 'n_genes_by_counts > 1'
     downsample_cells_fraction:
         description: 'Downsample to this fraction of the number of
             observations (sc.pp.subsample). Use "" to indicate no downsampling.
@@ -38,22 +37,22 @@ plots_qc:
             - 'pct_counts_in_top_100_genes'
             - 'total_counts,pct_counts_mito_gene'
 reduced_dims:
+    run_downstream_analysis: false
     description: 'Parameters for dimensionality reduction (principal component
         and harmony calculations). All pairwise combinations of
         vars_to_regress and n_dims will be performed.'
     vars_to_regress:
-        description: 'Comma seperated string of variables to regress. Use "" to
-            indicate no regssion is to be performed.'
+        description: 'Comma separated string of variables to regress. Use "" to
+            indicate no regession is to be performed.'
         value:
             - ''
-            - 'total_counts,pct_counts_mito_gene'
     n_dims:
         description: 'Number of dimensions to use for calculating PCs,
             harmony corrected PCs, and clusters.'
         value:
-            - 3
             - 30
 harmony:
+    run_process: true
     description: 'Parameters for harmony.'
     variables_and_thetas:
         description: 'Tuples of metadata columns and corresponding thetas.'
@@ -63,15 +62,18 @@ harmony:
             - variable: 'experiment_id,ack_lysis_buffer'
               theta: '1.0,0.2'
 lisi:
+    run_process: true
     description: 'Parameters for Local Inverse Simpsons Index (LISI).'
     variables:
         description: 'Metadata variables to compute LISI over.'
         value: 'sanger_sample_id,ack_lysis_buffer'
+bbknn:
+    run_process: true
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
     number_neighbors:
-        description: 'Number of neighbors. If <= 0, uses number of unqiue
+        description: 'Number of neighbors. If <= 0, uses number of unique
             experiment_id.'
         value:
             - 15
@@ -79,35 +81,35 @@ cluster:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
             - 'leiden'
-            - 'louvain'
     resolutions:
         description: 'Clustering resolution.'
         value:
+            - 0.25
             - 1.0
             - 3.0
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
-    train_size_cells:
-        description: 'Number of cells to use for training. Set to -1 for
-            to use defualt of 2/3 of total cells.'
-        value:
-            - -1
-            - 1000
     sparsity:
         description: 'LogisticRegression sparsity or inverse of regularization
             strength; must be a positive float. Like in support vector
             machines, smaller values specify stronger regularization.'
         value:
-            - 0.1
-            - 0.01
+            - 0.0001
+    train_size_cells:
+        description: 'Number of cells to use for training. Set to -1 for
+            to use default of 2/3 of total cells. Do not change this parameter
+            unless you know what you are doing.'
+        value:
+            - -1
 cluster_marker:
     description: 'Parameters for identifying cluster marker features.'
     methods:
-        description: 'Method for marker detection.'
+        description: 'Method for marker detection. Valid options
+            [wilcoxon|logreg].'
         value:
             - 'wilcoxon'
-            - 'logreg'
 umap:
+    run_process: false
     description: 'Parameters for umap.'
     colors_quantitative:
         description: 'Comma separated string of quantitative variables that

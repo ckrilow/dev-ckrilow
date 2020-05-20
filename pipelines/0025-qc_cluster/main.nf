@@ -52,42 +52,49 @@ params.plots_qc = [
     ]],
 ]
 // Default parameters for reduced dimension calculations.
+// run_downstream_analysis: If false don't run clustering or umaps
 params.reduced_dims = [
-    vars_to_regress: [value: ["", "total_counts,age"]],
+    run_downstream_analysis: false,
+    vars_to_regress: [value: ["", "total_counts,pct_counts_mito_gene"]],
     n_dims: [value: [15, 30]]
 ]
 // Default parameters for harmony.
 params.harmony = [
+    run_process: false,
     variables_and_thetas: [value: [
         [variable: "experiment_id", theta: "1.0"],
-        [variable: "experiment_id,bead_version", theta: "1.0,0.2"]
+        [variable: "experiment_id,phase", theta: "1.0,0.2"]
     ]]
+]
+// Default parameters for bbknn
+params.bbknn = [
+    run_process: false
 ]
 // Default parameters for lisi
 params.lisi = [
-    variables: [value: ["experiment_id,bead_version"]]
+    run_process: false,
+    variables: [value: ["experiment_id,phase"]]
 ]
 // Default parameters for cluster calculations.
 params.cluster = [
     number_neighbors: [value: [15, 20]],
-    methods: [value: ["leiden", "louvain"]],
+    methods: [value: ["leiden"]],
     resolutions: [value: [1.0, 3.0]]
 ]
 // Default parameters for cluster resolution validation.
 params.cluster_validate_resolution = [
-    sparsity: [value: [0.25, 0.1]],
-    train_size_cells: [value: [10000, -1]],
-    //number_cells: [value: [10000, -1]],
-    //train_size_fraction: [value: [0.33]]
+    sparsity: [value: [0.0001]],
+    train_size_cells: [value: [-1]]
 ]
 // Default parameters for cluster marker gene calculations.
 params.cluster_marker = [
-    methods: [value: ["wilcoxon", "logreg"]]
+    methods: [value: ["wilcoxon"]]
 ]
 // Default parameters for umap calculations.
 params.umap = [
-    colors_quantitative: [value: "age"],
-    colors_categorical: [value: "experiment_id,sex"],
+    run_process: true,
+    colors_quantitative: [value: "total_counts"],
+    colors_categorical: [value: "experiment_id,phase"],
     n_neighbors: [value: [15, 30]],
     umap_init: [value: ["X_pca", "spectral"]],
     umap_min_dist: [value: [0.5]],
@@ -272,83 +279,106 @@ workflow {
             params.reduced_dims.n_dims.value
         )
         // "Correct" PCs using Harmony
-        harmony(
-            normalize_and_pca.out.outdir,
-            normalize_and_pca.out.anndata,
-            normalize_and_pca.out.metadata,
-            normalize_and_pca.out.pcs,
-            normalize_and_pca.out.param_details,
-            params.reduced_dims.n_dims.value,
-            params.harmony.variables_and_thetas.value
-        )
+        if (params.harmony.run_process) {
+            harmony(
+                normalize_and_pca.out.outdir,
+                normalize_and_pca.out.anndata,
+                normalize_and_pca.out.metadata,
+                normalize_and_pca.out.pcs,
+                normalize_and_pca.out.param_details,
+                params.reduced_dims.n_dims.value,
+                params.harmony.variables_and_thetas.value
+            )
+        }
         // Run BBKNN
-        bbknn(
-            normalize_and_pca.out.outdir,
-            normalize_and_pca.out.anndata,
-            normalize_and_pca.out.metadata,
-            normalize_and_pca.out.pcs,
-            normalize_and_pca.out.param_details,
-            params.reduced_dims.n_dims.value,
-            'experiment_id'
-        )
+        if (params.bbknn.run_process) {
+            bbknn(
+                normalize_and_pca.out.outdir,
+                normalize_and_pca.out.anndata,
+                normalize_and_pca.out.metadata,
+                normalize_and_pca.out.pcs,
+                normalize_and_pca.out.param_details,
+                params.reduced_dims.n_dims.value,
+                'experiment_id'
+            )
+        }
         // TODO: There is a bug below where lisi will be called for each
         // normalize_and_pca call. It just means there will be some duplicate
         // output files in each normalize_and_pca dir and a bit of wasted CPU.
-        lisi_input = subset_pcs.out.reduced_dims_params.collect().mix(
-            harmony.out.reduced_dims_params.collect()
-        ).mix(
-            bbknn.out.reduced_dims_params.collect()
-        )
-        lisi(
-            normalize_and_pca.out.outdir,
-            normalize_and_pca.out.metadata,
-            params.lisi.variables.value,
-            lisi_input.collect()
-        )
+        if (params.lisi.run_process) {
+            lisi_input = subset_pcs.out.reduced_dims_params.collect()
+            if (params.harmony.run_process) {
+                lisi_input = lisi_input.mix(
+                    harmony.out.reduced_dims_params.collect()
+                )
+            }
+            if (params.bbknn.run_process) {
+                lisi_input = lisi_input.mix(
+                    bbknn.out.reduced_dims_params.collect()
+                )
+            }
+            lisi(
+                normalize_and_pca.out.outdir,
+                normalize_and_pca.out.metadata,
+                params.lisi.variables.value,
+                lisi_input.collect()
+            )
+        }
         // Scatter-gather UMAP plots
-        wf__umap(
-            subset_pcs.out.outdir,
-            subset_pcs.out.anndata,
-            // subset_pcs.out.metadata,
-            // subset_pcs.out.pcs,
-            subset_pcs.out.reduced_dims,
-            params.umap.n_neighbors.value,
-            params.umap.umap_init.value,
-            params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value,
-            params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value
-        )
-        wf__umap_harmony(
-            harmony.out.outdir,
-            harmony.out.anndata,
-            // harmony.out.metadata,
-            // harmony.out.pcs,
-            harmony.out.reduced_dims,
-            params.umap.n_neighbors.value,
-            params.umap.umap_init.value,
-            params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value,
-            params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value
-        )
+        if (
+            params.reduced_dims.run_downstream_analysis &
+            params.umap.run_process
+        ) {
+            wf__umap(
+                subset_pcs.out.outdir,
+                subset_pcs.out.anndata,
+                // subset_pcs.out.metadata,
+                // subset_pcs.out.pcs,
+                subset_pcs.out.reduced_dims,
+                params.umap.n_neighbors.value,
+                params.umap.umap_init.value,
+                params.umap.umap_min_dist.value,
+                params.umap.umap_spread.value,
+                params.umap.colors_quantitative.value,
+                params.umap.colors_categorical.value
+            )
+        }
+        if (params.harmony.run_process & params.umap.run_process) {
+            wf__umap_harmony(
+                harmony.out.outdir,
+                harmony.out.anndata,
+                // harmony.out.metadata,
+                // harmony.out.pcs,
+                harmony.out.reduced_dims,
+                params.umap.n_neighbors.value,
+                params.umap.umap_init.value,
+                params.umap.umap_min_dist.value,
+                params.umap.umap_spread.value,
+                params.umap.colors_quantitative.value,
+                params.umap.colors_categorical.value
+            )
+        }
         // NOTE: for BBKNN, we specifically pass the PCs to the reduced dims
         ///      slot not the UMAPS.
         // NOTE: for BBKNN n_neighbors is not needed since already calculated
-        wf__umap_bbknn(
-            bbknn.out.outdir,
-            bbknn.out.anndata,
-            // bbknn.out.metadata,
-            bbknn.out.pcs,
-            // bbknn.out.reduced_dims,
-            ['-1'],  // params.cluster.number_neighbors.value,
-            params.umap.umap_init.value,
-            params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value,
-            params.umap.colors_quantitative.value,
-            params.umap.colors_categorical.value
-        )
-        // Make UMAPs of the reduced dimensions - no scatter gather
+        if (params.bbknn.run_process & params.umap.run_process) {
+            wf__umap_bbknn(
+                bbknn.out.outdir,
+                bbknn.out.anndata,
+                // bbknn.out.metadata,
+                bbknn.out.pcs,
+                // bbknn.out.reduced_dims,
+                ['-1'],  // params.cluster.number_neighbors.value,
+                params.umap.umap_init.value,
+                params.umap.umap_min_dist.value,
+                params.umap.umap_spread.value,
+                params.umap.colors_quantitative.value,
+                params.umap.colors_categorical.value
+            )
+        }
+        // START LEGACY CODE ----------------------------------------------
+        // NOTE: Legacy code due to it being hard to compare
+        // Make UMAPs of the reduced dimensions - no scatter gather.
         // umap_calculate_and_plot(
         //     subset_pcs.out.outdir,
         //     subset_pcs.out.anndata,
@@ -371,65 +401,66 @@ workflow {
         //     params.umap.umap_min_dist.value,
         //     params.umap.umap_spread.value
         // )
+        // END LEGACY CODE ------------------------------------------------
         // Cluster the results, varying the resolution.
-        // Also, generate UMAPs of the results.
-        wf__cluster(
-            subset_pcs.out.outdir,
-            subset_pcs.out.anndata,
-            subset_pcs.out.metadata,
-            subset_pcs.out.pcs,
-            subset_pcs.out.reduced_dims,
-            params.cluster.number_neighbors.value,
-            params.cluster.methods.value,
-            params.cluster.resolutions.value,
-            params.cluster_validate_resolution.sparsity.value,
-            params.cluster_validate_resolution.train_size_cells.value,
-            // params.cluster_validate_resolution.number_cells.value,
-            // params.cluster_validate_resolution.train_size_fraction.value,
-            params.cluster_marker.methods.value,
-            params.umap.n_neighbors.value,
-            params.umap.umap_init.value,
-            params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value
-        )
-        wf__cluster_harmony(
-            harmony.out.outdir,
-            harmony.out.anndata,
-            harmony.out.metadata,
-            harmony.out.pcs,
-            harmony.out.reduced_dims,
-            params.cluster.number_neighbors.value,
-            params.cluster.methods.value,
-            params.cluster.resolutions.value,
-            params.cluster_validate_resolution.sparsity.value,
-            params.cluster_validate_resolution.train_size_cells.value,
-            // params.cluster_validate_resolution.number_cells.value,
-            // params.cluster_validate_resolution.train_size_fraction.value,
-            params.cluster_marker.methods.value,
-            params.umap.n_neighbors.value,
-            params.umap.umap_init.value,
-            params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value
-        )
-        wf__cluster_bbknn(
-            bbknn.out.outdir,
-            bbknn.out.anndata,
-            bbknn.out.metadata,
-            bbknn.out.pcs,
-            bbknn.out.reduced_dims,
-            ['-1'],  // params.cluster.number_neighbors.value,
-            params.cluster.methods.value,
-            params.cluster.resolutions.value,
-            params.cluster_validate_resolution.sparsity.value,
-            params.cluster_validate_resolution.train_size_cells.value,
-            // params.cluster_validate_resolution.number_cells.value,
-            // params.cluster_validate_resolution.train_size_fraction.value,
-            params.cluster_marker.methods.value,
-            ['-1'],  // params.umap.n_neighbors.value,
-            params.umap.umap_init.value,
-            params.umap.umap_min_dist.value,
-            params.umap.umap_spread.value
-        )
+        // Also, generate UMAPs of the results.i
+        if (params.reduced_dims.run_downstream_analysis) {
+            wf__cluster(
+                subset_pcs.out.outdir,
+                subset_pcs.out.anndata,
+                subset_pcs.out.metadata,
+                subset_pcs.out.pcs,
+                subset_pcs.out.reduced_dims,
+                params.cluster.number_neighbors.value,
+                params.cluster.methods.value,
+                params.cluster.resolutions.value,
+                params.cluster_validate_resolution.sparsity.value,
+                params.cluster_validate_resolution.train_size_cells.value,
+                params.cluster_marker.methods.value,
+                params.umap.n_neighbors.value,
+                params.umap.umap_init.value,
+                params.umap.umap_min_dist.value,
+                params.umap.umap_spread.value
+            )
+        }
+        if (params.harmony.run_process) {
+            wf__cluster_harmony(
+                harmony.out.outdir,
+                harmony.out.anndata,
+                harmony.out.metadata,
+                harmony.out.pcs,
+                harmony.out.reduced_dims,
+                params.cluster.number_neighbors.value,
+                params.cluster.methods.value,
+                params.cluster.resolutions.value,
+                params.cluster_validate_resolution.sparsity.value,
+                params.cluster_validate_resolution.train_size_cells.value,
+                params.cluster_marker.methods.value,
+                params.umap.n_neighbors.value,
+                params.umap.umap_init.value,
+                params.umap.umap_min_dist.value,
+                params.umap.umap_spread.value
+            )
+        }
+        if (params.bbknn.run_process) {
+            wf__cluster_bbknn(
+                bbknn.out.outdir,
+                bbknn.out.anndata,
+                bbknn.out.metadata,
+                bbknn.out.pcs,
+                bbknn.out.reduced_dims,
+                ['-1'],  // params.cluster.number_neighbors.value,
+                params.cluster.methods.value,
+                params.cluster.resolutions.value,
+                params.cluster_validate_resolution.sparsity.value,
+                params.cluster_validate_resolution.train_size_cells.value,
+                params.cluster_marker.methods.value,
+                ['-1'],  // params.umap.n_neighbors.value,
+                params.umap.umap_init.value,
+                params.umap.umap_min_dist.value,
+                params.umap.umap_spread.value
+            )
+        }
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
     //       depending on the input data call. Therefore, we use publishDir
