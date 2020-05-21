@@ -5,11 +5,12 @@
 * Team Email: otar2057@opentargets.org
 * Data freeze: v002
 
+
 # SUMMARY
 
-Single cell RNA-seq (scRNA-seq) of terminal ileum biopsies from 25 Crohn's disease (CD) and 8 healthy participants. This release includes: (1) 3' 10x scRNA-seq data processed with CellRanger v3.0.2 (genome reference = GRCh38) by Sanger DNA pipelines, (2) phenotype information on particpants, and (3) sample metadata.
+Single cell RNA-seq (scRNA-seq) of (A) terminal ileum biopsies (25 Crohn's disease and 8 healthy participants) and (B) rectum biopsies (9 healthy participants). This release includes: (1) 3' 10x scRNA-seq data processed with CellRanger v3.0.2 (genome reference = GRCh38) by Sanger DNA pipelines, (2) phenotype information on particpants, and (3) sample metadata.
 
-Note that we include two CellRanger output datasets, labelled "filtered_feature_bc_matrix" and "raw_feature_bc_matrix". "Filtered" refers to data where empty droplets have been removed as part of standard CellRanger analysis. For the "raw_feature" data, empty droplets have not been removed. 
+Note that we include two CellRanger output datasets, labelled "filtered_feature_bc_matrix" and "raw_feature_bc_matrix". "Filtered" refers to data where empty droplets have been removed as part of standard CellRanger analysis. For the "raw_feature" data, empty droplets have not been removed.
 
 
 # PROJECT OVERVIEW AND GOALS
