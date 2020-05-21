@@ -11,6 +11,7 @@ include {
 } from "./modules/multiplet.nf"
 include {
     merge_samples;
+    plot_predicted_sex;
     plot_qc;
     normalize_and_pca;
     subset_pcs;
@@ -246,6 +247,11 @@ workflow {
             file_sample_qc,
             file_cellmetadata,
             "sanger_sample_id"
+        )
+        // Predict sex from gene expression and check against phenotypes.
+        plot_predicted_sex(
+            params.output_dir,
+            merge_samples.out.anndata
         )
         // Make QC plots of the merged data.
         plot_qc(

@@ -66,6 +66,48 @@ process merge_samples {
 }
 
 
+process plot_predicted_sex {
+    // Takes annData object, plots the predicted sex fron gene expression
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo true          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        // Append run_id to output file.
+        outfile = "${runid}-scatterplot-sex_sample_swap_check"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_predicted_sex: ${process_info}"
+        0028-plot_predicted_sex.py \
+            --h5_anndata ${file__anndata} \
+            --output_file ${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 process plot_qc {
     // Takes annData object, generates basic qc plots
     // ------------------------------------------------------------------------
