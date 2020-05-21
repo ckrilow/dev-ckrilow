@@ -175,6 +175,16 @@ command_line_interface <- function() {
         sep = "\t",
         na = ""
     )
+
+    write.table(
+        df_metadata_dict,
+        "data_release-metadata_column_description.tsv",
+        row.names = FALSE,
+        col.names = TRUE,
+        quote = TRUE,
+        sep = "\t",
+        na = ""
+    )
 }
 
 
