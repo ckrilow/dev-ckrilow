@@ -182,7 +182,7 @@ def _make_plots(
 
     fig.savefig(
         '{}-resolution_roc.png'.format(out_file_base),
-        dpi=300,
+        dpi=250,
         bbox_inches='tight'
     )
     plt.close(fig)
