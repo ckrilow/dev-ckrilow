@@ -100,8 +100,8 @@ def main():
         # neighbors_within_batch=5
         n_pcs=n_pcs
     )
-    adata.uns['neighbors']['bbknn'] = True
-    adata.uns['neighbors']['n_pcs'] = n_pcs
+    adata.uns['neighbors']['params']['bbknn'] = True
+    adata.uns['neighbors']['params']['n_pcs'] = n_pcs
 
     # Save the resulting adata.
     adata.write(
