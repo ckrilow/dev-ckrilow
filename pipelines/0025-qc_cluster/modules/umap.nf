@@ -23,9 +23,10 @@ process umap_calculate {
     input:
         val(outdir_prev)
         path(file__anndata)
-        //path(file__metadata) // not really needed
-        //path(file__pcs) // not really needed
+        path(file__metadata) // not really needed
+        path(file__pcs) // not really needed
         path(file__reduced_dims)
+        val(use_pcs_as_reduced_dims) // For BBKNN
         each n_neighbors
         each umap_init
         each umap_min_dist
@@ -55,6 +56,12 @@ process umap_calculate {
         // from the file__anndata job.
         outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
         outfile = "${outfile}-umap"
+        // Check to see if we should use PCs in the reduced dims slot.
+        // Important for BBKNN where reduced_dims == UMAPs not adjusted PCs.
+        cmd__tsv_pcs = "--tsv_pcs ${file__reduced_dims}"
+        if (use_pcs_as_reduced_dims == "True") {
+            cmd__tsv_pcs = "--tsv_pcs ${file__pcs}"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -62,7 +69,7 @@ process umap_calculate {
         echo "umap_calculate: ${process_info}"
         umap_calculate.py \
             --h5_anndata ${file__anndata} \
-            --tsv_pcs ${file__reduced_dims} \
+            ${cmd__tsv_pcs} \
             --n_neighbors ${n_neighbors} \
             --umap_init ${umap_init} \
             --umap_min_dist ${umap_min_dist} \
@@ -84,33 +91,57 @@ process umap_gather {
     echo true          // echo output from script
 
     publishDir  path: "${outdir}",
-                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                saveAs: {filename ->
+                    if(filename.endsWith("metadata.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("pcs.tsv.gz")) {
+                        null
+                    } else if(filename.endsWith("reduced_dims.tsv.gz")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
                 mode: "copy",
                 overwrite: "true"
 
     input:
         val(outdir_prev)
+        path(original__file__anndata)
+        path(original__file__metadata)
+        path(original__file__pcs)
+        path(original__file__reduced_dims)
         tuple(val(key), path(files__anndata))
-
     output:
-        val(outdir, emit: outdir)
+        val(outdir_prev, emit: outdir)
         path("${runid}-${outfile}.h5ad", emit: anndata)
+        path(original__file__metadata, emit: metadata)
+        path(original__file__pcs, emit: pcs)
+        path(original__file__reduced_dims, emit: reduced_dims)
 
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        // outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
-        outfile = "adata-umap"
+        outfile = "${original__file__anndata}".minus(".h5ad").split("-")
+            .drop(1).join("-")
+        outfile = "${outfile}-umap"
+        // outfile = "adata-umap"
+        // Get all of the adata files that we want to gather
+        files__anndata = files__anndata.join(',')
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
-        files__anndata = files__anndata.join(',')
         """
         echo "umap_gather: ${process_info}"
+        echo "original__file__anndata: ${original__file__anndata}"
+        echo "original__file__metadata: ${original__file__metadata}"
+        echo "original__file__pcs: ${original__file__pcs}"
+        echo "original__file__reduced_dims: ${original__file__reduced_dims}"
         umap_gather.py \
             --h5_anndata_list ${files__anndata} \
+            --h5_root ${original__file__anndata} \
             --output_file ${runid}-${outfile}
         """
 }
@@ -256,9 +287,10 @@ workflow wf__umap {
     take:
         outdir
         anndata
-        // metadata
-        // pcs
+        metadata
+        pcs
         reduced_dims
+        use_pcs_as_reduced_dims
         n_neighbors
         umap_init
         umap_min_dist
@@ -270,9 +302,10 @@ workflow wf__umap {
         umap_calculate(
             outdir,
             anndata,
-            // metadata,
-            // pcs,
+            metadata,
+            pcs,
             reduced_dims,
+            use_pcs_as_reduced_dims,
             n_neighbors,
             umap_init,
             umap_min_dist,
@@ -284,7 +317,12 @@ workflow wf__umap {
         // http://nextflow-io.github.io/patterns/index.html#_process_outputs_into_groups
         umap_gather(
             outdir,
+            anndata,
+            metadata,
+            pcs,
+            reduced_dims,
             umap_calculate.out.anndata.groupTuple()
+            //umap_calculate.out.original_plus_umap.groupTuple()
         )
         // Make plots
         umap_plot_swarm(
@@ -298,5 +336,8 @@ workflow wf__umap {
     emit:
         // Return merged input data file.
         outdir = umap_gather.out.outdir
-        file__cellmetadata = umap_gather.out.anndata
+        anndata = umap_gather.out.anndata
+        metadata = umap_gather.out.metadata
+        pcs = umap_gather.out.pcs
+        reduced_dims = umap_gather.out.reduced_dims
 }

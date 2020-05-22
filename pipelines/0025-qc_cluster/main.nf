@@ -331,6 +331,11 @@ workflow {
             )
         }
         // Scatter-gather UMAP plots
+        cluster_subset_pcs__outdir = subset_pcs.out.outdir
+        cluster_subset_pcs__anndata = subset_pcs.out.anndata
+        cluster_subset_pcs__metadata = subset_pcs.out.metadata
+        cluster_subset_pcs__pcs = subset_pcs.out.pcs
+        cluster_subset_pcs__reduced_dims = subset_pcs.out.reduced_dims
         if (
             params.reduced_dims.run_downstream_analysis &
             params.umap.run_process
@@ -338,9 +343,10 @@ workflow {
             wf__umap(
                 subset_pcs.out.outdir,
                 subset_pcs.out.anndata,
-                // subset_pcs.out.metadata,
-                // subset_pcs.out.pcs,
+                subset_pcs.out.metadata,
+                subset_pcs.out.pcs,
                 subset_pcs.out.reduced_dims,
+                "False",
                 params.umap.n_neighbors.value,
                 params.umap.umap_init.value,
                 params.umap.umap_min_dist.value,
@@ -348,14 +354,27 @@ workflow {
                 params.umap.colors_quantitative.value,
                 params.umap.colors_categorical.value
             )
+            // Use the data with all of the umaps calculated for downstream
+            // clustering, so that we have all of the umap dims in adata.
+            cluster_subset_pcs__outdir = wf__umap.out.outdir
+            cluster_subset_pcs__anndata = wf__umap.out.anndata
+            cluster_subset_pcs__metadata = wf__umap.out.metadata
+            cluster_subset_pcs__pcs = wf__umap.out.pcs
+            cluster_subset_pcs__reduced_dims = wf__umap.out.reduced_dims
         }
+        cluster_harmony__outdir = harmony.out.outdir
+        cluster_harmony__anndata = harmony.out.anndata
+        cluster_harmony__metadata = harmony.out.metadata
+        cluster_harmony__pcs = harmony.out.pcs
+        cluster_harmony__reduced_dims = harmony.out.reduced_dims
         if (params.harmony.run_process & params.umap.run_process) {
             wf__umap_harmony(
                 harmony.out.outdir,
                 harmony.out.anndata,
-                // harmony.out.metadata,
-                // harmony.out.pcs,
+                harmony.out.metadata,
+                harmony.out.pcs,
                 harmony.out.reduced_dims,
+                "False",
                 params.umap.n_neighbors.value,
                 params.umap.umap_init.value,
                 params.umap.umap_min_dist.value,
@@ -363,24 +382,44 @@ workflow {
                 params.umap.colors_quantitative.value,
                 params.umap.colors_categorical.value
             )
+            // Use the data with all of the umaps calculated for downstream
+            // clustering, so that we have all of the umap dims in adata.
+            cluster_harmony__outdir = wf__umap_harmony.out.outdir
+            cluster_harmony__anndata = wf__umap_harmony.out.anndata
+            cluster_harmony__metadata = wf__umap_harmony.out.metadata
+            cluster_harmony__pcs = wf__umap_harmony.out.pcs
+            cluster_harmony__reduced_dims = wf__umap_harmony.out.reduced_dims
         }
         // NOTE: for BBKNN, we specifically pass the PCs to the reduced dims
         ///      slot not the UMAPS.
         // NOTE: for BBKNN n_neighbors is not needed since already calculated
+        cluster_bbknn__outdir = bbknn.out.outdir
+        cluster_bbknn__anndata = bbknn.out.anndata
+        cluster_bbknn__metadata = bbknn.out.metadata
+        cluster_bbknn__pcs = bbknn.out.pcs
+        cluster_bbknn__reduced_dims = bbknn.out.reduced_dims
         if (params.bbknn.run_process & params.umap.run_process) {
             wf__umap_bbknn(
                 bbknn.out.outdir,
                 bbknn.out.anndata,
-                // bbknn.out.metadata,
+                bbknn.out.metadata,
                 bbknn.out.pcs,
-                // bbknn.out.reduced_dims,
-                ['-1'],  // params.cluster.number_neighbors.value,
+                bbknn.out.reduced_dims,
+                "True",  // Don't look at the reduced_dims parameter
+                ["-1"],  // params.cluster.number_neighbors.value,
                 params.umap.umap_init.value,
                 params.umap.umap_min_dist.value,
                 params.umap.umap_spread.value,
                 params.umap.colors_quantitative.value,
                 params.umap.colors_categorical.value
             )
+            // Use the data with all of the umaps calculated for downstream
+            // clustering, so that we have all of the umap dims in adata.
+            cluster_bbknn__outdir = wf__umap_bbknn.out.outdir
+            cluster_bbknn__anndata = wf__umap_bbknn.out.anndata
+            cluster_bbknn__metadata = wf__umap_bbknn.out.metadata
+            cluster_bbknn__pcs = wf__umap_bbknn.out.pcs
+            cluster_bbknn__reduced_dims = wf__umap_bbknn.out.reduced_dims
         }
         // START LEGACY CODE ----------------------------------------------
         // NOTE: Legacy code due to it being hard to compare
@@ -412,11 +451,11 @@ workflow {
         // Also, generate UMAPs of the results.i
         if (params.reduced_dims.run_downstream_analysis) {
             wf__cluster(
-                subset_pcs.out.outdir,
-                subset_pcs.out.anndata,
-                subset_pcs.out.metadata,
-                subset_pcs.out.pcs,
-                subset_pcs.out.reduced_dims,
+                cluster_subset_pcs__outdir,
+                cluster_subset_pcs__anndata,
+                cluster_subset_pcs__metadata,
+                cluster_subset_pcs__pcs,
+                cluster_subset_pcs__reduced_dims,
                 params.cluster.number_neighbors.value,
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
@@ -431,11 +470,11 @@ workflow {
         }
         if (params.harmony.run_process) {
             wf__cluster_harmony(
-                harmony.out.outdir,
-                harmony.out.anndata,
-                harmony.out.metadata,
-                harmony.out.pcs,
-                harmony.out.reduced_dims,
+                cluster_harmony__outdir,
+                cluster_harmony__anndata,
+                cluster_harmony__metadata,
+                cluster_harmony__pcs,
+                cluster_harmony__reduced_dims,
                 params.cluster.number_neighbors.value,
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
@@ -450,18 +489,18 @@ workflow {
         }
         if (params.bbknn.run_process) {
             wf__cluster_bbknn(
-                bbknn.out.outdir,
-                bbknn.out.anndata,
-                bbknn.out.metadata,
-                bbknn.out.pcs,
-                bbknn.out.reduced_dims,
-                ['-1'],  // params.cluster.number_neighbors.value,
+                cluster_bbknn__outdir,
+                cluster_bbknn__anndata,
+                cluster_bbknn__metadata,
+                cluster_bbknn__pcs,
+                cluster_bbknn__reduced_dims,
+                ["-1"],  // params.cluster.number_neighbors.value,
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
                 params.cluster_validate_resolution.sparsity.value,
                 params.cluster_validate_resolution.train_size_cells.value,
                 params.cluster_marker.methods.value,
-                ['-1'],  // params.umap.n_neighbors.value,
+                ["-1"],  // params.umap.n_neighbors.value,
                 params.umap.umap_init.value,
                 params.umap.umap_min_dist.value,
                 params.umap.umap_spread.value
