@@ -43,7 +43,9 @@ def add_info_to_adata_file(adata_root, adata_to_add):
     update_slot_string = update_slot_string.rstrip(',')
 
     # Optionally update density slot
-    if adata_to_add.uns['umap']['params']['density'] != '':
+    if 'density' in adata_to_add.uns['umap']['params'] and adata_to_add.uns[
+        'umap'
+    ]['params']['density'] != '':
         assert adata_to_add.uns['umap']['params']['density'] == 'umap_density'
         adata_root.obs[
             'umap_density__{}'.format(update_slot_string)
@@ -95,6 +97,15 @@ def main():
     )
 
     parser.add_argument(
+        '-h5_root', '--h5_root',
+        action='store',
+        dest='h5_root',
+        default='',
+        required=False,
+        help='Optional h5ad file to use as root.'
+    )
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
@@ -110,9 +121,12 @@ def main():
     adata_file_list = options.h5.split(',')
 
     # Read in the first AnnData file.
-    first_file = adata_file_list.pop(0)
-    adata = sc.read_h5ad(filename=first_file)
-    adata = add_info_to_adata_file(adata, adata)
+    if options.h5_root == '':
+        first_file = adata_file_list.pop(0)
+        adata = sc.read_h5ad(filename=first_file)
+        adata = add_info_to_adata_file(adata, adata)
+    else:
+        adata = sc.read_h5ad(filename=options.h5_root)
 
     # Loop over the remaining AnnData files and:
     # 1. Read in the parameters.

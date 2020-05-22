@@ -198,6 +198,10 @@ def main():
     else:
         df_pca = pd.read_csv(options.pc, sep='\t', index_col='cell_barcode')
 
+    # Add the reduced dimensions to the AnnData object.
+    # NOTE: We do this later... only if we need to.
+    # adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
+
     # Check that nPCs is valid.
     n_pcs = options.npc
     if n_pcs == 0:
@@ -215,9 +219,6 @@ def main():
     print('Subetting PCs - we assume they are ordered by column index.')
     df_pca = df_pca.iloc[:, range(0, n_pcs)]
     print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
-
-    # Add the reduced dimensions to the AnnData object.
-    adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
 
     # Get the out file base.
     out_file_base = options.of
@@ -266,6 +267,9 @@ def main():
     # neighbors. This default behaviour is to accommodate the instance when
     # bbknn has been run on the data.
     if 'neighbors' not in adata.uns or options.calculate_neighbors:
+        # Add the reduced dimensions to the AnnData object.
+        adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
+
         sc.pp.neighbors(
             adata,
             use_rep='X_pca',
@@ -280,8 +284,9 @@ def main():
             )
         )
         # If we are using the pre-calculated neighbors drop npcs note.
-        if 'n_pcs' in adata.uns['neighbors']['params']:
-            n_pcs = adata.uns['neighbors']['params']['n_pcs']
+        # if 'n_pcs' in adata.uns['neighbors']['params']:
+        n_pcs = adata.uns['neighbors']['params']['n_pcs']
+        i__n_neighbors = adata.uns['neighbors']['params']['n_neighbors']
     # adata.uns['neighbors__{}'.format(plt__label)] = adata.uns['neighbors']
 
     # TODO: add paga
@@ -312,11 +317,11 @@ def main():
     # Add umap info to params stash
     # adata.uns['umap']['params']['tsv_reduced_dims'] = options.pc
     adata.uns['umap']['params']['n_reduced_dims_input'] = n_pcs
-    adata.uns['umap']['params']['umap_init'] = options.umap_init
     adata.uns['umap']['params']['n_neighbors'] = i__n_neighbors
+    adata.uns['umap']['params']['umap_init'] = options.umap_init
     adata.uns['umap']['params']['umap_min_dist'] = i__min_dist
     adata.uns['umap']['params']['umap_spread'] = i__spread
-    adata.uns['umap']['params']['density'] = ''
+    # adata.uns['umap']['params']['density'] = ''
 
     if options.calculate_densities:
         sc.tl.embedding_density(
