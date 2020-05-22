@@ -91,7 +91,7 @@ command_line_interface <- function() {
         "cellranger_filtered" = "filtered_feature_bc_matrix/",
         "cellranger_unfiltered" = "raw_feature_bc_matrix/",
         "bam_file" = "possorted_genome_bam.bam",
-        "bam_index" = "possorted_genome_bam.bai"
+        "bam_index" = "possorted_genome_bam.bam.bai"
 
     )
     for (i in names(file_or_dir_endings_irods)) {

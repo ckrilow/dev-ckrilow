@@ -1,12 +1,11 @@
-column_name	description
-sanger_sample_id	Unique identifier of the sample from the Sanger sequencing manifest form.
-patient_id	Patient identifier that matches clinical records. Note this as not unique for each row as multiple biopsy_type are taken from each patient.
-biopsy_type	Biopsy tissue of origin.
-disease_status	Patient disease status.
-inflammation_status	Patient inflammation status.
-age	Patient age at biopsy collection.
-smoking_status	Patient smoking status.
-experimentalist	Name of person who performed performed the single cell experiment using the biopsy.
-time_to_chromium_processing	Time from biopsy collection to when the processed biopsy was run on the 10x Chromium machine.
-date_of_sample	Date when biopsy was collected from Addenbrooke's Hospital.
-date_of_plate_submission	Date sample was sent to DNA pipelines to start library prep,.
+"column_name"	"description"
+"sanger_sample_id"	"Unique identifier of the sample from the Sanger sequencing manifest form."
+"patient_id"	"Participant identifier from clinical team. Note this as not unique for each row as multiple biopsy_type are taken from each participant."
+"biopsy_type"	"Biopsy tissue of origin."
+"disease_status"	"Participant disease status."
+"inflammation_status"	"Participant inflammation status."
+"age"	"Participant age at biopsy collection."
+"smoking_status"	"Participant smoking status."
+"experimentalist"	"Name of the person who performed the single cell experiment."
+"time_to_chromium_processing"	"Time from biopsy collection to when the biopsy was processed and run on the 10x Chromium machine."
+"date_of_sample"	"Date when biopsy was collected from Addenbrooke's Hospital."
