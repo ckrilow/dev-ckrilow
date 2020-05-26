@@ -36,8 +36,6 @@ include {
 
 
 // Set default parameters.
-publish_mode                = "symlink" // symlink, copy
-echo_mode                   = false
 params.output_dir           = "nf-qc_cluster"
 params.help                 = false
 params.run_multiplet        = false
@@ -313,7 +311,7 @@ workflow {
                 normalize_and_pca.out.pcs,
                 normalize_and_pca.out.param_details,
                 params.reduced_dims.n_dims.value,
-                'experiment_id'
+                "experiment_id"
             )
         }
         // TODO: There is a bug below where lisi will be called for each
