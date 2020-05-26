@@ -6,18 +6,27 @@ def random_hex(n) {
 }
 
 
+// Set some defaults
+if (binding.hasVariable("publish_mode") == false) {
+    publish_mode = "symlink"
+}
+if (binding.hasVariable("echo_mode") == false) {
+    echo_mode = true
+}
+
+
 process umap_calculate {
     // UMAP from reduced_dims.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     // Don't publish these results as they are just temporary
     // publishDir  path: "${outdir}",
     //             saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-    //             mode: "copy",
+    //             mode: "${publish_mode}",
     //             overwrite: "true"
 
     input:
@@ -42,6 +51,10 @@ process umap_calculate {
         tuple(
             val("${in_file_id}"),
             val("${outdir}"),
+            file(file__anndata),
+            file(file__metadata),
+            file(file__pcs),
+            file(file__reduced_dims),
             file("${runid}-${outfile}.h5ad"),
             emit: outdir_anndata
         )
@@ -94,7 +107,7 @@ process umap_gather {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
@@ -108,17 +121,26 @@ process umap_gather {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${publish_mode}",
                 overwrite: "true"
 
     input:
-        val(outdir_prev)
-        path(original__file__anndata)
-        path(original__file__metadata)
-        path(original__file__pcs)
-        path(original__file__reduced_dims)
-        //tuple(val(key), path(files__anndata))
-        tuple(val(key), val(outdir_prev_tuple), path(files__anndata))
+        // val(outdir_prev)
+        // path(original__file__anndata)
+        // path(original__file__metadata)
+        // path(original__file__pcs)
+        // path(original__file__reduced_dims)
+        // //tuple(val(key), path(files__anndata))
+        // tuple(val(key), val(outdir_prev_tuple), path(files__anndata))
+        tuple(
+            val(key),
+            val(outdir_prev),
+            path(original__file__anndata),
+            path(original__file__metadata),
+            path(original__file__pcs),
+            path(original__file__reduced_dims),
+            path(files__anndata)
+        )
     output:
         val(outdir_prev, emit: outdir)
         path("${runid}-${outfile}.h5ad", emit: anndata)
@@ -128,9 +150,9 @@ process umap_gather {
 
     script:
         runid = random_hex(16)
-        outdir_prev_tuple = outdir_prev_tuple.unique().join("")
-        //outdir = "${outdir_prev}"  // For some reason dir here messed up?
-        outdir = "${outdir_prev_tuple}"
+        outdir = "${outdir_prev}"  // For some reason dir here messed up?
+        //outdir_prev_tuple = outdir_prev_tuple.unique().join("")
+        //outdir = "${outdir_prev_tuple}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${original__file__anndata}".minus(".h5ad").split("-")
@@ -144,8 +166,6 @@ process umap_gather {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "umap_gather: ${process_info}"
-        echo "outdir_prev": ${outdir_prev}
-        echo "outdir_prev_tuple": ${outdir_prev_tuple}
         umap_gather.py \
             --h5_anndata_list ${files__anndata} \
             --h5_root ${original__file__anndata} \
@@ -160,11 +180,11 @@ process umap_plot_swarm {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${publish_mode}",
                 overwrite: "true"
 
     input:
@@ -223,17 +243,19 @@ process umap_calculate_and_plot {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${publish_mode}",
                 overwrite: "true"
 
     input:
         val(outdir_prev)
         path(file__anndata)
+        path(file__pcs)
         path(file__reduced_dims)
+        val(use_pcs_as_reduced_dims) // For BBKNN
         val(colors_quantitative)
         val(colors_categorical)
         each n_neighbors
@@ -265,6 +287,12 @@ process umap_calculate_and_plot {
         if (cmd__colors_cat.contains("experiment_id")) {
             drop_legend_n = "8"
         }
+        // Check to see if we should use PCs in the reduced dims slot.
+        // Important for BBKNN where reduced_dims == UMAPs not adjusted PCs.
+        cmd__tsv_pcs = "--tsv_pcs ${file__reduced_dims}"
+        if (use_pcs_as_reduced_dims == "True") {
+            cmd__tsv_pcs = "--tsv_pcs ${file__pcs}"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -272,7 +300,7 @@ process umap_calculate_and_plot {
         echo "umap_calculate_and_plot: ${process_info}"
         umap_calculate_and_plot.py \
             --h5_anndata ${file__anndata} \
-            --tsv_pcs ${file__reduced_dims} \
+            ${cmd__tsv_pcs} \
             --n_neighbors ${n_neighbors} \
             --umap_init ${umap_init} \
             --umap_min_dist ${umap_min_dist} \
@@ -318,17 +346,39 @@ workflow wf__umap {
             umap_min_dist,
             umap_spread
         )
+        umap_gather_input = umap_calculate.out.outdir_anndata.groupTuple()
+            .reduce([:]) { map, tuple ->  // 'map' is used to collect values;
+                                          // 'tuple' is the record
+                def file_id = tuple[0]    // the first item is the 'iter_id'
+                def group = map[file_id]  // the aggregation for cur 'iter_id'
+                if( !group ) group = [ file_id ]  // if new, create a new entry
+                group[1] = tuple[1][0]  // cannot use uniq here because nf
+                group[2] = tuple[2][0]  // stages the same file names in
+                group[3] = tuple[3][0]  // different working dirs...
+                group[4] = tuple[4][0]  // the solution is to use first item
+                group[5] = tuple[5][0]
+                group[6] = tuple[6]     // list of umaps to merge
+                map[file_id] = group    // set back into the map
+                return map // return it so it will be used in the next iteration
+            }
+            .flatMap { it.values() } // tricky part: get the list of values of
+                                     // in the map, each value is the
+                                     // aggregation build above
+                                     // the 'flatMap' emits each of these
+                                     // aggregation list as a single item
+
         // Gather step.
         // Gather by tuple ... if we just to a collect, then will get all
         // umap_calculate calls, not split by reduced_dims. See link below:
         // http://nextflow-io.github.io/patterns/index.html#_process_outputs_into_groups
         umap_gather(
-            outdir,
-            anndata,
-            metadata,
-            pcs,
-            reduced_dims,
-            umap_calculate.out.outdir_anndata.groupTuple()
+            umap_gather_input
+            // outdir,
+            // anndata,
+            // metadata,
+            // pcs,
+            // reduced_dims,
+            // umap_calculate.out.outdir_anndata.groupTuple()
             //umap_calculate.out.original_plus_umap.groupTuple()
         )
         // Make plots
