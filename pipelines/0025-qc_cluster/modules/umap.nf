@@ -34,10 +34,16 @@ process umap_calculate {
 
     output:
         val(outdir, emit: outdir)
+        // tuple(
+        //     val("${in_file_id}"),
+        //     file("${runid}-${outfile}.h5ad"),
+        //     emit: anndata
+        // )
         tuple(
             val("${in_file_id}"),
+            val("${outdir}"),
             file("${runid}-${outfile}.h5ad"),
-            emit: anndata
+            emit: outdir_anndata
         )
 
     script:
@@ -111,7 +117,8 @@ process umap_gather {
         path(original__file__metadata)
         path(original__file__pcs)
         path(original__file__reduced_dims)
-        tuple(val(key), path(files__anndata))
+        //tuple(val(key), path(files__anndata))
+        tuple(val(key), val(outdir_prev_tuple), path(files__anndata))
     output:
         val(outdir_prev, emit: outdir)
         path("${runid}-${outfile}.h5ad", emit: anndata)
@@ -121,7 +128,9 @@ process umap_gather {
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}"
+        outdir_prev_tuple = outdir_prev_tuple.unique().join("")
+        //outdir = "${outdir_prev}"  // For some reason dir here messed up?
+        outdir = "${outdir_prev_tuple}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         outfile = "${original__file__anndata}".minus(".h5ad").split("-")
@@ -135,10 +144,8 @@ process umap_gather {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "umap_gather: ${process_info}"
-        echo "original__file__anndata: ${original__file__anndata}"
-        echo "original__file__metadata: ${original__file__metadata}"
-        echo "original__file__pcs: ${original__file__pcs}"
-        echo "original__file__reduced_dims: ${original__file__reduced_dims}"
+        echo "outdir_prev": ${outdir_prev}
+        echo "outdir_prev_tuple": ${outdir_prev_tuple}
         umap_gather.py \
             --h5_anndata_list ${files__anndata} \
             --h5_root ${original__file__anndata} \
@@ -321,7 +328,7 @@ workflow wf__umap {
             metadata,
             pcs,
             reduced_dims,
-            umap_calculate.out.anndata.groupTuple()
+            umap_calculate.out.outdir_anndata.groupTuple()
             //umap_calculate.out.original_plus_umap.groupTuple()
         )
         // Make plots
