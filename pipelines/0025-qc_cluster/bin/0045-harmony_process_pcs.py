@@ -12,6 +12,8 @@ import pandas as pd
 import csv
 import harmonypy as hm
 
+np.random.seed(0)
+
 
 def main():
     """Run CLI."""

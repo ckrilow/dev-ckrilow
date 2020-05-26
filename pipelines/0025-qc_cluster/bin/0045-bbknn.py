@@ -7,10 +7,12 @@ __version__ = '0.0.1'
 
 import argparse
 import os
-# import numpy as np
+import numpy as np
 import pandas as pd
 import scanpy as sc
 # import csv
+
+np.random.seed(0)
 
 
 def main():
@@ -123,7 +125,8 @@ def main():
         # For some reason cannot access neighbors key slot, thus we
         # must keep uns['neighbors'] until we have run this.
         # neighbors_key='neighbors__{}'.format(plt__label),
-        copy=False
+        copy=False,
+        random_state=0
     )
     # Add umap info to params stash
     # adata.uns['umap']['params']['tsv_reduced_dims'] = options.pc

@@ -199,8 +199,11 @@ def main():
         df_pca = pd.read_csv(options.pc, sep='\t', index_col='cell_barcode')
 
     # Add the reduced dimensions to the AnnData object.
-    # NOTE: We do this later... only if we need to.
-    # adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
+    if 'neighbors' not in adata.uns or options.calculate_neighbors:
+        adata.obsm['X_pca__umap'] = df_pca.loc[
+            adata.obs.index,
+            :
+        ].values.copy()
 
     # Check that nPCs is valid.
     n_pcs = options.npc
@@ -267,15 +270,13 @@ def main():
     # neighbors. This default behaviour is to accommodate the instance when
     # bbknn has been run on the data.
     if 'neighbors' not in adata.uns or options.calculate_neighbors:
-        # Add the reduced dimensions to the AnnData object.
-        adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
-
         sc.pp.neighbors(
             adata,
-            use_rep='X_pca',
+            use_rep='X_pca__umap',
             n_pcs=n_pcs,
             n_neighbors=i__n_neighbors,  # Scanpy default = 15
-            copy=False
+            copy=False,
+            random_state=0
         )
     else:
         warnings.warn(
@@ -312,7 +313,8 @@ def main():
         # For some reason cannot access neighbors key slot, thus we
         # must keep uns['neighbors'] until we have run this.
         # neighbors_key='neighbors__{}'.format(plt__label),
-        copy=False
+        copy=False,
+        random_state=0
     )
     # Add umap info to params stash
     # adata.uns['umap']['params']['tsv_reduced_dims'] = options.pc

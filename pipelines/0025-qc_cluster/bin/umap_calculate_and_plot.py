@@ -367,7 +367,11 @@ def main():
     print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
 
     # Add the reduced dimensions to the AnnData object.
-    adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
+    if 'neighbors' not in adata.uns or options.calculate_neighbors:
+        adata.obsm['X_pca__umap'] = df_pca.loc[
+            adata.obs.index,
+            :
+        ].values.copy()
 
     # Get the out file base.
     out_file_base = options.of
@@ -473,13 +477,6 @@ def main():
             str(i__spread).replace('.', 'pt')
         )
 
-        # Save the parameters to a dict
-        list__umap_keys['X_umap__{}'.format(plt__label)] = {
-            'n_neighbors': i__n_neighbors,
-            'umap_min_dist': i__min_dist,
-            'umap_spread': i__spread
-        }
-
         # Calculate neighbors for on the specified PCs.
         # By default saved to adata.uns['neighbors']
         #
@@ -490,10 +487,11 @@ def main():
         if 'neighbors' not in adata.uns or options.calculate_neighbors:
             sc.pp.neighbors(
                 adata,
-                use_rep='X_pca',
+                use_rep='X_pca__umap',
                 n_pcs=n_pcs,
                 n_neighbors=i__n_neighbors,  # Scanpy default = 15
-                copy=False
+                copy=False,
+                random_state=0
             )
         else:
             warnings.warn(
@@ -502,8 +500,17 @@ def main():
                 )
             )
             # If we are using the pre-calculated neighbors drop npcs note.
-            if 'n_pcs' in adata.uns['neighbors']['params']:
-                n_pcs = adata.uns['neighbors']['params']['n_pcs']
+            # if 'n_pcs' in adata.uns['neighbors']['params']:
+            n_pcs = adata.uns['neighbors']['params']['n_pcs']
+            i__n_neighbors = adata.uns['neighbors']['params']['n_neighbors']
+
+        # Save the parameters to a dict
+        list__umap_keys['X_umap__{}'.format(plt__label)] = {
+            'n_neighbors': i__n_neighbors,
+            'umap_min_dist': i__min_dist,
+            'umap_spread': i__spread
+        }
+
         adata.uns['neighbors__{}'.format(plt__label)] = adata.uns['neighbors']
 
         # TODO: add paga
@@ -529,7 +536,8 @@ def main():
             # For some reason cannot access neighbors key slot, thus we
             # must keep uns['neighbors'] until we have run this.
             # neighbors_key='neighbors__{}'.format(plt__label),
-            copy=False
+            copy=False,
+            random_state=0
         )
 
         if 'embedding_density' in colors_quantitative:

@@ -448,7 +448,7 @@ def scanpy_normalize_and_pca(
         svd_solver='arpack',  # Scanpy default arpack as of 1.4.5
         use_highly_variable=True,
         copy=False,
-        random_state=683
+        random_state=0
     )
 
     # Save PCs to a seperate file for Harmony.
