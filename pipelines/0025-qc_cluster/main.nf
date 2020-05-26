@@ -13,6 +13,7 @@ include {
     merge_samples;
     plot_predicted_sex;
     plot_qc;
+    estimate_pca_elbow;
     normalize_and_pca;
     subset_pcs;
     harmony;
@@ -269,6 +270,11 @@ workflow {
             genes_exclude_hvg,
             genes_score,
             params.reduced_dims.vars_to_regress.value
+        )
+        // Estimate number of PCs to use using eblow from variance explained
+        estimate_pca_elbow(
+            normalize_and_pca.out.output_dir,
+            normalize_and_pca.out.anndata
         )
         // Make Seurat dataframes of the normalized anndata
         // convert_seurat(
