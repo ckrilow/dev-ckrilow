@@ -1,16 +1,25 @@
 #!/usr/bin/env nextflow
 
 
-def random_hex(n) {
-    Long.toUnsignedString(new Random().nextLong(), n).toUpperCase()
-}
-
-
 // NOTE: This raises erroneous warning.
 // WARN: There's no process matching config selector: umap
 include {
     umap_calculate_and_plot as umap_calculate_and_plot__cluster;
 } from "./umap.nf"
+
+
+def random_hex(n) {
+    Long.toUnsignedString(new Random().nextLong(), n).toUpperCase()
+}
+
+
+// Set some defaults
+if (binding.hasVariable("publish_mode") == false) {
+    publish_mode = "symlink"  // symlink or copy
+}
+if (binding.hasVariable("echo_mode") == false) {
+    echo_mode = true
+}
 
 
 process cluster {
@@ -19,7 +28,7 @@ process cluster {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -99,7 +108,7 @@ process cluster_validate_resolution_sklearn {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -213,7 +222,7 @@ process cluster_validate_resolution_keras {
     //maxForks 2         // hard to control memory usage. limit to 3 concurrent
     label 'gpu'        // use GPU
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -320,7 +329,7 @@ process plot_resolution_validate {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -395,7 +404,7 @@ process cluster_markers {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -470,7 +479,7 @@ process merge_clusters {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -528,7 +537,7 @@ process convert_seurat {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -580,6 +589,7 @@ workflow wf__cluster {
         metadata
         pcs
         reduced_dims
+        use_pcs_as_reduced_dims
         cluster__number_neighbors
         cluster__methods
         cluster__resolutions
@@ -640,9 +650,11 @@ workflow wf__cluster {
         umap_calculate_and_plot__cluster(
             cluster.out.outdir,
             cluster.out.anndata,
+            cluster.out.pcs,
             cluster.out.reduced_dims,
-            '',
-            'cluster',
+            use_pcs_as_reduced_dims,
+            "",
+            "cluster",
             n_neighbors,
             umap_init,
             umap_min_dist,

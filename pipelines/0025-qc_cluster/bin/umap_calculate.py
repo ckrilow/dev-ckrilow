@@ -200,6 +200,9 @@ def main():
 
     # Check that nPCs is valid.
     n_pcs = options.npc
+    if 'neighbors' in adata.uns and not options.calculate_neighbors:
+        # If we are using the pre-calculated neighbors use the PCs from that
+        n_pcs = adata.uns['neighbors']['params']['n_pcs']
     if n_pcs == 0:
         n_pcs = len(df_pca.columns)
     elif n_pcs > len(df_pca.columns):
@@ -217,7 +220,13 @@ def main():
     print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
 
     # Add the reduced dimensions to the AnnData object.
-    adata.obsm['X_pca'] = df_pca.loc[adata.obs.index, :].values.copy()
+    # NOTE: We need to do this for BBKNN in the case were we init with X_pca
+    adata.obsm['X_pca__umap'] = df_pca.loc[adata.obs.index, :].values.copy()
+
+    # Get the init position for UMAP
+    umap_init = options.umap_init
+    if umap_init == 'X_pca':
+        umap_init = 'X_pca__umap'
 
     # Get the out file base.
     out_file_base = options.of
@@ -268,10 +277,11 @@ def main():
     if 'neighbors' not in adata.uns or options.calculate_neighbors:
         sc.pp.neighbors(
             adata,
-            use_rep='X_pca',
+            use_rep='X_pca__umap',
             n_pcs=n_pcs,
             n_neighbors=i__n_neighbors,  # Scanpy default = 15
-            copy=False
+            copy=False,
+            random_state=0
         )
     else:
         warnings.warn(
@@ -280,8 +290,8 @@ def main():
             )
         )
         # If we are using the pre-calculated neighbors drop npcs note.
-        if 'n_pcs' in adata.uns['neighbors']['params']:
-            n_pcs = adata.uns['neighbors']['params']['n_pcs']
+        # n_pcs = adata.uns['neighbors']['params']['n_pcs']
+        i__n_neighbors = adata.uns['neighbors']['params']['n_neighbors']
     # adata.uns['neighbors__{}'.format(plt__label)] = adata.uns['neighbors']
 
     # TODO: add paga
@@ -299,24 +309,28 @@ def main():
 
     # UMAP
     # Saved to adata.uns['umap'] and adata.obsm['X_umap']
+    # NOTE: If umap_init == X_pca, then X_umap will have an equal number
+    #       of n_components to X_pca (n_components is overridden).
     sc.tl.umap(
         adata,
+        n_components=2,
         min_dist=i__min_dist,  # Scanpy default = 0.05
         spread=i__spread,  # Scanpy default = 1.0
-        init_pos=options.umap_init,  # Scanpy default = spectral
+        init_pos=umap_init,  # Scanpy default = spectral
         # For some reason cannot access neighbors key slot, thus we
         # must keep uns['neighbors'] until we have run this.
         # neighbors_key='neighbors__{}'.format(plt__label),
-        copy=False
+        copy=False,
+        random_state=0
     )
     # Add umap info to params stash
     # adata.uns['umap']['params']['tsv_reduced_dims'] = options.pc
     adata.uns['umap']['params']['n_reduced_dims_input'] = n_pcs
-    adata.uns['umap']['params']['umap_init'] = options.umap_init
     adata.uns['umap']['params']['n_neighbors'] = i__n_neighbors
+    adata.uns['umap']['params']['umap_init'] = options.umap_init
     adata.uns['umap']['params']['umap_min_dist'] = i__min_dist
     adata.uns['umap']['params']['umap_spread'] = i__spread
-    adata.uns['umap']['params']['density'] = ''
+    # adata.uns['umap']['params']['density'] = ''
 
     if options.calculate_densities:
         sc.tl.embedding_density(

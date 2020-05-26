@@ -8,13 +8,22 @@ def random_hex(n) {
 }
 
 
+// Set some defaults
+if (binding.hasVariable("publish_mode") == false) {
+    publish_mode = "symlink" // symlink or copy
+}
+if (binding.hasVariable("echo_mode") == false) {
+    echo_mode = true
+}
+
+
 process merge_samples {
     // Takes a list of raw 10x files and merges them into one anndata object.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache true        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -72,7 +81,7 @@ process plot_predicted_sex {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -114,7 +123,7 @@ process plot_qc {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -181,7 +190,7 @@ process normalize_and_pca {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -283,13 +292,59 @@ process normalize_and_pca {
 }
 
 
+process estimate_pca_elbow {
+    // Takes annData object, estiamtes the elbow in PC var explained.
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo echo_mode          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "copy",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+
+    output:
+        val(outdir, emit: outdir)
+        path("${runid}-${outfile}.tsv.gz", emit: pca_elbow_estimate)
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
+        outfile = "${outfile}-knee"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "estimate_pca_elbow: ${process_info}"
+        0030-estimate_pca_elbow.py \
+            --h5_anndata ${file__anndata} \
+            --output_file ${runid}-${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 process subset_pcs {
     // Takes PCs (rows = cell barcodes) and subsets down to a specified number.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -363,7 +418,7 @@ process harmony {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
@@ -452,7 +507,7 @@ process bbknn {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
@@ -527,7 +582,7 @@ process lisi {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
