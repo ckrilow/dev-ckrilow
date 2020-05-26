@@ -200,6 +200,9 @@ def main():
 
     # Check that nPCs is valid.
     n_pcs = options.npc
+    if 'neighbors' in adata.uns and not options.calculate_neighbors:
+        # If we are using the pre-calculated neighbors use the PCs from that
+        n_pcs = adata.uns['neighbors']['params']['n_pcs']
     if n_pcs == 0:
         n_pcs = len(df_pca.columns)
     elif n_pcs > len(df_pca.columns):
@@ -218,10 +221,7 @@ def main():
 
     # Add the reduced dimensions to the AnnData object.
     # NOTE: We need to do this for BBKNN in the case were we init with X_pca
-    adata.obsm['X_pca__umap'] = df_pca.loc[
-        adata.obs.index,
-        :
-    ].values.copy()
+    adata.obsm['X_pca__umap'] = df_pca.loc[adata.obs.index, :].values.copy()
 
     # Get the init position for UMAP
     umap_init = options.umap_init
@@ -290,8 +290,7 @@ def main():
             )
         )
         # If we are using the pre-calculated neighbors drop npcs note.
-        # if 'n_pcs' in adata.uns['neighbors']['params']:
-        n_pcs = adata.uns['neighbors']['params']['n_pcs']
+        # n_pcs = adata.uns['neighbors']['params']['n_pcs']
         i__n_neighbors = adata.uns['neighbors']['params']['n_neighbors']
     # adata.uns['neighbors__{}'.format(plt__label)] = adata.uns['neighbors']
 
@@ -310,6 +309,8 @@ def main():
 
     # UMAP
     # Saved to adata.uns['umap'] and adata.obsm['X_umap']
+    # NOTE: If umap_init == X_pca, then X_umap will have an equal number
+    #       of n_components to X_pca (n_components is overridden).
     sc.tl.umap(
         adata,
         n_components=2,
