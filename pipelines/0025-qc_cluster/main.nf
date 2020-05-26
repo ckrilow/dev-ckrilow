@@ -273,7 +273,7 @@ workflow {
         )
         // Estimate number of PCs to use using eblow from variance explained
         estimate_pca_elbow(
-            normalize_and_pca.out.output_dir,
+            normalize_and_pca.out.outdir,
             normalize_and_pca.out.anndata
         )
         // Make Seurat dataframes of the normalized anndata
