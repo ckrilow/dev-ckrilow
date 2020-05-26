@@ -276,12 +276,14 @@ def main():
         columns={'index': 'ensembl_gene_id'},
         inplace=False
     )
+    marker_df = marker_df.sort_values(by=['cluster', 'pvals_adj'], ascending=[
+                                                            True, True])
 
     # Save the marker dataframe.
     marker_df.to_csv(
         '{}-cluster_markers.tsv.gz'.format(out_file_base),
         sep='\t',
-        index=True,
+        index=False,
         quoting=csv.QUOTE_NONNUMERIC,
         na_rep='',
         compression='gzip'
