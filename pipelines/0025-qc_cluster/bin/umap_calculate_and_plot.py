@@ -367,11 +367,17 @@ def main():
     print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
 
     # Add the reduced dimensions to the AnnData object.
-    if 'neighbors' not in adata.uns or options.calculate_neighbors:
-        adata.obsm['X_pca__umap'] = df_pca.loc[
-            adata.obs.index,
-            :
-        ].values.copy()
+    # NOTE: We need to do this for BBKNN in the case were we init with X_pca
+    adata.obsm['X_pca__umap'] = df_pca.loc[
+        adata.obs.index,
+        :
+    ].values.copy()
+
+
+    # Get the init position for UMAP
+    umap_init = options.umap_init
+    if umap_init == 'X_pca':
+        umap_init = 'X_pca__umap'
 
     # Get the out file base.
     out_file_base = options.of
@@ -532,7 +538,7 @@ def main():
             adata,
             min_dist=i__min_dist,  # Scanpy default = 0.05
             spread=i__spread,  # Scanpy default = 1.0
-            init_pos=options.umap_init,  # Scanpy default = spectral
+            init_pos=umap_init,  # Scanpy default = spectral
             # For some reason cannot access neighbors key slot, thus we
             # must keep uns['neighbors'] until we have run this.
             # neighbors_key='neighbors__{}'.format(plt__label),

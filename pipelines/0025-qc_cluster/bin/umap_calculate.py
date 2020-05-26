@@ -198,13 +198,6 @@ def main():
     else:
         df_pca = pd.read_csv(options.pc, sep='\t', index_col='cell_barcode')
 
-    # Add the reduced dimensions to the AnnData object.
-    if 'neighbors' not in adata.uns or options.calculate_neighbors:
-        adata.obsm['X_pca__umap'] = df_pca.loc[
-            adata.obs.index,
-            :
-        ].values.copy()
-
     # Check that nPCs is valid.
     n_pcs = options.npc
     if n_pcs == 0:
@@ -222,6 +215,18 @@ def main():
     print('Subetting PCs - we assume they are ordered by column index.')
     df_pca = df_pca.iloc[:, range(0, n_pcs)]
     print('PC columns:\t{}'.format(np.array_str(df_pca.columns)))
+
+    # Add the reduced dimensions to the AnnData object.
+    # NOTE: We need to do this for BBKNN in the case were we init with X_pca
+    adata.obsm['X_pca__umap'] = df_pca.loc[
+        adata.obs.index,
+        :
+    ].values.copy()
+
+    # Get the init position for UMAP
+    umap_init = options.umap_init
+    if umap_init == 'X_pca':
+        umap_init = 'X_pca__umap'
 
     # Get the out file base.
     out_file_base = options.of
@@ -307,9 +312,10 @@ def main():
     # Saved to adata.uns['umap'] and adata.obsm['X_umap']
     sc.tl.umap(
         adata,
+        n_components=2,
         min_dist=i__min_dist,  # Scanpy default = 0.05
         spread=i__spread,  # Scanpy default = 1.0
-        init_pos=options.umap_init,  # Scanpy default = spectral
+        init_pos=umap_init,  # Scanpy default = spectral
         # For some reason cannot access neighbors key slot, thus we
         # must keep uns['neighbors'] until we have run this.
         # neighbors_key='neighbors__{}'.format(plt__label),
