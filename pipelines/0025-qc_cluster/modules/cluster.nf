@@ -624,23 +624,23 @@ workflow wf__cluster {
         //     cluster_validate_resolution__sparsity,
         //     cluster_validate_resolution__train_size_cells
         // )
-        // cluster_validate_resolution_keras(
-        //     cluster.out.outdir,
-        //     cluster.out.anndata,
-        //     cluster.out.metadata,
-        //     cluster.out.pcs,
-        //     cluster.out.reduced_dims,
-        //     cluster.out.clusters,
-        //     cluster_validate_resolution__sparsity, // "0.0001",
-        //     cluster_validate_resolution__train_size_cells,
-        //     cluster.out.outdir__reduced_dims
-        // )
-        // // Plot the AUC across the resolutions
-        // // NOTE: cannot just run a collect() in output, because there might
-        // // not be a unique call - e.g. harmony with multiple theta
-        // plot_resolution_validate(
-        //     cluster_validate_resolution_keras.out.plot_input.groupTuple()
-        // )
+        cluster_validate_resolution_keras(
+            cluster.out.outdir,
+            cluster.out.anndata,
+            cluster.out.metadata,
+            cluster.out.pcs,
+            cluster.out.reduced_dims,
+            cluster.out.clusters,
+            cluster_validate_resolution__sparsity, // "0.0001",
+            cluster_validate_resolution__train_size_cells,
+            cluster.out.outdir__reduced_dims
+        )
+        // Plot the AUC across the resolutions
+        // NOTE: cannot just run a collect() in output, because there might
+        // not be a unique call - e.g. harmony with multiple theta
+        plot_resolution_validate(
+            cluster_validate_resolution_keras.out.plot_input.groupTuple()
+        )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
         //     cluster.out.outdir,
@@ -653,8 +653,8 @@ workflow wf__cluster {
             cluster.out.pcs,
             cluster.out.reduced_dims,
             use_pcs_as_reduced_dims,
-            '',
-            'cluster',
+            "",
+            "cluster",
             n_neighbors,
             umap_init,
             umap_min_dist,
