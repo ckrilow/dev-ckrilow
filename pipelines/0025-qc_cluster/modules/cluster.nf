@@ -14,10 +14,10 @@ def random_hex(n) {
 
 
 // Set some defaults
-if (binding.hasVariable('publish_mode') == false) {
-    publish_mode = "symlink"
+if (binding.hasVariable("publish_mode") == false) {
+    publish_mode = "symlink"  // symlink or copy
 }
-if (binding.hasVariable('echo_mode') == false) {
+if (binding.hasVariable("echo_mode") == false) {
     echo_mode = true
 }
 
@@ -28,7 +28,7 @@ process cluster {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo "${echo_mode}"          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -108,7 +108,7 @@ process cluster_validate_resolution_sklearn {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo "${echo_mode}"          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -222,7 +222,7 @@ process cluster_validate_resolution_keras {
     //maxForks 2         // hard to control memory usage. limit to 3 concurrent
     label 'gpu'        // use GPU
     scratch false      // use tmp directory
-    echo "${echo_mode}"          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -329,7 +329,7 @@ process plot_resolution_validate {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo "${echo_mode}"          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -404,7 +404,7 @@ process cluster_markers {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo "${echo_mode}"          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -479,7 +479,7 @@ process merge_clusters {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo "${echo_mode}"          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -537,7 +537,7 @@ process convert_seurat {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo "${echo_mode}"          // echo output from script
+    echo echo_mode          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -624,23 +624,23 @@ workflow wf__cluster {
         //     cluster_validate_resolution__sparsity,
         //     cluster_validate_resolution__train_size_cells
         // )
-        cluster_validate_resolution_keras(
-            cluster.out.outdir,
-            cluster.out.anndata,
-            cluster.out.metadata,
-            cluster.out.pcs,
-            cluster.out.reduced_dims,
-            cluster.out.clusters,
-            cluster_validate_resolution__sparsity, // "0.0001",
-            cluster_validate_resolution__train_size_cells,
-            cluster.out.outdir__reduced_dims
-        )
-        // Plot the AUC across the resolutions
-        // NOTE: cannot just run a collect() in output, because there might
-        // not be a unique call - e.g. harmony with multiple theta
-        plot_resolution_validate(
-            cluster_validate_resolution_keras.out.plot_input.groupTuple()
-        )
+        // cluster_validate_resolution_keras(
+        //     cluster.out.outdir,
+        //     cluster.out.anndata,
+        //     cluster.out.metadata,
+        //     cluster.out.pcs,
+        //     cluster.out.reduced_dims,
+        //     cluster.out.clusters,
+        //     cluster_validate_resolution__sparsity, // "0.0001",
+        //     cluster_validate_resolution__train_size_cells,
+        //     cluster.out.outdir__reduced_dims
+        // )
+        // // Plot the AUC across the resolutions
+        // // NOTE: cannot just run a collect() in output, because there might
+        // // not be a unique call - e.g. harmony with multiple theta
+        // plot_resolution_validate(
+        //     cluster_validate_resolution_keras.out.plot_input.groupTuple()
+        // )
         // Make Seurat dataframes of the clustered anndata
         // convert_seurat(
         //     cluster.out.outdir,
