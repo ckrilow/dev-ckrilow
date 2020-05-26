@@ -36,6 +36,8 @@ include {
 
 
 // Set default parameters.
+publish_mode                = "symlink" // symlink, copy
+echo_mode                   = false
 params.output_dir           = "nf-qc_cluster"
 params.help                 = false
 params.run_multiplet        = false
@@ -467,6 +469,7 @@ workflow {
                 cluster_subset_pcs__metadata,
                 cluster_subset_pcs__pcs,
                 cluster_subset_pcs__reduced_dims,
+                "False",  // use_pcs_as_reduced_dims
                 params.cluster.number_neighbors.value,
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
@@ -486,6 +489,7 @@ workflow {
                 cluster_harmony__metadata,
                 cluster_harmony__pcs,
                 cluster_harmony__reduced_dims,
+                "False",  // use_pcs_as_reduced_dims
                 params.cluster.number_neighbors.value,
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
@@ -505,6 +509,7 @@ workflow {
                 cluster_bbknn__metadata,
                 cluster_bbknn__pcs,
                 cluster_bbknn__reduced_dims,
+                "True",  // use_pcs_as_reduced_dims
                 ["-1"],  // params.cluster.number_neighbors.value,
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,

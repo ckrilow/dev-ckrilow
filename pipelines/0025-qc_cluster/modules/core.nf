@@ -8,13 +8,22 @@ def random_hex(n) {
 }
 
 
+// Set some defaults
+if (binding.hasVariable("publish_mode") == false) {
+    publish_mode = "symlink"
+}
+if (binding.hasVariable("echo_mode") == false) {
+    echo_mode = true
+}
+
+
 process merge_samples {
     // Takes a list of raw 10x files and merges them into one anndata object.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache true        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -72,7 +81,7 @@ process plot_predicted_sex {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -114,7 +123,7 @@ process plot_qc {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -181,7 +190,7 @@ process normalize_and_pca {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -289,7 +298,7 @@ process estimate_pca_elbow {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
@@ -335,7 +344,7 @@ process subset_pcs {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
@@ -409,7 +418,7 @@ process harmony {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
@@ -498,7 +507,7 @@ process bbknn {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
@@ -573,7 +582,7 @@ process lisi {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo "${echo_mode}"          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
