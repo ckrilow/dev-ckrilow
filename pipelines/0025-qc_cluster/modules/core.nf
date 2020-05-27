@@ -103,6 +103,7 @@ process plot_predicted_sex {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "plot_predicted_sex: ${process_info}"
+        rm -fr plots
         0028-plot_predicted_sex.py \
             --h5_anndata ${file__anndata} \
             --output_file ${outfile}
@@ -156,6 +157,7 @@ process plot_qc {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "plot_qc: ${process_info}"
+        rm -fr plots
         plot_qc_umi_nfeature_mt.py \
             --h5_anndata ${file__anndata} \
             --output_file ${outfile} \
@@ -252,6 +254,7 @@ process normalize_and_pca {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "normalize_pca: ${process_info}"
+        rm -fr plots
         0035-scanpy_normalize_pca.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-adata \
@@ -324,6 +327,7 @@ process estimate_pca_elbow {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "estimate_pca_elbow: ${process_info}"
+        rm -fr plots
         0030-estimate_pca_elbow.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-${outfile}
@@ -625,6 +629,7 @@ process lisi {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "lisi: ${process_info}"
+        rm -fr plots
         0047-lisi.py \
             --reduced_dims_tsv ${file__reduced_dims} \
             --reduced_dims_tsv_labels ${label__reduced_dims} \

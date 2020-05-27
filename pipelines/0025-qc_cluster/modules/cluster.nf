@@ -81,6 +81,7 @@ process cluster {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "cluster: ${process_info}"
+        rm -fr plots
         0055-scanpy_cluster.py \
             --h5_anndata ${file__anndata} \
             --tsv_pcs ${file__reduced_dims} \
@@ -194,6 +195,7 @@ process cluster_validate_resolution_sklearn {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "cluster_validate_resolution: ${process_info}"
+        rm -fr plots
         0057-scanpy_cluster_validate_resolution-sklearn.py \
             --h5_anndata ${file__anndata} \
             --sparsity ${sparsity} \
@@ -304,6 +306,7 @@ process cluster_validate_resolution_keras {
         tf_memory = "${task.memory}".replaceAll(" GB", "")
         """
         echo "cluster_validate_resolution: ${process_info}"
+        rm -fr plots
         0057-scanpy_cluster_validate_resolution-keras.py \
             --h5_anndata ${file__anndata} \
             --sparsity_l1 ${sparsity} \
@@ -381,6 +384,7 @@ process plot_resolution_validate {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "plot_resolution: ${process_info}"
+        rm -fr plots
         0058-plot_resolution_boxplot.py \
             --model_reports ${files__model_report} \
             --h_line 0.8 \
@@ -461,6 +465,7 @@ process cluster_markers {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "cluster: ${process_info}"
+        rm -fr plots
         0057-scanpy_cluster_markers.py \
             --h5_anndata ${file__anndata} \
             --rank_genes_method ${method} \
@@ -511,6 +516,7 @@ process merge_clusters {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "merge_clusters: ${process_info}"
+        rm -fr plots
         0059-h5ad_to_h5.py \
             --h5_anndata ${file__anndata} \
             --output_file ${runid}-temp
