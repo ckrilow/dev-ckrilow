@@ -383,6 +383,10 @@ process plot_resolution_validate {
         echo "plot_resolution: ${process_info}"
         0058-plot_resolution_boxplot.py \
             --model_reports ${files__model_report} \
+            --h_line 0.8 \
+            --output_file ${runid}-${outfile}-hline0pt8
+        0058-plot_resolution_boxplot.py \
+            --model_reports ${files__model_report} \
             --output_file ${runid}-${outfile}
         0058-plot_resolution_curve.py \
              --y_prob_dfs ${files__y_prob_df} \
