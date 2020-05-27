@@ -17,7 +17,8 @@ def _make_plots(
     df_plt,
     out_file_base,
     y='AUC',
-    facet_grid=''
+    facet_grid='',
+    h_line=''
 ):
     len_x = len(np.unique(df_plt['resolution']))
     if 'sparsity_l1' in df_plt.columns:
@@ -43,7 +44,7 @@ def _make_plots(
     else:
         gplt = plt9.ggplot(df_plt, plt9.aes(
             x='resolution',
-            y=y,
+            y=y
         ))
         gplt = gplt + plt9.geom_boxplot(
             alpha=0.8,
@@ -83,6 +84,11 @@ def _make_plots(
             palette='Dark2',
             type='qual'
         )
+    if h_line != '':
+        gplt = gplt + plt9.geom_hline(
+            plt9.aes(yintercept=h_line),
+            linetype='dashdot'
+        )
     gplt.save(
         '{}-resolution__{}.png'.format(out_file_base, y.replace('-', '_')),
         dpi=300,
@@ -116,6 +122,16 @@ def main():
     )
 
     parser.add_argument(
+        '--h_line',
+        action='store',
+        dest='h_line',
+        default='',
+        required=False,
+        help='If int, then a horizontal line will be added to each plot at\
+            each point (default: no line).'
+    )
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
@@ -129,6 +145,11 @@ def main():
 
     # Get the out file base.
     out_file_base = options.of
+
+    # Get h_line
+    h_line = options.h_line
+    if h_line != '':
+        h_line = float(h_line)
 
     # Read in a list of model_report.tsv.gz files.
     # NOTE: cluster id will not necissarily be comparable across reports.
@@ -212,7 +233,8 @@ def main():
                 df_modelreport,
                 out_file_base,
                 i,
-                facet_grid='neighbors__n_neighbors'
+                facet_grid='neighbors__n_neighbors',
+                h_line=h_line
             )
     # Also make seperate plots for each n_neighbors value.
     df_cutoff_list = []
@@ -225,9 +247,10 @@ def main():
                 df_tmp,
                 '{}-n_neighbors={}'.format(out_file_base, i__n_neighbors),
                 i,
-                facet_grid=''
+                facet_grid='',
+                h_line=h_line
             )
-        for i__res in df_modelreport['resolution'].unique():
+        for i__res in np.sort(df_modelreport['resolution'].unique()):
             df_cutoff_dict_i = {}  # Save the below cutoffs to dataframe
             df_cutoff_dict_i['neighbors__n_neighbors'] = i__n_neighbors
             df_cutoff_dict_i['resolution'] = i__res
