@@ -6,13 +6,18 @@ def random_hex(n) {
 }
 
 
+if (binding.hasVariable("echo_mode") == false) {
+    echo_mode = true
+}
+
+
 process run_scrublet {
     // Runs scrublet for each sample.
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
-    scratch false      // use tmp directory
-    echo true          // echo output from script
+    scratch false        // use tmp directory
+    echo echo_mode       // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename ->
@@ -22,7 +27,7 @@ process run_scrublet {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     //each smplid_and_datapath
@@ -79,11 +84,11 @@ process make_cellmetadata_pipeline_input {
     //tag { output_dir }
     //cache false        // cache results from run
     scratch false      // use tmp directory
-    echo true          // echo output from script
+    echo echo_mode          // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:

@@ -13,10 +13,6 @@ def random_hex(n) {
 }
 
 
-// Set some defaults
-if (binding.hasVariable("publish_mode") == false) {
-    publish_mode = "symlink"  // symlink or copy
-}
 if (binding.hasVariable("echo_mode") == false) {
     echo_mode = true
 }
@@ -45,7 +41,7 @@ process cluster {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -127,7 +123,7 @@ process cluster_validate_resolution_sklearn {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -241,7 +237,7 @@ process cluster_validate_resolution_keras {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -348,7 +344,7 @@ process plot_resolution_validate {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -423,7 +419,7 @@ process cluster_markers {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -484,7 +480,7 @@ process merge_clusters {
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -542,7 +538,7 @@ process convert_seurat {
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:

@@ -8,10 +8,6 @@ def random_hex(n) {
 }
 
 
-// Set some defaults
-if (binding.hasVariable("publish_mode") == false) {
-    publish_mode = "symlink" // symlink or copy
-}
 if (binding.hasVariable("echo_mode") == false) {
     echo_mode = true
 }
@@ -23,11 +19,11 @@ process merge_samples {
     //tag { output_dir }
     //cache true        // cache results from run
     scratch false      // use tmp directory
-    echo echo_mode          // echo output from script
+    echo echo_mode         // echo output from script
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -85,7 +81,7 @@ process plot_predicted_sex {
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -127,7 +123,7 @@ process plot_qc {
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -194,7 +190,7 @@ process normalize_and_pca {
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -302,7 +298,7 @@ process estimate_pca_elbow {
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -361,7 +357,7 @@ process subset_pcs {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -434,7 +430,7 @@ process harmony {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -523,7 +519,7 @@ process bbknn {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -596,7 +592,7 @@ process lisi {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "copy",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:

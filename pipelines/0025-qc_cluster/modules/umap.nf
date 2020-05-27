@@ -6,10 +6,6 @@ def random_hex(n) {
 }
 
 
-// Set some defaults
-if (binding.hasVariable("publish_mode") == false) {
-    publish_mode = "symlink" // symlink or copy
-}
 if (binding.hasVariable("echo_mode") == false) {
     echo_mode = true
 }
@@ -26,7 +22,7 @@ process umap_calculate {
     // Don't publish these results as they are just temporary
     // publishDir  path: "${outdir}",
     //             saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-    //             mode: "${publish_mode}",
+    //             mode: "${task.publish_mode}",
     //             overwrite: "true"
 
     input:
@@ -121,7 +117,7 @@ process umap_gather {
                         filename.replaceAll("${runid}-", "")
                     }
                 },
-                mode: "${publish_mode}",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -184,7 +180,7 @@ process umap_plot_swarm {
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "${publish_mode}",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
@@ -247,7 +243,7 @@ process umap_calculate_and_plot {
 
     publishDir  path: "${outdir}",
                 saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "${publish_mode}",
+                mode: "${task.publish_mode}",
                 overwrite: "true"
 
     input:
