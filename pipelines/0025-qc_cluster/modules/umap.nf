@@ -219,6 +219,7 @@ process umap_plot_swarm {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "umap: ${process_info}"
+        rm -fr plots
         umap_plot.py \
             --h5_anndata ${file__anndata} \
             --number_cpu ${task.cpus} \
@@ -294,6 +295,7 @@ process umap_calculate_and_plot {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "umap_calculate_and_plot: ${process_info}"
+        rm -fr plots
         umap_calculate_and_plot.py \
             --h5_anndata ${file__anndata} \
             ${cmd__tsv_pcs} \
