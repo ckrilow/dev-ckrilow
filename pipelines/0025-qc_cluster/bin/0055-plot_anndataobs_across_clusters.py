@@ -51,10 +51,11 @@ def main():
     pheno_to_plot = options.pheno_columns.split(',')
 
     plt_height = 4
+    plt_width = 16
 
     # Plot the data.
     for pheno in pheno_to_plot:
-        plt_width = adata.obs['cluster'].nunique() * 0.25
+        # plt_width = adata.obs['cluster'].nunique() * 0.25
 
         gplt = plt9.ggplot(adata.obs)
         gplt = gplt + plt9.geom_boxplot(plt9.aes(x='cluster', y=pheno))

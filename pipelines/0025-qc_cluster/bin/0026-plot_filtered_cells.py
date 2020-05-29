@@ -67,7 +67,7 @@ def main():
     df_before_filters = df_before_filters.set_index('experiment_id')
 
     # Set some plotting parameters
-    plt_height = 1.5 * df.experiment_id.nunique()
+    plt_height = 16  # 1.5 * df.experiment_id.nunique()
 
     # Plot the number of cells before and after all filters across experiments
     df_plt = df[df.filter_type.isin(['before_filters', 'after_filters'])]
