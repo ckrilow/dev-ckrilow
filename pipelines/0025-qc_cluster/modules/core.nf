@@ -175,12 +175,12 @@ process plot_qc {
             --h5_anndata ${file__anndata} \
             --output_file ${outfile} \
             ${cmd__facet_columns}
-        plot_anndata_distribution_across_cells.py \
+        plot_anndataobs_distribution_across_cells.py \
             --h5_anndata ${file__anndata} \
             --output_file ${outfile} \
             --variable_columns ${variable_columns_distribution_plots} \
             ${cmd__facet_columns}
-        plot_anndata_distribution_across_cells.py \
+        plot_anndataobs_distribution_across_cells.py \
             --h5_anndata ${file__anndata} \
             --output_file ${outfile} \
             --variable_columns ${variable_columns_distribution_plots} \

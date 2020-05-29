@@ -31,8 +31,17 @@ def main():
         '--pheno_columns',
         action='store',
         dest='pheno_columns',
-        default='none',
+        default='',
         help='Pheno column to be boxplotted by cluster.'
+    )
+
+    parser.add_argument(
+        '-of', '--output_file',
+        action='store',
+        dest='of',
+        default='plot_boxplot_cluster',
+        help='Basename of output png file. Will have .png appended.\
+            (default: %(default)s)'
     )
 
     options = parser.parse_args()
@@ -40,20 +49,19 @@ def main():
     adata = sc.read_h5ad(filename=options.h5)
 
     pheno_to_plot = options.pheno_columns.split(',')
-    if len(pheno_to_plot) == 0:
-        pheno_to_plot = ['none']
-    
+
     # Plot the data.
     for pheno in pheno_to_plot:
         df = adata.obs[[pheno]].copy()
-        df['cluster'] = adata.obs['cluster'].copy()        
+        df['cluster'] = adata.obs['cluster'].copy()
         plt = plt9.ggplot(df)
         plt = plt + plt9.geom_boxplot(plt9.aes(x='cluster', y=pheno))
         plt = plt + plt9.theme(axis_text_x=plt9.element_text(angle=90))
         plt.save(
-         'boxplot{}.png'.format(pheno),
-         dpi=300
-         )
+            'boxplot-{}.png'.format(pheno),
+            dpi=300
+        )
+
 
 if __name__ == '__main__':
     main()
