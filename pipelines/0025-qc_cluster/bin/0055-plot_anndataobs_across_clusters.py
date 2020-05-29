@@ -54,11 +54,21 @@ def main():
     for pheno in pheno_to_plot:
         df = adata.obs[[pheno]].copy()
         df['cluster'] = adata.obs['cluster'].copy()
-        plt = plt9.ggplot(df)
-        plt = plt + plt9.geom_boxplot(plt9.aes(x='cluster', y=pheno))
-        plt = plt + plt9.theme(axis_text_x=plt9.element_text(angle=90))
-        plt.save(
+        gplt = gplt9.ggplot(df)
+        gplt = gplt + gplt9.geom_boxplot(gplt9.aes(x='cluster', y=pheno))
+        gplt = gplt + gplt9.theme(axis_text_x=gplt9.element_text(angle=90))
+        gplt.save(
             'boxplot-{}.png'.format(pheno),
+            dpi=300
+        )
+        # Add log10 transformation
+        gplt = gplt + gplt9.scale_y_continuous(
+            # trans='log10',
+            # labels=comma_labels,
+            minor_breaks=0
+        )
+        gplt.save(
+            'boxplot_log10-{}.png'.format(pheno),
             dpi=300
         )
 
