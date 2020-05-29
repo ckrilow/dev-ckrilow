@@ -38,6 +38,12 @@ process merge_samples {
     //       https://github.com/nextflow-io/nextflow/issues/1414
     output:
         path("${runid}-adata.h5ad", emit: anndata)
+        path(
+            "${runid}-cell_filtered_per_experiment.tsv.gz",
+            emit: cells_filtered
+        )
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
 
     script:
         runid = random_hex(16)
@@ -58,6 +64,7 @@ process merge_samples {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "merge_samples: ${process_info}"
+        rm -fr plots
         0025-scanpy_merge.py \
             --tenxdata_file ${file_paths_10x} \
             --sample_metadata_file ${file_metadata} \
@@ -67,6 +74,12 @@ process merge_samples {
             --output_file ${runid}-adata \
             ${cmd__params} \
             ${cmd__cellmetadata}
+        0026-plot_filtered_cells.py \
+            --tsv_file ${runid}-adata-cell_filtered_per_experiment.tsv.gz
+            --output_file ${runid}-adata-cell_filtered_per_experiment
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
 }
 
