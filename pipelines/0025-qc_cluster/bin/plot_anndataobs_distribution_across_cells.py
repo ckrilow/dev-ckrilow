@@ -6,6 +6,7 @@ __date__ = '2020-04-08'
 __version__ = '0.0.1'
 
 import argparse
+import numpy as np
 import scanpy as sc
 import plotnine as plt9
 # altair: good python plotting package
@@ -28,8 +29,8 @@ def plot_histogram(
     df_plot,
     variable_column,
     output_file='plot_distribution',
-    plot_ecdf=False,
-    facet_column='none'
+    facet_column='none',
+    x_log10=False
 ):
     """Plot plot_distribution to png.
 
@@ -48,8 +49,18 @@ def plot_histogram(
     -------
     NULL
     """
+    df_plot['x'] = df_plot[variable_column]
+    if x_log10:
+        if np.any(df_plot['x'].values < 0):
+            return 1
+        elif np.any(df_plot['x'].values == 0):
+            df_plot['x'] = np.log10(df_plot['x'].values + 1e-10)
+            variable_column = variable_column + ' (log10)'
+        else:
+            df_plot['x'] = np.log10(df_plot['x'].values)
+            variable_column = variable_column + ' (log10)'
     gplt = plt9.ggplot(df_plot, plt9.aes(
-        x=variable_column
+        x='x'
     ))
     gplt = gplt + plt9.theme_bw()
     gplt = gplt + plt9.geom_histogram(alpha=0.8)
@@ -64,7 +75,8 @@ def plot_histogram(
         minor_breaks=0
     )
     gplt = gplt + plt9.labs(
-        title=''
+        title='',
+        x=variable_column
     )
     gplt = gplt + plt9.theme(
         axis_text_x=plt9.element_text(angle=-45, hjust=0)
@@ -89,6 +101,7 @@ def plot_histogram(
             width=4,
             height=4
         )
+    return 0
 
 
 def plot_ecdf(
@@ -96,7 +109,8 @@ def plot_ecdf(
     variable_column,
     color_column='none',
     output_file='plot_distribution',
-    facet_column='none'
+    facet_column='none',
+    x_log10=False
 ):
     """Plot plot_distribution to png.
 
@@ -130,11 +144,18 @@ def plot_ecdf(
         ))
     gplt = gplt + plt9.theme_bw()
     gplt = gplt + plt9.stat_ecdf(alpha=0.8)
-    gplt = gplt + plt9.scale_x_continuous(
-        # trans='log10',
-        # labels=comma_labels,
-        minor_breaks=0
-    )
+    if x_log10:
+        gplt = gplt + plt9.scale_x_continuous(
+            trans='log10',
+            # labels=comma_labels,
+            minor_breaks=0
+        )
+    else:
+        gplt = gplt + plt9.scale_x_continuous(
+            # trans='log10',
+            # labels=comma_labels,
+            minor_breaks=0
+        )
     gplt = gplt + plt9.scale_y_continuous(
         # trans='log10',
         # labels=comma_labels,
@@ -173,6 +194,7 @@ def plot_ecdf(
             width=4,
             height=4
         )
+    return 0
 
 
 def main():
@@ -259,26 +281,54 @@ def main():
                 adata.obs[facet] = adata.obs[facet].apply(str)
             # Plot the data.
             if options.ecdf:
-                plot_ecdf(
+                _ = plot_ecdf(
                     df_plot=adata.obs,
                     variable_column=var,
-                    output_file='plot_ecdf.var={}.color={}-{}'.format(
+                    output_file='{}.var={}.color={}-{}'.format(
+                        'plot_ecdf',
                         var,
                         facet,
                         options.of
                     ),
-                    color_column=facet
+                    color_column=facet,
+                    x_log10=False
+                )
+                _ = plot_ecdf(
+                    df_plot=adata.obs,
+                    variable_column=var,
+                    output_file='{}.var={}.color={}-{}'.format(
+                        'plot_ecdf-x_log10',
+                        var,
+                        facet,
+                        options.of
+                    ),
+                    color_column=facet,
+                    x_log10=True
                 )
             else:
-                plot_histogram(
+                _ = plot_histogram(
                     df_plot=adata.obs,
                     variable_column=var,
-                    output_file='plot_histogram.var={}.facet={}-{}'.format(
+                    output_file='{}.var={}.facet={}-{}'.format(
+                        'plot_histogram',
                         var,
                         facet,
                         options.of
                     ),
-                    facet_column=facet
+                    facet_column=facet,
+                    x_log10=False
+                )
+                _ = plot_histogram(
+                    df_plot=adata.obs,
+                    variable_column=var,
+                    output_file='{}.var={}.facet={}-{}'.format(
+                        'plot_histogram-x_log10',
+                        var,
+                        facet,
+                        options.of
+                    ),
+                    facet_column=facet,
+                    x_log10=True
                 )
 
 
