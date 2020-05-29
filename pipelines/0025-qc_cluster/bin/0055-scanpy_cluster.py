@@ -7,11 +7,22 @@ __version__ = '0.0.1'
 
 import argparse
 import os
+import random
+import numpy as np
 import pandas as pd
 import scanpy as sc
 import csv
 import warnings
 import plotnine as plt9
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+# os.environ['PYTHONHASHSEED']=str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
 
 
 def main():
@@ -188,7 +199,8 @@ def main():
             use_rep='X_pca',
             n_neighbors=options.number_neighbors,
             n_pcs=n_pcs,
-            copy=False
+            copy=False,
+            random_state=0
         )
     else:
         warnings.warn(
@@ -208,7 +220,8 @@ def main():
             adata,
             resolution=cluster_resolution,
             key_added=cluster_method,
-            copy=False
+            copy=False,
+            random_state=0
         )
     elif cluster_method == 'louvain':
         sc.tl.louvain(
@@ -216,7 +229,8 @@ def main():
             flavor='vtraag',
             resolution=cluster_resolution,
             key_added=cluster_method,
-            copy=False
+            copy=False,
+            random_state=0
         )
     else:
         raise Exception(

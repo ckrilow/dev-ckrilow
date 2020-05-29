@@ -6,11 +6,22 @@ __date__ = '2020-03-13'
 __version__ = '0.0.1'
 
 import argparse
+import csv
 import os
 import yaml
+import random
 import numpy as np
 import pandas as pd
 import scanpy as sc
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+# os.environ['PYTHONHASHSEED']=str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
 
 # sc verbosity: errors (0), warnings (1), info (2), hints (3)
 # sc.settings.verbosity = 3
@@ -98,12 +109,14 @@ def scanpy_merge(
             lambda x: os.path.exists(x)
         )
         if np.sum(filt > 1):
-            raise Exception('Error {} data_path_cellmetadata missing:\t{}'.format(
-                np.sum(filt > 1),
-                np.array2string(
-                    cellmetadata_filepaths['data_path_cellmetadata'][filt]
+            raise Exception(
+                'Error {} data_path_cellmetadata missing:\t{}'.format(
+                    np.sum(filt > 1),
+                    np.array2string(
+                        cellmetadata_filepaths['data_path_cellmetadata'][filt]
+                    )
                 )
-            ))
+            )
 
     # Init default values for params_dict
     params_filters_check = [
@@ -131,11 +144,15 @@ def scanpy_merge(
             )
         )
 
-    # iterate over samples and load data
+    # Init a dictionary to record the original number of cells per sample and
+    # the number of cells after each filter.
+    n_cells_dict = {}
+
+    # Iterate over samples and load data
     adatasets = []
     n_adatasets = 1
     for idx, row in tenx_data.iterrows():
-        # load the data
+        # Load the data
         adata = sc.read_10x_mtx(
             path=row['data_path_10x_format'],
             # var_names='gene_symbols',
@@ -145,7 +162,11 @@ def scanpy_merge(
 
         adata = check_adata(adata, row['experiment_id'])
 
-        # label mitochondrial genes
+        # Record the total number of cells for this experiment_id
+        n_cells_dict[row['experiment_id']] = {}
+        n_cells_dict[row['experiment_id']]['before_filters'] = adata.n_obs
+
+        # Label mitochondrial genes
         # mito_gene_list = sc.queries.mitochondrial_genes() # another query
         adata.var['mito_gene'] = [
             x.startswith('MT-') for x in adata.var['gene_symbols']
@@ -194,45 +215,19 @@ def scanpy_merge(
         # Apply gene filter
         # adata = adata[:, selected_genes]
 
-        # Apply downsampling if needed.
-        if params_dict['downsample_cells_fraction']['value'] != '':
-            n_cells_start = adata.n_obs
-            sc.pp.subsample(
-                adata,
-                fraction=float(
-                    params_dict['downsample_cells_fraction']['value']
-                ),
-                copy=False
-            )
-            print('[{}] cell downsample applied: {} dropped {} remain'.format(
-                row['experiment_id'],
-                n_cells_start - adata.n_obs,
-                adata.n_obs
-            ))
-        elif params_dict['downsample_cells_n']['value'] != '':
-            n_cells_start = adata.n_obs
-            sc.pp.subsample(
-                adata,
-                n_obs=int(params_dict['downsample_cells_n']['value']),
-                copy=False
-            )
-            print('[{}] cell downsample applied: {} dropped {} remain'.format(
-                row['experiment_id'],
-                n_cells_start - adata.n_obs,
-                adata.n_obs
-            ))
-        if params_dict['downsample_feature_counts']['value'] != '':
-            fraction = params_dict['downsample_feature_counts']['value']
-            target_counts_per_cell = adata.obs['total_counts'].apply(
-                lambda x: int(x * fraction)
-            ).values
-            sc.pp.downsample_counts(
-                adata,
-                counts_per_cell=target_counts_per_cell
-            )
         # Apply cell QC filters.
         if len(params_dict['cell_filters']['value']) > 0:
             n_cells_start = adata.n_obs
+
+            # Add the total number of cells that pass each filter independently
+            # i.e., not depenedent on any other filter.
+            for filter_query in params_dict['cell_filters']['value']:
+                if filter_query != '':
+                    n_cells_dict[
+                        row['experiment_id']
+                    ][filter_query] = adata.obs.query(filter_query).shape[0]
+
+            filter_i = 0
             for filter_query in params_dict['cell_filters']['value']:
                 if filter_query != '':
                     adata = adata[adata.obs.query(filter_query).index, :]
@@ -243,13 +238,64 @@ def scanpy_merge(
                         n_cells_start - adata.n_obs,
                         adata.n_obs
                     ))
+                    n_cells_dict[row['experiment_id']][
+                        'after_filter_{} {}'.format(filter_i, filter_query)
+                    ] = adata.n_obs
+                    filter_i += 1
             print('[{}] after all cell QC: {} dropped {} remain'.format(
                 row['experiment_id'],
                 n_cells_start - adata.n_obs,
                 adata.n_obs
             ))
+        # Apply cell downsampling if needed.
+        if params_dict['downsample_cells_fraction']['value'] != '':
+            n_cells_start = adata.n_obs
+            sc.pp.subsample(
+                adata,
+                fraction=float(
+                    params_dict['downsample_cells_fraction']['value']
+                ),
+                copy=False,
+                random_state=0
+            )
+            n_cells_dict[
+                row['experiment_id']
+            ]['downsample_cells_fraction'] = adata.n_obs
+            print('[{}] cell downsample applied: {} dropped {} remain'.format(
+                row['experiment_id'],
+                n_cells_start - adata.n_obs,
+                adata.n_obs
+            ))
+        elif params_dict['downsample_cells_n']['value'] != '':
+            n_cells_start = adata.n_obs
+            sc.pp.subsample(
+                adata,
+                n_obs=int(params_dict['downsample_cells_n']['value']),
+                copy=False,
+                random_state=0
+            )
+            n_cells_dict[
+                row['experiment_id']
+            ]['downsample_cells_n'] = adata.n_obs
+            print('[{}] cell downsample applied: {} dropped {} remain'.format(
+                row['experiment_id'],
+                n_cells_start - adata.n_obs,
+                adata.n_obs
+            ))
+        # Apply count downsampling if needed.
+        if params_dict['downsample_feature_counts']['value'] != '':
+            fraction = params_dict['downsample_feature_counts']['value']
+            target_counts_per_cell = adata.obs['total_counts'].apply(
+                lambda x: int(x * fraction)
+            ).values
+            sc.pp.downsample_counts(
+                adata,
+                counts_per_cell=target_counts_per_cell,
+                random_state=0
+            )
 
         # Print the number of cells and genes for this sample.
+        n_cells_dict[row['experiment_id']]['after_filters'] = adata.n_obs
         print('[{}] {} obs (cells), {} var (genes)'.format(
             row['experiment_id'],
             adata.n_obs,
@@ -290,16 +336,37 @@ def scanpy_merge(
     # Possible additional basic filtering on the full dataset.
     # sc.pp.filter_cells(adata, min_genes=200)
     # sc.pp.filter_genes(adata, min_cells=1)
-
     print('[adata_merged] {} obs, {} vars'.format(
         adata_merged.n_obs,
         adata_merged.n_vars
     ))
 
+    # Merge info on cell filters
+    n_cells_df = pd.DataFrame(n_cells_dict)
+    n_cells_df = n_cells_df.transpose()
+    n_cells_df['experiment_id'] = n_cells_df.index
+    n_cells_df = n_cells_df.melt(
+        id_vars=['experiment_id'],
+        var_name='filter_type',
+        value_name='n_cells'
+    )
+    adata_merged.uns['cell_filtered_per_experiment'] = n_cells_df
+    # adata_merged.uns['cell_filtered_per_experiment_dict'] = n_cells_dict
+
     # output_file = output_dir + "/adata"
     adata_merged.write('{}.h5ad'.format(output_file), compression='gzip')
     # adata_merged.write_csvs(output_file)
     # adata_merged.write_loom(output_file+".loom")
+
+    n_cells_df.to_csv(
+        '{}-cell_filtered_per_experiment.tsv.gz'.format(output_file),
+        sep='\t',
+        index=False,
+        quoting=csv.QUOTE_NONNUMERIC,
+        # index_label='cell_barcode',
+        na_rep='',
+        compression='gzip'
+    )
 
     return(output_file)
 
