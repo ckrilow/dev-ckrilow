@@ -8,6 +8,7 @@ __version__ = '0.0.1'
 
 import argparse
 # import os
+import random
 import numpy as np
 import scipy as sp
 import pandas as pd
@@ -38,6 +39,17 @@ import tensorflow as tf
 # Check that we are working on GPU or CPU
 # print(device_lib.list_local_devices())  # list of DeviceAttributes
 # tf.config.list_physical_devices('GPU')
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+# os.environ['PYTHONHASHSEED']=str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
+# 3. Set the `tensorflow` pseudo-random generator at a fixed value
+tf.random.set_seed(seed_value)
 
 
 def _create_colors(classes):
