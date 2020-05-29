@@ -61,6 +61,7 @@ process run_scrublet {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "run_scrublet: ${process_info}"
+        rm -fr plots
         TMP_DIR=\$(mktemp -d -p \$(pwd))
         ln --physical ${file_10x_barcodes} \$TMP_DIR
         ln --physical ${file_10x_features} \$TMP_DIR
