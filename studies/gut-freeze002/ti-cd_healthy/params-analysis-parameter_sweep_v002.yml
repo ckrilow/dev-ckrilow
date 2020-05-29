@@ -71,13 +71,16 @@ cluster:
             - 0.25
             - 0.5
             - 1.0
-            - 1.25
             - 1.5
-            - 1.75
             - 2.0
+            - 2.5
             - 3.0
             - 5.0
             - 10.0
+    variables_boxplot:
+        decription: 'Generate boxplots of these variables for each cluster.'
+        value:
+            - 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,b_cell__activation,b_cell__differentiation,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal,crypt__axis_score,t_cell__coinhibition_signature,t_cell__costimulation_signature,t_cell__cytotoxicity_signature,t_cell__cd8_cytotoxic,t_cell__cell_cycling,t_cell__central_memory,t_cell__immunoregulation,t_cell__resident_memory,villus__bottom_enterocytes,villus__top_enterocytes,hallmark_apoptosis,hallmark_hypoxia,mense_hypoxia_up,hallmark_inflammatory_response,inflammation_signature__smilliecs_31348891,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
     sparsity:
