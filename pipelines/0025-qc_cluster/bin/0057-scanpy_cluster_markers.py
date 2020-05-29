@@ -181,7 +181,7 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}'.format(
-            os.path.basename(options.h5.rstrip('.h5ad'))
+            os.path.basename(options.h5.rstrip('h5ad').rstrip('.'))
         )
 
     # Load the AnnData file.
@@ -211,7 +211,7 @@ def main():
             reference='rest',
             use_raw=True,
             method='wilcoxon',
-            n_genes=100,
+            n_genes=500,
             corr_method='bonferroni'
         )
     elif options.rgm == 'logreg':
@@ -226,7 +226,7 @@ def main():
             reference='rest',
             use_raw=True,
             method='logreg',
-            n_genes=100,
+            n_genes=500,
             max_iter=5000  # passed to sklearn.linear_model.LogisticRegression
         )
     else:
