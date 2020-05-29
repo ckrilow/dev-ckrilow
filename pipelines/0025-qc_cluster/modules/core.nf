@@ -39,7 +39,7 @@ process merge_samples {
     output:
         path("${runid}-adata.h5ad", emit: anndata)
         path(
-            "${runid}-cell_filtered_per_experiment.tsv.gz",
+            "${runid}-adata-cell_filtered_per_experiment.tsv.gz",
             emit: cells_filtered
         )
         path("plots/*.png")
@@ -75,7 +75,7 @@ process merge_samples {
             ${cmd__params} \
             ${cmd__cellmetadata}
         0026-plot_filtered_cells.py \
-            --tsv_file ${runid}-adata-cell_filtered_per_experiment.tsv.gz
+            --tsv_file ${runid}-adata-cell_filtered_per_experiment.tsv.gz \
             --output_file ${runid}-adata-cell_filtered_per_experiment
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
