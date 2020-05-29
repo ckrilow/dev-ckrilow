@@ -50,26 +50,32 @@ def main():
 
     pheno_to_plot = options.pheno_columns.split(',')
 
+    plt_height = 4
+
     # Plot the data.
     for pheno in pheno_to_plot:
-        df = adata.obs[[pheno]].copy()
-        df['cluster'] = adata.obs['cluster'].copy()
-        gplt = gplt9.ggplot(df)
-        gplt = gplt + gplt9.geom_boxplot(gplt9.aes(x='cluster', y=pheno))
-        gplt = gplt + gplt9.theme(axis_text_x=gplt9.element_text(angle=90))
+        plt_width = adata.obs['cluster'].nunique() * 0.25
+
+        gplt = plt9.ggplot(adata.obs)
+        gplt = gplt + plt9.geom_boxplot(plt9.aes(x='cluster', y=pheno))
+        gplt = gplt + plt9.theme(axis_text_x=plt9.element_text(angle=90))
         gplt.save(
             'boxplot-{}.png'.format(pheno),
-            dpi=300
+            dpi=300,
+            width=plt_width,
+            height=plt_height
         )
         # Add log10 transformation
-        gplt = gplt + gplt9.scale_y_continuous(
+        gplt = gplt + plt9.scale_y_continuous(
             # trans='log10',
             # labels=comma_labels,
             minor_breaks=0
         )
         gplt.save(
             'boxplot_log10-{}.png'.format(pheno),
-            dpi=300
+            dpi=300,
+            width=plt_width,
+            height=plt_height
         )
 
 
