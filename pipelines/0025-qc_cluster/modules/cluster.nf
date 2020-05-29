@@ -97,6 +97,55 @@ process cluster {
 }
 
 
+process plot_phenotype_across_clusters {
+    // Takes annData object, plots distribution of obs value across clusters
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo echo_mode          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        each variables
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
+        // Append run_id to output file.
+        outfile = "${runid}-${outfile}-cluster_boxplot"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_phenotype_across_clusters: ${process_info}"
+        rm -fr plots
+        0057-scanpy_cluster_markers.py \
+            --h5_anndata ${file__anndata} \
+            --pheno_columns ${variables} \
+            --output_file ${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 // TODO: update this method and sklearn script to match keras script.
 // Do not use this process.
 process cluster_validate_resolution_sklearn {
@@ -648,6 +697,7 @@ workflow wf__cluster {
         cluster__number_neighbors
         cluster__methods
         cluster__resolutions
+        cluster__boxplot_variables
         cluster_validate_resolution__sparsity
         cluster_validate_resolution__train_size_cells
         cluster_marker__methods
@@ -667,72 +717,78 @@ workflow wf__cluster {
             cluster__methods,
             cluster__resolutions
         )
-        // Validate the resolution
-        // Do not use cluster_validate_resolution_sklearn process.
-        // cluster_validate_resolution_sklearn(
+        // Boxplot of phenotype across clusters
+        plot_phenotype_across_clusters(
+            cluster.out.outdir,
+            cluster.out.anndata,
+            cluster__boxplot_variables
+        )
+        // // Validate the resolution
+        // // Do not use cluster_validate_resolution_sklearn process.
+        // // cluster_validate_resolution_sklearn(
+        // //     cluster.out.outdir,
+        // //     cluster.out.anndata,
+        // //     cluster.out.metadata,
+        // //     cluster.out.pcs,
+        // //     cluster.out.reduced_dims,
+        // //     cluster.out.clusters,
+        // //     cluster_validate_resolution__sparsity,
+        // //     cluster_validate_resolution__train_size_cells
+        // // )
+        // cluster_validate_resolution_keras(
         //     cluster.out.outdir,
         //     cluster.out.anndata,
         //     cluster.out.metadata,
         //     cluster.out.pcs,
         //     cluster.out.reduced_dims,
         //     cluster.out.clusters,
-        //     cluster_validate_resolution__sparsity,
-        //     cluster_validate_resolution__train_size_cells
+        //     cluster_validate_resolution__sparsity, // "0.0001",
+        //     cluster_validate_resolution__train_size_cells,
+        //     cluster.out.outdir__reduced_dims
         // )
-        cluster_validate_resolution_keras(
-            cluster.out.outdir,
-            cluster.out.anndata,
-            cluster.out.metadata,
-            cluster.out.pcs,
-            cluster.out.reduced_dims,
-            cluster.out.clusters,
-            cluster_validate_resolution__sparsity, // "0.0001",
-            cluster_validate_resolution__train_size_cells,
-            cluster.out.outdir__reduced_dims
-        )
-        // Plot the AUC across the resolutions
-        // NOTE: cannot just run a collect() in output, because there might
-        // not be a unique call - e.g. harmony with multiple theta
-        plot_resolution_validate(
-            cluster_validate_resolution_keras.out.plot_input.groupTuple()
-        )
-        // Make Seurat dataframes of the clustered anndata
-        // convert_seurat(
-        //     cluster.out.outdir,
-        //     cluster.out.anndata
+        // // Plot the AUC across the resolutions
+        // // NOTE: cannot just run a collect() in output, because there might
+        // // not be a unique call - e.g. harmony with multiple theta
+        // plot_resolution_validate(
+        //     cluster_validate_resolution_keras.out.plot_input.groupTuple()
         // )
-        // Generate UMAPs of the results.
-        umap_calculate_and_plot__cluster(
-            cluster.out.outdir,
-            cluster.out.anndata,
-            cluster.out.pcs,
-            cluster.out.reduced_dims,
-            use_pcs_as_reduced_dims,
-            "",
-            "cluster",
-            n_neighbors,
-            umap_init,
-            umap_min_dist,
-            umap_spread
-        )
-        // Find marker genes for clusters
-        cluster_markers(
-            cluster.out.outdir,
-            cluster.out.anndata,
-            cluster.out.metadata,
-            cluster.out.pcs,
-            cluster.out.reduced_dims,
-            cluster.out.clusters,
-            cluster_marker__methods
-        )
-        // // Merge clusters
-        // merge_clusters(
+        // // Make Seurat dataframes of the clustered anndata
+        // // convert_seurat(
+        // //     cluster.out.outdir,
+        // //     cluster.out.anndata
+        // // )
+        // // Generate UMAPs of the results.
+        // umap_calculate_and_plot__cluster(
         //     cluster.out.outdir,
         //     cluster.out.anndata,
-        //     ['5'],
-        //     ['0.1']
+        //     cluster.out.pcs,
+        //     cluster.out.reduced_dims,
+        //     use_pcs_as_reduced_dims,
+        //     "",
+        //     "cluster",
+        //     n_neighbors,
+        //     umap_init,
+        //     umap_min_dist,
+        //     umap_spread
         // )
-        // Prep adata file for cellxgene website
+        // // Find marker genes for clusters
+        // cluster_markers(
+        //     cluster.out.outdir,
+        //     cluster.out.anndata,
+        //     cluster.out.metadata,
+        //     cluster.out.pcs,
+        //     cluster.out.reduced_dims,
+        //     cluster.out.clusters,
+        //     cluster_marker__methods
+        // )
+        // // // Merge clusters
+        // // merge_clusters(
+        // //     cluster.out.outdir,
+        // //     cluster.out.anndata,
+        // //     ['5'],
+        // //     ['0.1']
+        // // )
+        // // Prep adata file for cellxgene website
         prep_cellxgene(
             cluster.out.outdir,
             cluster.out.anndata
