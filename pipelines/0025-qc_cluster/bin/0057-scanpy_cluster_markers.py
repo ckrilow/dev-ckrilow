@@ -7,12 +7,22 @@ __version__ = '0.0.1'
 
 import argparse
 import os
+import csv
+import random
 import numpy as np
 import pandas as pd
+import scanpy as sc
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import scanpy as sc
-import csv
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+# os.environ['PYTHONHASHSEED']=str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
 
 
 def nd(arr):
@@ -171,7 +181,7 @@ def main():
     out_file_base = options.of
     if out_file_base == '':
         out_file_base = '{}'.format(
-            os.path.basename(options.h5.rstrip('.h5ad'))
+            os.path.basename(options.h5.rstrip('h5ad').rstrip('.'))
         )
 
     # Load the AnnData file.
@@ -201,7 +211,7 @@ def main():
             reference='rest',
             use_raw=True,
             method='wilcoxon',
-            n_genes=100,
+            n_genes=500,
             corr_method='bonferroni'
         )
     elif options.rgm == 'logreg':
@@ -216,7 +226,7 @@ def main():
             reference='rest',
             use_raw=True,
             method='logreg',
-            n_genes=100,
+            n_genes=500,
             max_iter=5000  # passed to sklearn.linear_model.LogisticRegression
         )
     else:
