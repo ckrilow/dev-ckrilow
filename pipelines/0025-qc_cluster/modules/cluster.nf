@@ -135,7 +135,7 @@ process plot_phenotype_across_clusters {
         """
         echo "plot_phenotype_across_clusters: ${process_info}"
         rm -fr plots
-        0057-scanpy_cluster_markers.py \
+        0055-plot_anndataobs_across_clusters.py \
             --h5_anndata ${file__anndata} \
             --pheno_columns ${variables} \
             --output_file ${outfile}
