@@ -66,9 +66,19 @@ def main():
             width=plt_width,
             height=plt_height
         )
-        # Add log10 transformation
+
+        # Add log10 transformation plot
+        if adata.obs[pheno].min() < 0:
+            adata.obs[pheno] = adata.obs[pheno] + abs(
+                adata.obs[pheno].min()
+            ) + 1e-10
+        if adata.obs[pheno].min() == 0:
+            adata.obs[pheno] = adata.obs[pheno] + 1e-10
+        gplt = plt9.ggplot(adata.obs)
+        gplt = gplt + plt9.geom_boxplot(plt9.aes(x='cluster', y=pheno))
+        gplt = gplt + plt9.theme(axis_text_x=plt9.element_text(angle=90))
         gplt = gplt + plt9.scale_y_continuous(
-            # trans='log10',
+            trans='log10',
             # labels=comma_labels,
             minor_breaks=0
         )
