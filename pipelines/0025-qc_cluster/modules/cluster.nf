@@ -97,6 +97,55 @@ process cluster {
 }
 
 
+process plot_phenotype_across_clusters {
+    // Takes annData object, plots distribution of obs value across clusters
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo echo_mode          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        each variables
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
+        // Append run_id to output file.
+        outfile = "${runid}-${outfile}-cluster_boxplot"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_phenotype_across_clusters: ${process_info}"
+        rm -fr plots
+        0055-plot_anndataobs_across_clusters.py \
+            --h5_anndata ${file__anndata} \
+            --pheno_columns ${variables} \
+            --output_file ${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
 // TODO: update this method and sklearn script to match keras script.
 // Do not use this process.
 process cluster_validate_resolution_sklearn {
@@ -536,6 +585,55 @@ process merge_clusters {
 }
 
 
+process prep_cellxgene {
+    // Preps adata file for cellxgene
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false           // cache results from run
+    scratch false           // use tmp directory
+    echo echo_mode          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename ->
+                    if (filename.endsWith("clustered.h5ad")) {
+                        null
+                    } else {
+                        filename.replaceAll("${runid}-", "")
+                    }
+                },
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+
+    output:
+        val(outdir, emit: outdir)
+        path(
+            "${runid}-${outfile}-cellxgene.h5ad",
+            emit: cluster_markers
+        )
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "prep_cellxgene: ${process_info}"
+        cellxgene.py \
+            --h5_anndata ${file__anndata} \
+            --output_file ${runid}-${outfile}-cellxgene
+        """
+}
+
+
 process convert_seurat {
     // Converts anndata h5 file to a Seurat data object.
     // TODO: automatically add reduced_dims to Seurat data object.
@@ -599,6 +697,7 @@ workflow wf__cluster {
         cluster__number_neighbors
         cluster__methods
         cluster__resolutions
+        cluster__boxplot_variables
         cluster_validate_resolution__sparsity
         cluster_validate_resolution__train_size_cells
         cluster_marker__methods
@@ -618,6 +717,12 @@ workflow wf__cluster {
             cluster__methods,
             cluster__resolutions
         )
+        // Boxplot of phenotype across clusters
+        plot_phenotype_across_clusters(
+            cluster.out.outdir,
+            cluster.out.anndata,
+            cluster__boxplot_variables
+        )
         // Validate the resolution
         // Do not use cluster_validate_resolution_sklearn process.
         // cluster_validate_resolution_sklearn(
@@ -625,7 +730,7 @@ workflow wf__cluster {
         //     cluster.out.anndata,
         //     cluster.out.metadata,
         //     cluster.out.pcs,
-        //     cluster.out.reduced_dims,
+        //     cluster.out.reduced_dims
         //     cluster.out.clusters,
         //     cluster_validate_resolution__sparsity,
         //     cluster_validate_resolution__train_size_cells
@@ -683,4 +788,9 @@ workflow wf__cluster {
         //     ['5'],
         //     ['0.1']
         // )
+        // Prep adata file for cellxgene website
+        prep_cellxgene(
+            cluster.out.outdir,
+            cluster.out.anndata
+        )
 }

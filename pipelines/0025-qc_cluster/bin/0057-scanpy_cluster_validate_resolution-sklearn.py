@@ -7,6 +7,7 @@ __version__ = '0.0.1'
 
 import argparse
 import os
+import random
 import numpy as np
 import scipy as sp
 import pandas as pd
@@ -36,6 +37,15 @@ from dask.distributed import Client, performance_report, get_task_stream
 # (2) resolution for clustering, (3) regularization ... using the logreg score
 # as the estimator to guide selection. See more below:
 # https://ml.dask.org/examples/dask-glm.html
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+# os.environ['PYTHONHASHSEED']=str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
 
 
 def start_dask_lsfcluster(cluster_size=5):
