@@ -66,7 +66,7 @@ def main():
         ]
         if marker_genes_found.size > 100:
             marker_genes_found = marker_genes_found[0:100]
-        i_out = i.replace(' ', '_').replace('.', '_')
+        i_out = i.replace(' ', '_').replace('.', '_').replace('/', '-')
         print(i, i_out)
         sc.pl.dotplot(
             adata,
