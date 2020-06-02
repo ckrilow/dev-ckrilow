@@ -82,7 +82,7 @@ process cluster {
         """
         echo "cluster: ${process_info}"
         rm -fr plots
-        0055-scanpy_cluster.py \
+        0053-scanpy_cluster.py \
             --h5_anndata ${file__anndata} \
             --tsv_pcs ${file__reduced_dims} \
             --number_neighbors ${number_neighbors} \
@@ -138,6 +138,55 @@ process plot_phenotype_across_clusters {
         0055-plot_anndataobs_across_clusters.py \
             --h5_anndata ${file__anndata} \
             --pheno_columns ${variables} \
+            --output_file ${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
+process plot_known_markers {
+    // Plots markers from previous studies as dotplots
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo echo_mode          // echo output from script
+
+    //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        each marker_file
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.pdf") optional true
+        path("plots/*.png") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}/dotplot_markers"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        // outfile = "${file__anndata}".minus(".h5ad")
+        //     .split("-").drop(1).join("-")
+        outfile = "${marker_file.file_id}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_marker_dotplot: ${process_info}"
+        rm -fr plots
+        0055-plot_known_markers.py \
+            --h5_anndata ${file__anndata} \
+            --markers_database ${marker_file.file} \
             --output_file ${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
@@ -699,6 +748,7 @@ workflow wf__cluster {
         cluster__methods
         cluster__resolutions
         cluster__boxplot_variables
+        cluster__known_markers
         cluster_validate_resolution__sparsity
         cluster_validate_resolution__train_size_cells
         cluster_marker__methods
@@ -723,6 +773,12 @@ workflow wf__cluster {
             cluster.out.outdir,
             cluster.out.anndata,
             cluster__boxplot_variables
+        )
+        // Dotplot of marker genes across clusters
+        plot_known_markers(
+            cluster.out.outdir,
+            cluster.out.anndata,
+            cluster__known_markers
         )
         // Validate the resolution
         // Do not use cluster_validate_resolution_sklearn process.
