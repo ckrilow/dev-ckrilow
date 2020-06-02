@@ -8,6 +8,7 @@ __version__ = '0.0.1'
 import argparse
 import os
 import csv
+import random
 import numpy as np
 import pandas as pd
 import scrublet as scr
@@ -18,6 +19,15 @@ import matplotlib.colors as colors
 import seaborn as sns
 import plotnine as plt9
 # from statannot import add_stat_annotation
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+# os.environ['PYTHONHASHSEED']=str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
 
 sns.set(style='whitegrid')
 
@@ -175,7 +185,8 @@ def run_scrublet(
     scrub = scr.Scrublet(
         counts_matrix=adata.X,
         sim_doublet_ratio=n_simulated_multiplet/len(adata),  # Default is 2.0
-        expected_doublet_rate=multiplet_rate  # Default is 0.1
+        expected_doublet_rate=multiplet_rate,  # Default is 0.1
+        random_state=0
     )
 
     # Run the scrublet pipeline with default parameters.
