@@ -34,6 +34,16 @@ def main():
         help='H5 AnnData file.'
     )
 
+    parser.add_argument(
+        '--drop_extra_info',
+        action='store_true',
+        dest='drop_extra_info',
+        default=False,
+        help='Drops extra info from file to make a smaller file.\
+            This also enables cellxgene to run faster and take up less memory.\
+            (default: %(default)s)'
+    )
+
     # parser.add_argument(
     #     '--force_recalculate_neighbors',
     #     action='store_true',
@@ -76,6 +86,128 @@ def main():
     # (compressed sparse column) format instead of CSR
     # (compressed sparse row) format
     adata.X = sp.sparse.csc_matrix(adata.X)
+
+    # For the query on cellxgene, change to gene ids rather than ensembl
+    adata.var['gene_ids'] = adata.var.index
+    adata.var = adata.var.set_index('gene_symbols')
+
+    # List of columns to drop to minimize data size for cellxgene
+    if options.drop_extra_info:
+        cols_drop_obs = set([])
+
+        # Get every variable that is only one value across the whole dataset
+        cols_drop_obs = cols_drop_obs.union(set(
+            adata.obs.columns[adata.obs.nunique() <= 1].to_list()
+        ))
+
+        # Drop basic qc variables
+        cols_drop_obs = cols_drop_obs.union(set([
+            'estimated_number_of_cells',
+            'mean_reads_per_cell',
+            'median_genes_per_cell',
+            'number_of_reads',
+            'sequencing_saturation',
+            'q30_bases_in_barcode',
+            'q30_bases_in_rna_read',
+            'q30_bases_in_sample_index',
+            'q30_bases_in_umi',
+            'reads_mapped_to_genome',
+            'reads_mapped_confidently_to_genome',
+            'reads_mapped_confidently_to_intergenic_regions',
+            'reads_mapped_confidently_to_intronic_regions',
+            'reads_mapped_confidently_to_exonic_regions',
+            'reads_mapped_confidently_to_transcriptome',
+            'reads_mapped_antisense_to_gene',
+            'fraction_reads_in_cells',
+            'total_genes_detected',
+            'median_umi_counts_per_cell',
+            'n_genes_by_counts',
+            'log1p_n_genes_by_counts',
+            'total_counts',
+            'log1p_total_counts',
+            'pct_counts_in_top_50_genes',
+            'pct_counts_in_top_100_genes',
+            'pct_counts_in_top_200_genes',
+            'pct_counts_in_top_500_genes',
+            'total_counts_mito_gene',
+            'log1p_total_counts_mito_gene',
+            # 'pct_counts_mito_gene',
+            'normalization_factor'
+        ]))
+
+        # Drop any duplicate clusters, assuming main clusters stored in
+        # 'clusters'
+        if 'cluster' in adata.obs.columns:
+            cols_drop_obs = cols_drop_obs.union(
+                [col for col in adata.obs.columns if 'leiden' in col]
+            )
+            cols_drop_obs = cols_drop_obs.union(
+                [col for col in adata.obs.columns if 'louvein' in col]
+            )
+
+        # Drop signatures with hvg_only
+        cols_drop_obs = cols_drop_obs.union(
+            [col for col in adata.obs.columns if '__hvg_only' in col]
+        )
+
+        # Drop other columns specific to Anderson lab... don't worry,
+        # this will not throw an error
+        cols_drop_obs = cols_drop_obs.union(set([
+            'date_of_sample',
+            'date_of_plate_submission',
+            'patient_id',
+            'sanger_sample_id',
+            'endoscopist',
+            'collection_time',
+            'chromium_time',
+            'experimentalist',
+            'epithelial_immune_ratio',
+            'chip_well_position',
+            'bead_version',
+            'bead_lot',
+            'chip_version',
+            'chip_lot',
+            'id_run',
+            'lane',
+            'library_id',
+            'total_reads',
+            'biopsy_type_original',
+            'disease_status_original',
+            'valid_barcodes',
+            'batch',
+            'time_to_chromium_processing',
+            'scrublet__multiplet_scores'
+        ]))
+
+        # Drop the columns
+        adata.obs = adata.obs.drop(columns=cols_drop_obs, errors='ignore')
+
+        # Remove other data we cannot view in cellxgene
+        del adata.layers
+        del adata.obsp
+        del adata.uns
+        del adata.varm
+
+        # NOTE: could remove extra columns from var
+        cols_drop_var = set([
+            'mito_gene',
+            'n_cells_by_counts',
+            'mean_counts',
+            'log1p_mean_counts',
+            'pct_dropout_by_counts',
+            'total_counts',
+            'log1p_total_counts',
+            'n_cells',
+            # 'highly_variable',
+            'means',
+            'dispersions',
+            'dispersions_norm',
+            'highly_variable_nbatches',
+            'highly_variable_intersection',
+            'mean',
+            'std'
+        ])
+        adata.var = adata.var.drop(columns=cols_drop_var, errors='ignore')
 
     # Try to set default UMAP using umap_min_dist=1pt0 and umap_spread=1pt0
     umap_default = [i for i in adata.obsm.keys() if 'umap_min_dist=1pt0' in i]
