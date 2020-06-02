@@ -629,6 +629,7 @@ process prep_cellxgene {
         echo "prep_cellxgene: ${process_info}"
         cellxgene.py \
             --h5_anndata ${file__anndata} \
+            --drop_extra_info \
             --output_file ${runid}-${outfile}-cellxgene
         """
 }
