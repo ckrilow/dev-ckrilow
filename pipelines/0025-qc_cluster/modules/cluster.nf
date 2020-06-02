@@ -167,30 +167,35 @@ process plot_known_markers {
 
     output:
         val(outdir, emit: outdir)
-        path("plots/*.pdf") optional true
-        path("plots/*.png") optional true
+        path("plots_known_markers/*.pdf") optional true
+        path("plots_known_markers/*.png") optional true
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}/dotplot_markers"
+        outdir = "${outdir_prev}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
         // outfile = "${file__anndata}".minus(".h5ad")
         //     .split("-").drop(1).join("-")
         outfile = "${marker_file.file_id}"
+        // Only run this script if there is a value
+        cmd__run = ""
+        if (marker_file.file_id != "") {
+            cmd__run = "0055-plot_known_markers.py"
+            cmd__run = "${cmd__run} --h5_anndata ${file__anndata}"
+            cmd__run = "${cmd__run} --markers_database ${marker_file.file}"
+            cmd__run = "${cmd__run} --output_file ${outfile}"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "plot_marker_dotplot: ${process_info}"
-        rm -fr plots
-        0055-plot_known_markers.py \
-            --h5_anndata ${file__anndata} \
-            --markers_database ${marker_file.file} \
-            --output_file ${outfile}
-        mkdir plots
-        mv *pdf plots/ 2>/dev/null || true
-        mv *png plots/ 2>/dev/null || true
+        rm -fr plots_known_markers
+        ${cmd__run}
+        mkdir plots_known_markers
+        mv *pdf plots_known_markers/ 2>/dev/null || true
+        mv *png plots_known_markers/ 2>/dev/null || true
         """
 }
 
