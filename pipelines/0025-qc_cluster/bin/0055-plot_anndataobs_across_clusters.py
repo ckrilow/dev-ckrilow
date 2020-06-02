@@ -68,12 +68,15 @@ def main():
         )
 
         # Add log10 transformation plot
+        lab = 'log10'
         if adata.obs[pheno].min() < 0:
             adata.obs[pheno] = adata.obs[pheno] + abs(
                 adata.obs[pheno].min()
-            ) + 1e-10
-        if adata.obs[pheno].min() == 0:
-            adata.obs[pheno] = adata.obs[pheno] + 1e-10
+            ) + 1
+            lab = 'plusmin1log10'
+        elif adata.obs[pheno].min() == 0:
+            adata.obs[pheno] = adata.obs[pheno] + 1
+            lab = 'plus1log10'
         gplt = plt9.ggplot(adata.obs)
         gplt = gplt + plt9.geom_boxplot(plt9.aes(x='cluster', y=pheno))
         gplt = gplt + plt9.theme(axis_text_x=plt9.element_text(angle=90))
@@ -83,7 +86,7 @@ def main():
             minor_breaks=0
         )
         gplt.save(
-            'boxplot_log10-{}.png'.format(pheno),
+            'boxplot_{}-{}.png'.format(lab, pheno),
             dpi=300,
             width=plt_width,
             height=plt_height
