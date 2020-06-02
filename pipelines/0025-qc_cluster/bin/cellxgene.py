@@ -89,7 +89,12 @@ def main():
 
     # For the query on cellxgene, change to gene ids rather than ensembl
     adata.var['gene_ids'] = adata.var.index
-    adata.var = adata.var.set_index('gene_symbols')
+    adata.var['index_values'] = adata.var['gene_symbols'].replace(dict(zip(
+        adata.var['gene_symbols'].cat.categories,
+        adata.var['gene_symbols']
+    )))
+    adata.var = adata.var.set_index('index_values')
+    adata.var_names_make_unique()
 
     # List of columns to drop to minimize data size for cellxgene
     if options.drop_extra_info:
