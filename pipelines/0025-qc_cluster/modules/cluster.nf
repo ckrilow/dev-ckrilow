@@ -553,6 +553,9 @@ process cluster_markers {
             "${runid}-${outfile}-cluster_markers.tsv.gz",
             emit: cluster_markers
         )
+        path(
+            "${runid}-${outfile}-cluster_markers-filter__*.tsv.gz"
+        ) optional true
         path("plots/*.pdf") optional true
         path("plots/*.png") optional true
 
