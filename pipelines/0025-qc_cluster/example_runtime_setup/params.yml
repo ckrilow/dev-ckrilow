@@ -91,6 +91,15 @@ cluster:
         decription: 'Generate boxplots of these variables for each cluster.'
         value:
             - 'total_reads,pct_counts_mito_gene'
+    known_markers:
+        description: 'Files with markers that will be used to generate
+            dotplots. Each marker file should be the full path and have the
+            following columns: cell_type, hgnc_symbol. The following columns
+            are optional: p_value_adj. Use "" for a single entry in the
+            file_id and file value to indicate no plots.'
+        value:
+            - file_id: ''
+              file: ''
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
     sparsity:
