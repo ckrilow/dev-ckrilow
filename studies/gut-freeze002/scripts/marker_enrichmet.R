@@ -13,7 +13,7 @@ markers <- read.table(file = opt$markers_table, sep = '\t', header = TRUE)
 
 cl=sort(unique(markers$cluster))
 
-for(i in 1:2){ length(cl)
+for(i in 1:length(cl)){ 
   d=markers[which(markers$cluster==cl[i]),]
   geneList <- d$logfoldchanges
   eg = bitr(d$gene_symbols, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
