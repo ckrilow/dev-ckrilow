@@ -211,7 +211,7 @@ def main():
             reference='rest',
             use_raw=True,
             method='wilcoxon',
-            n_genes=500,
+            n_genes=1000,
             corr_method='bonferroni'
         )
     elif options.rgm == 'logreg':
@@ -226,7 +226,7 @@ def main():
             reference='rest',
             use_raw=True,
             method='logreg',
-            n_genes=500,
+            n_genes=1000,
             max_iter=5000  # passed to sklearn.linear_model.LogisticRegression
         )
     else:
@@ -286,12 +286,58 @@ def main():
         columns={'index': 'ensembl_gene_id'},
         inplace=False
     )
-    marker_df = marker_df.sort_values(by=['cluster', 'pvals_adj'], ascending=[
-                                                            True, True])
+    if 'pvals_adj' in marker_df.columns:  # if logreg, no pvals_adj in marker
+        marker_df = marker_df.sort_values(
+            by=['cluster', 'scores', 'pvals_adj'],
+            ascending=[True, False, True]
+        )
+    else:
+        marker_df = marker_df.sort_values(
+            by=['cluster', 'scores'],
+            ascending=[True, False]
+        )
 
     # Save the marker dataframe.
     marker_df.to_csv(
         '{}-cluster_markers.tsv.gz'.format(out_file_base),
+        sep='\t',
+        index=False,
+        quoting=csv.QUOTE_NONNUMERIC,
+        na_rep='',
+        compression='gzip'
+    )
+    # Save a filtered marker dataframe for pvals_adj
+    marker_df_tmp = marker_df
+    additional_out_tag = 'filter'
+    if 'pvals_adj' in marker_df_tmp.columns:
+        additional_out_tag = '{}__fdr0pt05'.format(additional_out_tag)
+        marker_df_tmp = marker_df_tmp.loc[
+            (marker_df_tmp['pvals_adj'] < 0.05), :
+        ]
+        marker_df_tmp.to_csv(
+            '{}-cluster_markers-{}.tsv.gz'.format(
+                out_file_base,
+                additional_out_tag
+            ),
+            sep='\t',
+            index=False,
+            quoting=csv.QUOTE_NONNUMERIC,
+            na_rep='',
+            compression='gzip'
+        )
+    # Drop any genes that are in __
+    additional_out_tag = '{}__user_variable_genes_exclude'.format(
+        additional_out_tag
+    )
+    filt = marker_df_tmp['ensembl_gene_id'].isin(
+        adata.uns['df_highly_variable_gene_filter']['ensembl_gene_id']
+    )
+    marker_df_tmp = marker_df_tmp.loc[np.invert(filt), :]
+    marker_df_tmp.to_csv(
+        '{}-cluster_markers-{}.tsv.gz'.format(
+            out_file_base,
+            additional_out_tag
+        ),
         sep='\t',
         index=False,
         quoting=csv.QUOTE_NONNUMERIC,
