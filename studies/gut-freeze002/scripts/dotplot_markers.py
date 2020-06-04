@@ -15,8 +15,8 @@ def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read AnnData object and markers from database. Plot expression \
-            expression of markers in each cluster.
+            Read AnnData object and markers from .csv file. Plot expression \
+             of markers in each cluster.
             """
     )
 
@@ -33,8 +33,7 @@ def main():
         action='store',
         dest='markers_csv',
         default='none',
-        help='Markers to plot. Must have the following columns: cell_type, \
-            hgnc_symbol.'
+        help='Markers to plot. Must have the following column: hgnc_symbol.'
     )
 
     options = parser.parse_args()
@@ -46,7 +45,8 @@ def main():
     sc.set_figure_params(dpi_save=300)
 
     # Get the out file base.
-    out_file_base = os.path.basename(options.markers_csv).rstrip('csv').rstrip('.')
+    out_file_base = os.path.basename(options.markers_csv).rstrip(
+                                                            'csv').rstrip('.')
 
     # Read in the data
     adata = sc.read_h5ad(filename=options.h5)
