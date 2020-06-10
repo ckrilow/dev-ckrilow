@@ -565,18 +565,31 @@ process cluster_markers {
         outdir = "${outdir}.method=${method}"
         // For output file, use anndata name. First need to drop the runid
         // from the file__anndata job.
-        outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
+        // Only run this script if there is a value
+        cmd__enrich = ""
+        // if (method == "wilcoxon") {
+        //     f = "${runid}-${outfile}-cluster_markers"
+        //     cmd__enrich = "0056-marker_enrichmet.R"
+        //     cmd__enrich = "${cmd__enrich} --markers_table ${f}.tsv.gz;"
+        //     cmd__enrich = "${cmd__enrich} 0056-marker_enrichmet.R"
+        //     cmd__enrich = "${cmd__enrich} --markers_table ${f}-filter__fdr0pt05.tsv.gz;"
+        //     cmd__enrich = "${cmd__enrich} 0056-marker_enrichmet.R"
+        //     cmd__enrich = "${cmd__enrich} --markers_table ${f}-filter__fdr0pt05__user_variable_genes_exclude.tsv.gz;"
+        // }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "cluster: ${process_info}"
         rm -fr plots
-        0057-scanpy_cluster_markers.py \
+        0056-scanpy_cluster_markers.py \
             --h5_anndata ${file__anndata} \
             --rank_genes_method ${method} \
             --number_cpu ${task.cpus} \
             --output_file ${runid}-${outfile}
+        ${cmd__enrich}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
