@@ -12,8 +12,7 @@ plots_qc:
         description: 'Plot the distributions of these variables (histogram and
             ecdf).'
         value:
-            - 'total_counts'
-            - 'pct_counts_mito_gene'
+            - ''
 reduced_dims:
     run_downstream_analysis: false
     description: 'Parameters for dimensionality reduction (principal component
