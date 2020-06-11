@@ -8,8 +8,8 @@ export REPO_MODULE="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/
 export STUDY_DIR="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/conditions_collins"
 
 # Nextflow settings
-export JAVA_HOME="/cluster/ifs/projects/collins/taylorhj/bin/jdk-14"
-export JAVA_CMD="/cluster/ifs/projects/collins/taylorhj/bin/jdk-14/bin/java"
+export JAVA_HOME="/cluster/ifs/projects/collins/taylorhj/bin/jre1.8.0_251"
+export JAVA_CMD="/cluster/ifs/projects/collins/taylorhj/bin/jre1.8.0_251/bin/java"
 export NXF_OPTS="-Xms25G -Xmx25G"
 # Uncomment this if get strange bus errors
 # export NXF_OPTS="${NXF_OPTS} -Dleveldb.mmap=false" # No resume functionality
