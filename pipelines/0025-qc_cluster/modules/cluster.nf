@@ -853,7 +853,6 @@ workflow wf__cluster {
         //     cluster_validate_resolution__sparsity,
         //     cluster_validate_resolution__train_size_cells
         // )
-        System.exit(64)
         cluster_validate_resolution_keras(
             cluster.out.outdir,
             cluster.out.anndata,

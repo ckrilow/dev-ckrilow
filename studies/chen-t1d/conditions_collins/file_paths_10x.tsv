@@ -1,9 +1,9 @@
 experiment_id	data_path_10x_format	short_experiment_id
-HPAP036 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP036/processed/filtered_feature_bc_matrix  HPAP036
-HPAP038 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP038/processed/filtered_feature_bc_matrix  HPAP038
-HPAP039 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP039/processed/filtered_feature_bc_matrix  HPAP039
-HPAP040 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP040/processed/filtered_feature_bc_matrix  HPAP040
-HPAP044 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP044/processed/filtered_feature_bc_matrix  HPAP044
-HPAP045 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP045/processed/filtered_feature_bc_matrix  HPAP045
-HPAP055 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP055/processed/filtered_feature_bc_matrix  HPAP055
-ICRH122 /cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/ICRH122/processed/filtered_feature_bc_matrix  ICRH122
+HPAP036	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP036/processed/filtered_feature_bc_matrix	HPAP036
+HPAP038	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP038/processed/filtered_feature_bc_matrix	HPAP038
+HPAP039	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP039/processed/filtered_feature_bc_matrix	HPAP039
+HPAP040	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP040/processed/filtered_feature_bc_matrix	HPAP040
+HPAP044	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP044/processed/filtered_feature_bc_matrix	HPAP044
+HPAP045	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP045/processed/filtered_feature_bc_matrix	HPAP045
+HPAP055	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP055/processed/filtered_feature_bc_matrix	HPAP055
+ICRH122	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/ICRH122/processed/filtered_feature_bc_matrix	ICRH122
