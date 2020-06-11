@@ -6,6 +6,7 @@
 
 export REPO_MODULE="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/pipelines/0025-qc_cluster"
 export STUDY_DIR="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/conditions_collins"
+export OUTPUT_DIR="${STUDY_DIR}/results/nf-sample_qc=no_filter_singlet-parameter_sweep_v001"
 
 # Nextflow settings
 export JAVA_HOME="/cluster/ifs/projects/collins/taylorhj/bin/jre1.8.0_251"
@@ -13,7 +14,7 @@ export JAVA_CMD="/cluster/ifs/projects/collins/taylorhj/bin/jre1.8.0_251/bin/jav
 export NXF_OPTS="-Xms25G -Xmx25G"
 # Uncomment this if get strange bus errors
 # export NXF_OPTS="${NXF_OPTS} -Dleveldb.mmap=false" # No resume functionality
-export NXF_HOME=$(pwd)
+export NXF_HOME=${OUTPUT_DIR}
 export NXF_WORK="${NXF_HOME}/.nextflow_work"
 export NXF_TEMP="${NXF_HOME}/.nextflow_temp"
 export NXF_CONDA_CACHEDIR="${NXF_HOME}/.nextflow_conda"
@@ -38,7 +39,7 @@ export QT_QPA_PLATFORM='offscreen'
      --file_sample_qc "${STUDY_DIR}/params-sample_qc-no_filters.yml" \
      --genes_exclude_hvg "${STUDY_DIR}/../data-variable_gene_filter_ribo_mt.tsv" \
      --genes_score "${STUDY_DIR}/../data-gene_scores.tsv" \
-     --output_dir "${STUDY_DIR}/results/nf-sample_qc=no_filter_singlet-parameter_sweep_v001" \
+     --output_dir "${OUTPUT_DIR}" \
      -params-file "${STUDY_DIR}/params-analysis-parameter_sweep_v001.yml" \
      --run_multiplet \
      -with-report \
