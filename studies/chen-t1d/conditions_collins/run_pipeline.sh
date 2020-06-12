@@ -33,7 +33,7 @@ export QT_QPA_PLATFORM='offscreen'
 
 /home/taylorhj/miniconda3/envs/nextflow20/bin/nextflow run \
     "${REPO_MODULE}/main.nf" \
-     -profile "sge" \
+     -profile "sge-nih_trek" \
      --file_paths_10x "${STUDY_DIR}/file_paths_10x.tsv" \
      --file_metadata "${STUDY_DIR}/conditions_clinical_cr_metrics.tsv" \
      --file_sample_qc "${STUDY_DIR}/params-sample_qc-no_filters.yml" \
