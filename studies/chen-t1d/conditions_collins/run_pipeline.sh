@@ -1,8 +1,10 @@
 #!/bin/sh
 
-# Remove old logs
-# rm -r *html;
-# rm .nextflow.log*;
+# Remove old logs but not the most previous run
+rm -r *html.*;
+rm .nextflow.log.*;
+rm flowchart.png.*;
+rm trace.txt.*;
 
 export REPO_MODULE="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/pipelines/0025-qc_cluster"
 export STUDY_DIR="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/conditions_collins"
