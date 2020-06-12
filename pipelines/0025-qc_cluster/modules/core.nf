@@ -42,7 +42,7 @@ process merge_samples {
             "${runid}-adata-cell_filtered_per_experiment.tsv.gz",
             emit: cells_filtered
         )
-        path("plots/*.png")
+        path("plots/*.png") optional true
         path("plots/*.pdf") optional true
 
     script:
