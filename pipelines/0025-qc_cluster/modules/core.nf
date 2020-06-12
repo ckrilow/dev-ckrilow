@@ -165,6 +165,17 @@ process plot_qc {
         if (facet_columns != "") {
             cmd__facet_columns = "--facet_columns ${facet_columns}"
         }
+        // Run distribution across cells if a value is specified
+        cmd__anndataobs = ""
+        cmd__anndataobs_ecdf = ""
+        if (variable_columns_distribution_plots != "") {
+            cmd__anndataobs = "plot_anndataobs_distribution_across_cells.py"
+            cmd__anndataobs = "${cmd__anndataobs} --h5_anndata ${file__anndata}"
+            cmd__anndataobs = "${cmd__anndataobs} --output_file ${outfile}"
+            cmd__anndataobs = "${cmd__anndataobs} --variable_columns ${variable_columns_distribution_plots}"
+            cmd__anndataobs = "${cmd__anndataobs} ${cmd__facet_columns}"
+            cmd__anndataobs_ecdf = "${cmd__anndataobs} --ecdf"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -175,17 +186,8 @@ process plot_qc {
             --h5_anndata ${file__anndata} \
             --output_file ${outfile} \
             ${cmd__facet_columns}
-        plot_anndataobs_distribution_across_cells.py \
-            --h5_anndata ${file__anndata} \
-            --output_file ${outfile} \
-            --variable_columns ${variable_columns_distribution_plots} \
-            ${cmd__facet_columns}
-        plot_anndataobs_distribution_across_cells.py \
-            --h5_anndata ${file__anndata} \
-            --output_file ${outfile} \
-            --variable_columns ${variable_columns_distribution_plots} \
-            --ecdf \
-            ${cmd__facet_columns}
+        ${cmd__anndataobs}
+        ${cmd__anndataobs_ecdf}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
