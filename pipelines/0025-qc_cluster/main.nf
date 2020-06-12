@@ -247,7 +247,7 @@ workflow {
             params.file_metadata,
             file_sample_qc,
             file_cellmetadata,
-            "sanger_sample_id"
+            "experiment_id"
         )
         // Predict sex from gene expression and check against phenotypes.
         plot_predicted_sex(

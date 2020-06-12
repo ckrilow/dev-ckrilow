@@ -7,7 +7,7 @@ plots_qc:
             facets'
         value:
             - ''
-            - 'sanger_sample_id,sex,disease_status'
+            - 'experiment_id,sex,disease_status'
             - 'bead_version,lane,ack_lysis_buffer'
     variable_columns_distribution_plots:
         description: 'Plot the distributions of these variables (histogram and
@@ -36,18 +36,18 @@ harmony:
     variables_and_thetas:
         description: 'Tuples of metadata columns and corresponding thetas.'
         value:
-            - variable: 'sanger_sample_id'
+            - variable: 'experiment_id'
               theta: '0.5'
-            - variable: 'sanger_sample_id'
+            - variable: 'experiment_id'
               theta: '1.0'
-            - variable: 'sanger_sample_id'
+            - variable: 'experiment_id'
               theta: '2.0'
 lisi:
     run_process: false
     description: 'Parameters for Local Inverse Simpsons Index (LISI).'
     variables:
         description: 'Metadata variables to compute LISI over.'
-        value: 'sanger_sample_id,disease_status'
+        value: 'experiment_id,disease_status'
 bbknn:
     run_process: true
 cluster:
@@ -132,7 +132,7 @@ umap:
     colors_categorical:
         description: 'Comma separated string of categorical variables that
             will be used to color points.'
-        value: 'sanger_sample_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
+        value: 'experiment_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.
             Recommended value between 2-100. If you expect each cell type
