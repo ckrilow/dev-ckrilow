@@ -46,12 +46,16 @@ params.genes_score          = "no_file__genes_score"
 // NOTE: The default parameters below were chosen to show the flexiblity of
 //       this pipeline. They were not chosen because these are the values one
 //       should use for final analysis.
+// Default key to add in metadata
+params.metadata_key_column = [
+    values: "experiment_id"
+]
 // Default parameters for qc plots.
 params.plots_qc = [
     facet_columns: [value: ["experiment_id"]],
     variable_columns_distribution_plots: [value: [
         "total_counts,pct_counts_mito_gene"
-    ]],
+    ]]
 ]
 // Default parameters for reduced dimension calculations.
 // run_downstream_analysis: If false don't run clustering or umaps
@@ -70,7 +74,8 @@ params.harmony = [
 ]
 // Default parameters for bbknn
 params.bbknn = [
-    run_process: false
+    run_process: false,
+    batch_variable: [value: "experiment_id"]
 ]
 // Default parameters for lisi
 params.lisi = [
@@ -247,7 +252,7 @@ workflow {
             params.file_metadata,
             file_sample_qc,
             file_cellmetadata,
-            "experiment_id"
+            params.metadata_key_column.value
         )
         // Predict sex from gene expression and check against phenotypes.
         plot_predicted_sex(
@@ -311,7 +316,7 @@ workflow {
                 normalize_and_pca.out.pcs,
                 normalize_and_pca.out.param_details,
                 params.reduced_dims.n_dims.value,
-                "experiment_id"
+                params.bbknn.batch_variable.value
             )
         }
         // TODO: There is a bug below where lisi will be called for each
