@@ -75,7 +75,7 @@ params.harmony = [
 // Default parameters for bbknn
 params.bbknn = [
     run_process: false,
-    batch_variable: [value: "experiment_id"]
+    batch_variable: [value: ["experiment_id"]]
 ]
 // Default parameters for lisi
 params.lisi = [

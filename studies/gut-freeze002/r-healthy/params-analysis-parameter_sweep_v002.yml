@@ -47,11 +47,12 @@ harmony:
             - variable: 'experiment_id'
               theta: '2.0'
 bbknn:
-    run_process: true,
+    run_process: true
     description: 'Parameters for BBKNN'
     batch_variable:
         description: 'Variable to use for batch correction'
-        value: 'experiment_id'
+        value:
+            - 'experiment_id'
 lisi:
     run_process: false
     description: 'Parameters for Local Inverse Simpsons Index (LISI).'
