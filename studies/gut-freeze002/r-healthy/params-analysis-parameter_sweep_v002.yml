@@ -1,3 +1,7 @@
+metadata_key_column:
+    description: 'Column in metadata that matches the "experiment_id" column in
+        tenx_data.'
+    value: 'sanger_sample_id'
 plots_qc:
     description: 'Parameters for basic QC plots after sample merge. All
         pairwise combinations of facet_columns and
@@ -7,7 +11,7 @@ plots_qc:
             facets'
         value:
             - ''
-            - 'sanger_sample_id,sex,disease_status'
+            - 'experiment_id,sex,disease_status'
             - 'bead_version,lane,ack_lysis_buffer'
     variable_columns_distribution_plots:
         description: 'Plot the distributions of these variables (histogram and
@@ -36,20 +40,24 @@ harmony:
     variables_and_thetas:
         description: 'Tuples of metadata columns and corresponding thetas.'
         value:
-            - variable: 'sanger_sample_id'
+            - variable: 'experiment_id'
               theta: '0.5'
-            - variable: 'sanger_sample_id'
+            - variable: 'experiment_id'
               theta: '1.0'
-            - variable: 'sanger_sample_id'
+            - variable: 'experiment_id'
               theta: '2.0'
+bbknn:
+    run_process: true,
+    description: 'Parameters for BBKNN'
+    batch_variable:
+        description: 'Variable to use for batch correction'
+        value: 'experiment_id'
 lisi:
     run_process: false
     description: 'Parameters for Local Inverse Simpsons Index (LISI).'
     variables:
         description: 'Metadata variables to compute LISI over.'
-        value: 'sanger_sample_id,disease_status'
-bbknn:
-    run_process: true
+        value: 'experiment_id,disease_status'
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
@@ -132,7 +140,7 @@ umap:
     colors_categorical:
         description: 'Comma separated string of categorical variables that
             will be used to color points.'
-        value: 'sanger_sample_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
+        value: 'experiment_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.
             Recommended value between 2-100. If you expect each cell type

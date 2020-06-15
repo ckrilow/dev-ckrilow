@@ -1,3 +1,7 @@
+metadata_key_column:
+    description: 'Column in metadata that matches the "experiment_id" column in
+        tenx_data.'
+    value: 'sanger_sample_id'
 plots_qc:
     description: 'Parameters for basic QC plots after sample merge. All
         pairwise combinations of facet_columns and

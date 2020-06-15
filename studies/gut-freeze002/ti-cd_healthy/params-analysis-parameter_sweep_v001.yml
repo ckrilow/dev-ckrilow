@@ -1,3 +1,7 @@
+metadata_key_column:
+    description: 'Column in metadata that matches the "experiment_id" column in
+        tenx_data.'
+    value: 'sanger_sample_id'
 plots_qc:
     description: 'Parameters for basic QC plots after sample merge. All
         pairwise combinations of facet_columns and
@@ -42,14 +46,18 @@ harmony:
               theta: '1.0'
             - variable: 'experiment_id'
               theta: '2.0'
+bbknn:
+    run_process: true,
+    description: 'Parameters for BBKNN'
+    batch_variable:
+        description: 'Variable to use for batch correction'
+        value: 'experiment_id'
 lisi:
     run_process: true
     description: 'Parameters for Local Inverse Simpsons Index (LISI).'
     variables:
         description: 'Metadata variables to compute LISI over.'
         value: 'experiment_id,disease_status'
-bbknn:
-    run_process: true
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
