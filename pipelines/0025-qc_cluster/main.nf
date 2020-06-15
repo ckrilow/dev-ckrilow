@@ -48,7 +48,7 @@ params.genes_score          = "no_file__genes_score"
 //       should use for final analysis.
 // Default key to add in metadata
 params.metadata_key_column = [
-    values: "experiment_id"
+    value: "experiment_id"
 ]
 // Default parameters for qc plots.
 params.plots_qc = [
