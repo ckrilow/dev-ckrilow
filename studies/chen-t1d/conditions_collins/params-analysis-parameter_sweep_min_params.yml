@@ -86,8 +86,8 @@ cluster:
             are optional: p_value_adj. Use "" for a single entry in the
             file_id and file value to indicate no plots.'
         value:
-            - file_id: ''
-              file: ''
+            - file_id: 'collins_lab_markers'
+              file: '/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/marker-genes_collins-lab.tsv'
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
     sparsity:

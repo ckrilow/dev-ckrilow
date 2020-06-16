@@ -1,0 +1,13 @@
+"hgnc_symbol"	"cell_type"	"study_id"	"description"	"ensembl_gene_id"	"ensembl_version"
+"INS"	"Beta"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000254647"	100
+"GCG"	"Alpha"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000115263"	100
+"SST"	"Delta"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000157005"	100
+"GHRL"	"Epsilon"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000157017"	100
+"PPY"	"Gamma"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000108849"	100
+"PRSS1"	"Acinar"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000204983"	100
+"KRT19"	"Ductal"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000171345"	100
+"COL1A1"	"Stellate"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000108821"	100
+"VWF"	"Endothelial"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000110799"	100
+"SDS"	"Macrophage"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000135094"	100
+"TPSAB1"	"Mast"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000172236"	100
+"SOX10"	"Schwann"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000100146"	100
