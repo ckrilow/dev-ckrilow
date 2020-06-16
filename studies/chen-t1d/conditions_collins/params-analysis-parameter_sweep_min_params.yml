@@ -56,7 +56,6 @@ cluster:
             experiment_id.'
         value:
             - 15
-            - 30
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
         value:
@@ -65,14 +64,9 @@ cluster:
         description: 'Clustering resolution.'
         value:
             - 0.05
-            - 0.25
             - 0.5
             - 1.0
-            - 1.5
-            - 1.75
             - 2.0
-            - 2.25
-            - 2.5
             - 3.0
             - 5.0
             - 10.0
@@ -109,7 +103,6 @@ cluster_marker:
         description: 'Method for marker detection.'
         value:
             - 'wilcoxon'
-            - 'logreg'
 umap:
     run_process: true
     description: 'Parameters for umap.'
@@ -129,7 +122,6 @@ umap:
             start.'
         value:
             - 15
-            - 30
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
         value:
@@ -140,15 +132,11 @@ umap:
             will be run within the same script call (rather than swarm).'
         value:
             - 0.0
-            - 0.25
             - 0.5
-            - 0.75
             - 1.0
     umap_spread:
         description: 'The effective scale of embedded points.
             Recommended value between 0-3. Note: values separated with a comma
             will be run within the same script call (rather than swarm).'
         value:
-            - 0.5
             - 1.0
-            - 2.5

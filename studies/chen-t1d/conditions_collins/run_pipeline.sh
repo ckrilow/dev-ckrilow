@@ -8,7 +8,7 @@ rm trace.txt.*;
 
 export REPO_MODULE="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/pipelines/0025-qc_cluster"
 export STUDY_DIR="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/conditions_collins"
-export OUTPUT_DIR="${STUDY_DIR}/results/nf-sample_qc=no_filter_singlet-parameter_sweep_v001"
+export OUTPUT_DIR="${STUDY_DIR}/results/min_parameter_sweep"
 
 # Nextflow settings
 export JAVA_HOME="/cluster/ifs/projects/collins/taylorhj/bin/jre1.8.0_251"
@@ -42,7 +42,7 @@ export QT_QPA_PLATFORM='offscreen'
      --genes_exclude_hvg "${STUDY_DIR}/../data-variable_gene_filter_ribo_mt.tsv" \
      --genes_score "${STUDY_DIR}/../data-gene_scores.tsv" \
      --output_dir "${OUTPUT_DIR}" \
-     -params-file "${STUDY_DIR}/params-analysis-parameter_sweep_v001.yml" \
+     -params-file "${STUDY_DIR}/params-analysis-parameter_sweep_min_params.yml" \
      --run_multiplet \
      -with-report \
      -with-trace \
