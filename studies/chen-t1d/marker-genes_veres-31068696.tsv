@@ -1,0 +1,17 @@
+"hgnc_symbol"	"cell_type"	"study_id"	"description"	"ensembl_gene_id"	"ensembl_version"
+"INS"	"sc_beta"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000254647"	100
+"NKX6-1"	"sc_beta"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000163623"	100
+"ISL1"	"sc_beta"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000016082"	100
+"PAX4"	"sc_beta"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000106331"	100
+"PDX1"	"sc_beta"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000139515"	100
+"GCG"	"sc_alpha"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000115263"	100
+"ARX"	"sc_alpha"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000004848"	100
+"IRX2"	"sc_alpha"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000170561"	100
+"CD36"	"sc_alpha"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000135218"	100
+"ISL1"	"sc_alpha"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000016082"	100
+"TPH1"	"sc_enterochromaffin"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000129167"	100
+"LMX1A"	"sc_enterochromaffin"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000162761"	100
+"SLC18A1"	"sc_enterochromaffin"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000036565"	100
+"FEV"	"sc_enterochromaffin"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000163497"	100
+"CHGA"	"endocrine"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000100604"	100
+"NEUROG3"	"endocrine"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000122859"	100

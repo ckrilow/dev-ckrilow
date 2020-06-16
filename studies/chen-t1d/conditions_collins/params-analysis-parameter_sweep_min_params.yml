@@ -88,6 +88,8 @@ cluster:
         value:
             - file_id: 'collins_lab_markers'
               file: '/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/marker-genes_collins-lab.tsv'
+            - file_id: 'veres_31068696'
+              file: '/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/marker-genes_veres-31068696.tsv'
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
     sparsity:
