@@ -454,11 +454,12 @@ def scanpy_normalize_and_pca(
     sc.tl.pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
-        zero_center=None,
-        svd_solver='arpack',  # Scanpy default arpack as of 1.4.5
+        zero_center=True,
+        svd_solver='arpack',  # arpack reproducible when zero_center = True
         use_highly_variable=True,
         copy=False,
-        random_state=0
+        random_state=0,
+        chunked=False
     )
 
     # Save PCs to a seperate file for Harmony.
