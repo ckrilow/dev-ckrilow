@@ -65,6 +65,7 @@ cluster:
             experiment_id.'
         value:
             - 15
+            - 25
             - 30
     methods:
         description: 'Clustering method. Valid options [leiden|louvain].'
@@ -140,6 +141,7 @@ umap:
             start.'
         value:
             - 15
+            - 25
             - 30
     umap_init:
         description: 'How to initialize the low dimensional embedding.'
