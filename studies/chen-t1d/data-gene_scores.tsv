@@ -1,4 +1,20 @@
 "score_id"	"hgnc_symbol"	"grouping_id"	"study_id"	"description"	"ensembl_gene_id"	"ensembl_version"
+"sc_beta__identification"	"INS"	"beta_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000254647"	100
+"sc_beta__identification"	"NKX6-1"	"beta_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000163623"	100
+"sc_beta__identification"	"ISL1"	"beta_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000016082"	100
+"sc_beta__identification"	"PAX4"	"beta_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000106331"	100
+"sc_beta__identification"	"PDX1"	"beta_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000139515"	100
+"sc_alpha__identification"	"GCG"	"alpha_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000115263"	100
+"sc_alpha__identification"	"ARX"	"alpha_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000004848"	100
+"sc_alpha__identification"	"IRX2"	"alpha_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000170561"	100
+"sc_alpha__identification"	"CD36"	"alpha_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000135218"	100
+"sc_alpha__identification"	"ISL1"	"alpha_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000016082"	100
+"sc_ec__identification"	"TPH1"	"enterochromaffin_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000129167"	100
+"sc_ec__identification"	"LMX1A"	"enterochromaffin_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000162761"	100
+"sc_ec__identification"	"SLC18A1"	"enterochromaffin_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000036565"	100
+"sc_ec__identification"	"FEV"	"enterochromaffin_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000163497"	100
+"endocrine__identification"	"CHGA"	"endocrine_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000100604"	100
+"endocrine__identification"	"NEUROG3"	"endocrine_cell"	"veres_31068696"	"Marker gene identified in veres_31068696"	"ENSG00000122859"	100
 "b_cell__activation"	"CD40LG"	"B_CELL_ACTIVATION"	"msigdb::M10657"	"Genes annotated by the GO term GO:0042113. The change in morphology and behavior of a mature or immature B cell resulting from exposure to a mitogen cytokine chemokine cellular ligand or an antigen for which it is specific.,http://software.broadinstitute.org/gsea/msigdb/cards/B_CELL_ACTIVATION.html"	"ENSG00000102245"	99
 "b_cell__activation"	"CD79A"	"B_CELL_ACTIVATION"	"msigdb::M10657"	"Genes annotated by the GO term GO:0042113. The change in morphology and behavior of a mature or immature B cell resulting from exposure to a mitogen cytokine chemokine cellular ligand or an antigen for which it is specific.,http://software.broadinstitute.org/gsea/msigdb/cards/B_CELL_ACTIVATION.html"	"ENSG00000105369"	99
 "b_cell__activation"	"CEBPG"	"B_CELL_ACTIVATION"	"msigdb::M10657"	"Genes annotated by the GO term GO:0042113. The change in morphology and behavior of a mature or immature B cell resulting from exposure to a mitogen cytokine chemokine cellular ligand or an antigen for which it is specific.,http://software.broadinstitute.org/gsea/msigdb/cards/B_CELL_ACTIVATION.html"	"ENSG00000153879"	99
