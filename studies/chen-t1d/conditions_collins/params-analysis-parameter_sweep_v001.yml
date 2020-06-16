@@ -127,7 +127,7 @@ umap:
     colors_quantitative:
         description: 'Comma separated string of quantitative variables that
             will be used to color points.'
-        value: 'total_counts,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,b_cell__activation,b_cell__differentiation,t_cell__coinhibition_signature,t_cell__costimulation_signature,t_cell__cytotoxicity_signature,t_cell__cd8_cytotoxic,t_cell__cell_cycling,t_cell__central_memory,t_cell__immunoregulation,t_cell__resident_memory,hallmark_apoptosis,hallmark_hypoxia,mense_hypoxia_up,hallmark_inflammatory_response,inflammation_signature__smilliecs_31348891,age,bmi,hba1c,cpep,avg_reads_per_cell,median_genes_per_cell,total_reads,total_genes_detected,median_umi_counts_per_cell'
+        value: 'total_counts,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,b_cell__activation,b_cell__differentiation,t_cell__coinhibition_signature,t_cell__costimulation_signature,t_cell__cytotoxicity_signature,t_cell__cd8_cytotoxic,t_cell__cell_cycling,t_cell__central_memory,t_cell__immunoregulation,t_cell__resident_memory,hallmark_apoptosis,hallmark_hypoxia,mense_hypoxia_up,hallmark_inflammatory_response,inflammation_signature__smilliecs_31348891,sc_beta__identification,sc_alpha__identification,sc_ec__identification,endocrine__identification,age,bmi,hba1c,cpep,avg_reads_per_cell,median_genes_per_cell,total_reads,total_genes_detected,median_umi_counts_per_cell'
     colors_categorical:
         description: 'Comma separated string of categorical variables that
             will be used to color points.'
