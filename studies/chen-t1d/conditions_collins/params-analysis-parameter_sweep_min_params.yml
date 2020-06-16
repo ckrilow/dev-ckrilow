@@ -1,3 +1,7 @@
+metadata_key_column:
+    description: 'Column in metadata that matches the "experiment_id" column in
+        tenx_data.'
+    value: 'experiment_id'
 plots_qc:
     description: 'Parameters for basic QC plots after sample merge. All
         pairwise combinations of facet_columns and
@@ -14,7 +18,7 @@ plots_qc:
         value:
             - 'total_counts,pct_counts_mito_gene'
 reduced_dims:
-    run_downstream_analysis: true
+    run_downstream_analysis: false
     description: 'Parameters for dimensionality reduction (principal component
         and harmony calculations). All pairwise combinations of
         vars_to_regress and n_dims will be performed.'
@@ -48,6 +52,11 @@ lisi:
         value: 'experiment_id,detailed_cond'
 bbknn:
     run_process: true
+    description: 'Parameters for BBKNN'
+    batch_variable:
+        description: 'Variable to use for batch correction'
+        value:
+            - 'experiment_id'
 cluster:
     description: 'Parameters for clustering. All pairwise combinations of
         method and resolution will be performed.'
