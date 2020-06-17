@@ -266,7 +266,7 @@ def main():
             df_cutoff_dict_i['neighbors__n_neighbors'] = i__n_neighbors
             df_cutoff_dict_i['resolution'] = i__res
             df_tmp2 = df_tmp[
-                df_modelreport['resolution'] == i__res
+                df_tmp['resolution'] == i__res
             ]
             out_string = 'resolution = {} ({} clusters)'.format(
                 i__res,
