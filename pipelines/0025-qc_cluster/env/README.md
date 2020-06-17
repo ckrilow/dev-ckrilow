@@ -23,3 +23,10 @@ renv::snapshot()
 
 # add renv.lock, .Rprofile, and renv/activate.R to git
 ```
+
+Note: for the enrichment script (currently not run), the following packages must be installed
+```R
+- bioconductor-dose=3.14.0
+- bioconductor-clusterprofiler=3.16.0
+- bioconductor-org.hs.eg.db=3.11.1
+```

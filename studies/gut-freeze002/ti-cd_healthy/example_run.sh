@@ -22,6 +22,10 @@ export QT_QPA_PLATFORM='offscreen'
 export LSB_DEFAULT_JOBGROUP="/${USER}/nf"
 export LSB_DEFAULTGROUP="team152"
 
+# One may need to unset R_LIBS to get the conda install
+# unset R_LIBS
+# unset R_LIBS_USER
+
 /software/hgi/installs/anaconda3/envs/nextflow20/bin/nextflow run \
     "${REPO_MODULE}/main.nf" \
      -profile "lsf" \
