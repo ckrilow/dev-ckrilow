@@ -5,18 +5,21 @@ __author__ = 'Leland Taylor'
 __date__ = '2020-05-29'
 __version__ = '0.0.1'
 
-import argparse
 import scanpy as sc
-import pandas as pd
+# import pandas as pd
 import numpy as np
-import os
+# import os
 
 
 def run():
     """Run."""
 
-    f1 = "/lustre/scratch119/realdata/mdt2/projects/sc-eqtl-ibd/analysis/freeze_002/ti-cd_healthy/sample_qc=mito0pt80_ngene100_singlet-final_run_1pt7/nf-sample_qc=mito0pt80_ngene100_singlet-parameter_sweep_v002/normalize=total_count.vars_to_regress=none.hvg_exclude=data-variable_gene_filter.scores=data-gene_scores/reduced_dims-vars_to_regress=none-bbknn.batch=experiment_id.n_pcs=29/adata-normalized_pca-bbknn.h5ad"
-    f2 = "/lustre/scratch119/realdata/mdt2/projects/sc-eqtl-ibd/analysis/freeze_002/ti-cd_healthy/sample_qc=mito0pt80_ngene100_singlet-final_run_1pt8/nf-sample_qc=mito0pt80_ngene100_singlet-parameter_sweep_v002/normalize=total_count.vars_to_regress=none.hvg_exclude=data-variable_gene_filter.scores=data-gene_scores/reduced_dims-vars_to_regress=none-bbknn.batch=experiment_id.n_pcs=29/adata-normalized_pca-bbknn.h5ad"
+    # Attempt 1
+    #f1 = "/lustre/scratch119/realdata/mdt2/projects/sc-eqtl-ibd/analysis/freeze_002/ti-cd_healthy/sample_qc=mito0pt80_ngene100_singlet-final_run_1pt7/nf-sample_qc=mito0pt80_ngene100_singlet-parameter_sweep_v002/normalize=total_count.vars_to_regress=none.hvg_exclude=data-variable_gene_filter.scores=data-gene_scores/reduced_dims-vars_to_regress=none-bbknn.batch=experiment_id.n_pcs=29/adata-normalized_pca-bbknn.h5ad"
+    #f2 = "/lustre/scratch119/realdata/mdt2/projects/sc-eqtl-ibd/analysis/freeze_002/ti-cd_healthy/sample_qc=mito0pt80_ngene100_singlet-final_run_1pt8/nf-sample_qc=mito0pt80_ngene100_singlet-parameter_sweep_v002/normalize=total_count.vars_to_regress=none.hvg_exclude=data-variable_gene_filter.scores=data-gene_scores/reduced_dims-vars_to_regress=none-bbknn.batch=experiment_id.n_pcs=29/adata-normalized_pca-bbknn.h5ad"
+    # Attempt 2
+    f1 = "/lustre/scratch119/realdata/mdt2/projects/sc-eqtl-ibd/analysis/freeze_002/ti-cd_healthy/mito0pt80_ngene100_singlet-rep_test_01/nf-sample_qc=mito0pt80_ngene100_singlet-parameter_sweep_v002/normalize=total_count.vars_to_regress=none.hvg_exclude=data-variable_gene_filter.scores=data-gene_scores/reduced_dims-vars_to_regress=none-bbknn.batch=experiment_id.n_pcs=29/adata-normalized_pca-bbknn.h5ad"
+    f2 = "/lustre/scratch119/realdata/mdt2/projects/sc-eqtl-ibd/analysis/freeze_002/ti-cd_healthy/mito0pt80_ngene100_singlet-rep_test_02/nf-sample_qc=mito0pt80_ngene100_singlet-parameter_sweep_v002/normalize=total_count.vars_to_regress=none.hvg_exclude=data-variable_gene_filter.scores=data-gene_scores/reduced_dims-vars_to_regress=none-bbknn.batch=experiment_id.n_pcs=29/adata-normalized_pca-bbknn.h5ad"
 
     # load two runs
     adata1 = sc.read_h5ad(f1)
@@ -27,9 +30,9 @@ def run():
         print("filtering results different - check scrublet")
 
     # check that normalized expression is the same
-    dif_X = np.isclose(adata1.X, adata2.X, atol=0)
-    adata1.X[np.invert(dif_X)]
-    adata2.X[np.invert(dif_X)]
+    # dif_X = np.isclose(adata1.X, adata2.X, atol=0)
+    # adata1.X[np.invert(dif_X)]
+    # adata2.X[np.invert(dif_X)]
 
     # adata1.layers['log1p_cp10k']
     # adata2.layers['log1p_cp10k']

@@ -6,11 +6,22 @@ __date__ = '2020-05-01'
 __version__ = '0.0.1'
 
 import argparse
+import os
+import random
 import numpy as np
 import pandas as pd
 # import matplotlib.pyplot as plt
 import plotnine as plt9
 import csv
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+os.environ['PYTHONHASHSEED'] = str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
 
 
 def _make_plots(
