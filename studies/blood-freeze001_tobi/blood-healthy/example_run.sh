@@ -31,7 +31,7 @@ export LSB_DEFAULTGROUP="team152"
      -profile "lsf" \
      --file_paths_10x "${STUDY_DIR}/file_paths_10x.tsv" \
      --file_metadata "${PROJECT_HOME}/scrna_cellranger/sync_status/samples_metainfo.tsv" \
-     --file_sample_qc "${STUDY_DIR}/params-sample_qc-mito0pt80_ngene100_singlet.yml" \
+     --file_sample_qc "${STUDY_DIR}/params-sample_qc-no_filters.yml" \
      --genes_exclude_hvg "${STUDY_DIR}/../filters-variable_gene.tsv" \
      --genes_score "${REPO_MODULE}/example_runtime_setup/genes_score_v001.tsv" \
      --output_dir "$(pwd)/nf-sample_qc=mito0pt80_ngene100_singlet-parameter_sweep_v001" \
