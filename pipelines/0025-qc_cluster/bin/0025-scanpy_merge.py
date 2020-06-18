@@ -17,7 +17,7 @@ import scanpy as sc
 # Set seed for reproducibility
 seed_value = 0
 # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
-# os.environ['PYTHONHASHSEED']=str(seed_value)
+os.environ['PYTHONHASHSEED'] = str(seed_value)
 # 1. Set `python` built-in pseudo-random generator at a fixed value
 random.seed(seed_value)
 # 2. Set `numpy` pseudo-random generator at a fixed value

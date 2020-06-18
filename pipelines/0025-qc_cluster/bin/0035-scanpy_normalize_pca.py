@@ -18,7 +18,7 @@ from datetime import timedelta
 # Set seed for reproducibility
 seed_value = 0
 # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
-# os.environ['PYTHONHASHSEED']=str(seed_value)
+os.environ['PYTHONHASHSEED'] = str(seed_value)
 # 1. Set `python` built-in pseudo-random generator at a fixed value
 random.seed(seed_value)
 # 2. Set `numpy` pseudo-random generator at a fixed value
@@ -451,14 +451,21 @@ def scanpy_normalize_and_pca(
         adata.uns['df_score_genes'] = score_genes_df_updated
 
     # Calculate PCs.
+    # 20/06/17 DLT: on TI freeze_002, arpack with zero_center = False gives
+    # minor variability in PCs, with zero_center == True, even less variability
+    # (however still not perfectly reproducible). However, randomized
+    # svd_solver seems to solve the issue (fully reproducible PCs).
+    # lobpcg is another option that I have not tested - it should be released
+    # soon in sklearn.
     sc.tl.pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
-        zero_center=None,
-        svd_solver='arpack',  # Scanpy default arpack as of 1.4.5
+        zero_center=True,
+        svd_solver='randomized',  # arpack reproducible when zero_center = True
         use_highly_variable=True,
         copy=False,
-        random_state=0
+        random_state=0,
+        chunked=False
     )
 
     # Save PCs to a seperate file for Harmony.
