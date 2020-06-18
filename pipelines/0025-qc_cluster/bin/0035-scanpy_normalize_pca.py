@@ -9,6 +9,7 @@ import argparse
 import os
 import random
 import numpy as np
+# import scipy as sp
 import pandas as pd
 import scanpy as sc
 import csv
@@ -202,6 +203,8 @@ def scanpy_normalize_and_pca(
                         i
                     )
                 )
+    # Set zero center all scaling calls (makes sparse matrix dense)
+    scale_zero_center = False
 
     # Add a raw counts layer.
     # NOTE: This stays with the main AnnData and is not stashed when we
@@ -369,7 +372,7 @@ def scanpy_normalize_and_pca(
         # This effectively weights each gene evenly.
         sc.pp.scale(
             adata,
-            zero_center=True,
+            zero_center=scale_zero_center,  # If true, sparse becomes dense
             max_value=None,
             copy=False
         )
@@ -397,7 +400,7 @@ def scanpy_normalize_and_pca(
         if score_genes_df is not None:
             adata_scored = sc.pp.scale(
                 adata,
-                zero_center=True,
+                zero_center=scale_zero_center,  # If true, sparse becomes dense
                 max_value=None,
                 copy=True
             )
@@ -432,6 +435,7 @@ def scanpy_normalize_and_pca(
         #     ))
         # sc.pp.filter_genes(adata, min_cells=5)
         # NOTE: sc.pp.regress_out out should default to sc.settings.n_jobs
+        # NOTE: this will make a dense array
         sc.pp.regress_out(
             adata,
             keys=vars_to_regress,
@@ -441,7 +445,7 @@ def scanpy_normalize_and_pca(
         # This effectively weights each gene evenly.
         sc.pp.scale(
             adata,
-            zero_center=True,
+            zero_center=scale_zero_center,  # If true, sparse becomes dense
             max_value=None,
             copy=False
         )
@@ -451,20 +455,31 @@ def scanpy_normalize_and_pca(
         adata.uns['df_score_genes'] = score_genes_df_updated
 
     # Calculate PCs.
-    # 20/06/17 DLT: on TI freeze_002, arpack with zero_center = False gives
-    # minor variability in PCs, with zero_center == True, even less variability
-    # (however still not perfectly reproducible). However, randomized
-    # svd_solver seems to solve the issue (fully reproducible PCs).
-    # lobpcg is another option that I have not tested - it should be released
-    # soon in sklearn.
+    # 20/06/17 DLT: Very confusing results with PCA here. On smaller datasets,
+    # I find exactly the same results no matter what the solver. However,
+    # on TI freeze_002 (~160k cells) there was very minor variablity between
+    # runs that resulted in more substantial differences in downstream BBKNN.
+    # Here variability = differences as small as 1x10-6. However, re-setting
+    # all of these seeds right at this point seems to resolve the issue when
+    # zero_center=True and svd_solver='arpack'. It makes no sense to me, but
+    # at least it works. Leaving this for now.
+    seed_value = 0
+    # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+    os.environ['PYTHONHASHSEED'] = str(seed_value)
+    # 1. Set `python` built-in pseudo-random generator at a fixed value
+    random.seed(seed_value)
+    # 2. Set `numpy` pseudo-random generator at a fixed value
+    np.random.seed(seed_value)
+    # print("sp.sparse.issparse(adata.X)")
+    # print(sp.sparse.issparse(adata.X))
     sc.tl.pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
-        zero_center=True,
-        svd_solver='randomized',  # arpack reproducible when zero_center = True
+        zero_center=True,  # Set to true for standard PCA
+        svd_solver='arpack',  # arpack reproducible when zero_center = True
         use_highly_variable=True,
         copy=False,
-        random_state=0,
+        random_state=np.random.RandomState(0),
         chunked=False
     )
 
