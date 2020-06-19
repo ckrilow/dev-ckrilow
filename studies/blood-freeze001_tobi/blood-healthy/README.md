@@ -15,6 +15,6 @@ Then for each of the following options I made these changes:
 --genes_exclude_hvg [Left as is]
 --genes_score [Left as is, should probably customise for blood data?]
 --output_dir [Left as is]
--params-file [Left as is, should probably modify marker gene database tsvs]
+-params-file [Removed most marker gene datasets]
 ```
 
