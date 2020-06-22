@@ -9,7 +9,9 @@ import argparse
 import os
 import random
 import numpy as np
-# import scipy as sp
+import scipy as sp
+# import sklearn.utils
+import sklearn.decomposition
 import pandas as pd
 import scanpy as sc
 import csv
@@ -30,6 +32,147 @@ np.random.seed(seed_value)
 # sc.settings.verbosity = 3
 # sc.logging.print_versions()
 # sc.settings.set_figure_params(dpi=80)
+
+
+def pca(
+    data,
+    n_comps=None,
+    svd_solver='arpack',
+    use_highly_variable=None,
+    copy=False
+):
+    """Compute PCA coordinates, loadings and variance decomposition.
+
+    Derived from scanpy 1.5.1.
+    Principal component analysis [Pedregosa11]_.]
+    Uses the implementation of *scikit-learn* [Pedregosa11]_.
+
+    Parameters
+    ----------
+    data
+        The (annotated) data matrix of shape `n_obs` × `n_vars`.
+        Rows correspond to cells and columns to genes.
+    n_comps
+        Number of principal components to compute. Defaults to 50, or 1 -
+        minimum dimension size of selected representation.
+    svd_solver
+        SVD solver to use:
+        `'arpack'` (the default)
+          for the ARPACK wrapper in SciPy (:func:`~scipy.sparse.linalg.svds`)
+        `'randomized'`
+          for the randomized algorithm due to Halko (2009).
+        `'auto'`
+          chooses automatically depending on the size of the problem.
+        `'lobpcg'`
+          An alternative SciPy solver.
+        .. versionchanged:: 1.4.5
+           Default value changed from `'auto'` to `'arpack'`.
+        Efficient computation of the principal components of a sparse matrix
+        currently only works with the `'arpack`' or `'lobpcg'` solvers.
+    use_highly_variable
+        Whether to use highly variable genes only, stored in
+        `.var['highly_variable']`.
+        By default uses them if they have been determined beforehand.
+    copy
+        If an :class:`~anndata.AnnData` is passed, determines whether a copy
+        is returned. Is ignored otherwise.
+    Returns
+    -------
+    adata : anndata.AnnData
+        …otherwise if `copy=True` it returns or else adds fields to `adata`:
+        `.obsm['X_pca']`
+             PCA representation of data.
+        `.varm['PCs']`
+             The principal components containing the loadings.
+        `.uns['pca']['variance_ratio']`
+             Ratio of explained variance.
+        `.uns['pca']['variance']`
+             Explained variance, equivalent to the eigenvalues of the
+             covariance matrix.
+    """
+    adata = data.copy() if copy else data
+
+    if use_highly_variable and 'highly_variable' not in adata.var.keys():
+        raise ValueError(
+            'Did not find adata.var[\'highly_variable\']. '
+            'Either your data already only consists of highly-variable genes '
+            'or consider running `pp.highly_variable_genes` first.'
+        )
+    if use_highly_variable is None:
+        if 'highly_variable' in adata.var.keys():
+            use_highly_variable = True
+        else:
+            use_highly_variable = False
+
+    if use_highly_variable:
+        adata_comp = (
+            adata[:, adata.var['highly_variable']]
+        )
+    else:
+        adata_comp = adata
+
+    if n_comps is None:
+        min_dim = min(adata_comp.n_vars, adata_comp.n_obs)
+        n_comps = min_dim - 1
+
+    # random_state = sklearn.utils.check_random_state(random_state)
+    X = adata_comp.X
+
+    # If sparse, make dense.
+    # Another option:
+    # output = _pca_with_sparse(
+    #     X, n_comps, solver=svd_solver, random_state=random_state
+    # )
+    if sp.sparse.issparse(X):
+        X = X.toarray()
+
+    # Sort out the solver
+    if svd_solver == 'auto':
+        svd_solver = 'arpack'
+    if svd_solver not in {'arpack', 'randomized'}:
+        raise ValueError(
+            'svd_solver: {svd_solver} can not be used with sparse input.'
+        )
+
+    pca_ = sklearn.decomposition.PCA(
+        n_components=n_comps,
+        svd_solver=svd_solver,
+        random_state=0
+    )
+    X_pca = pca_.fit_transform(X)
+
+    # Cast to whatever datatype.
+    # dtype = 'float32'
+    # dtype
+    #     Numpy data type string to which to convert the result.
+    # if X_pca.dtype.descr != np.dtype(dtype).descr:
+    #     X_pca = X_pca.astype(dtype)
+
+    # Update the adata frame (if copy=False, then this is the same input adata
+    # that the user provided)
+    adata.obsm['X_pca'] = X_pca
+    adata.uns['pca'] = {}
+    adata.uns['pca']['params'] = {
+        'zero_center': True,
+        'use_highly_variable': use_highly_variable,
+    }
+    if use_highly_variable:
+        adata.varm['PCs'] = np.zeros(shape=(adata.n_vars, n_comps))
+        adata.varm['PCs'][adata.var['highly_variable']] = pca_.components_.T
+    else:
+        adata.varm['PCs'] = pca_.components_.T
+    adata.uns['pca']['variance'] = pca_.explained_variance_
+    adata.uns['pca']['variance_ratio'] = pca_.explained_variance_ratio_
+
+    return adata if copy else None
+
+    # if return_info:
+    #     return (
+    #         X_pca,
+    #         pca_.components_,
+    #         pca_.explained_variance_ratio_,
+    #         pca_.explained_variance_,
+    #     )
 
 
 def score_cells(
@@ -369,7 +512,9 @@ def scanpy_normalize_and_pca(
 
     if len(vars_to_regress) == 0:
         # Scale the data to unit variance.
-        # This effectively weights each gene evenly.
+        # This effectively weights each gene evenly. Otherwise
+        # genes with higher expression values will naturally have higher
+        # variation that will be captured by PCA
         sc.pp.scale(
             adata,
             zero_center=scale_zero_center,  # If true, sparse becomes dense
@@ -455,32 +600,41 @@ def scanpy_normalize_and_pca(
         adata.uns['df_score_genes'] = score_genes_df_updated
 
     # Calculate PCs.
-    # 20/06/17 DLT: Very confusing results with PCA here. On smaller datasets,
-    # I find exactly the same results no matter what the solver. However,
-    # on TI freeze_002 (~160k cells) there was very minor variablity between
-    # runs that resulted in more substantial differences in downstream BBKNN.
-    # Here variability = differences as small as 1x10-6. However, re-setting
-    # all of these seeds right at this point seems to resolve the issue when
-    # zero_center=True and svd_solver='arpack'. It makes no sense to me, but
-    # at least it works. Leaving this for now.
-    seed_value = 0
-    # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
-    os.environ['PYTHONHASHSEED'] = str(seed_value)
-    # 1. Set `python` built-in pseudo-random generator at a fixed value
-    random.seed(seed_value)
-    # 2. Set `numpy` pseudo-random generator at a fixed value
-    np.random.seed(seed_value)
-    # print("sp.sparse.issparse(adata.X)")
-    # print(sp.sparse.issparse(adata.X))
-    sc.tl.pca(
+    # # 20/06/17 DLT: We achieved reproducible results with the same user;
+    # # However, we found different results when different people ran this.
+    # # 20/06/17 DLT: Very confusing results with PCA here. On smaller datasets,
+    # # I find exactly the same results no matter what the solver. However,
+    # # on TI freeze_002 (~160k cells) there was very minor variablity between
+    # # runs that resulted in more substantial differences in downstream BBKNN.
+    # # Here variability = differences as small as 1x10-6. However, re-setting
+    # # all of these seeds right at this point seems to resolve the issue when
+    # # zero_center=True and svd_solver='arpack'. It makes no sense to me, but
+    # # at least it works. Leaving this for now.
+    # seed_value = 0
+    # # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+    # os.environ['PYTHONHASHSEED'] = str(seed_value)
+    # # 1. Set `python` built-in pseudo-random generator at a fixed value
+    # random.seed(seed_value)
+    # # 2. Set `numpy` pseudo-random generator at a fixed value
+    # np.random.seed(seed_value)
+    # # print("sp.sparse.sp.sparse.issparse(adata.X)")
+    # # print(sp.sparse.sp.sparse.issparse(adata.X))
+    # sc.tl.pca(
+    #     adata,
+    #     n_comps=min(200, adata.var['highly_variable'].sum()),
+    #     zero_center=True,  # Set to true for standard PCA
+    #     svd_solver='arpack',  # arpack reproducible when zero_center = True
+    #     use_highly_variable=True,
+    #     copy=False,
+    #     random_state=np.random.RandomState(0),
+    #     chunked=False
+    # )
+    pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
-        zero_center=True,  # Set to true for standard PCA
-        svd_solver='arpack',  # arpack reproducible when zero_center = True
+        svd_solver='arpack',  # lobpcg not found in current sklearn
         use_highly_variable=True,
-        copy=False,
-        random_state=np.random.RandomState(0),
-        chunked=False
+        copy=False
     )
 
     # Save PCs to a seperate file for Harmony.
