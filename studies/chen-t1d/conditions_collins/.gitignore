@@ -1,1 +1,7 @@
 results/
+trace.txt*
+run_pipeline.sh.*
+timeline.html*
+flowchart.png
+report.html*
+.nextflow*
