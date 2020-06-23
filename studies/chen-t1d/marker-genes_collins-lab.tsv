@@ -9,5 +9,7 @@
 "COL1A1"	"pancreatic_islet"	"Stellate"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000108821"	100
 "VWF"	"pancreatic_islet"	"Endothelial"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000110799"	100
 "SDS"	"pancreatic_islet"	"Macrophage"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000135094"	100
+"CD68"	"pancreatic_islet"	"Macrophage"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000129226"	100
+"CD3G"	"pancreatic_islet"	"T-cell"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000160654"	100
 "TPSAB1"	"pancreatic_islet"	"Mast"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000172236"	100
 "SOX10"	"pancreatic_islet"	"Schwann"	"collins_lab"	"Marker gene used by the collins lab"	"ENSG00000100146"	100
