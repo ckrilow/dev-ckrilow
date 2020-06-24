@@ -28,10 +28,11 @@ RUN apt-get update && \
         curl \
         git \
         zip \
-        unzip && \
+        unzip \
+        procps && \
     apt-get install --yes \
         libpng-dev \
-        libcurl4-openssl-dev \
+        libcurl4-gnutls-dev \
         libssl-dev \
         libxml2-dev \
         libgit2-dev \
