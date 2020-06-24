@@ -374,8 +374,9 @@ def scanpy_normalize_and_pca(
     # Logarithmize the data: X = log(X + 1) where log = natural logorithm.
     # Numpy has a nice function to undo this np.expm1(adata.X).
     sc.pp.log1p(adata)
-    # Delete automatically added uns
-    del adata.uns['log1p']
+    # Delete automatically added uns - UPDATE: bad idea to delete as this slot
+    # is used in _highly_variable_genes_single_batch.
+    # del adata.uns['log1p']
     # Add record of this operation.
     # adata.layers['log1p_cpm'] = adata.X.copy()
     # adata.uns['log1p_cpm'] = {'transformation': 'ln(CPM+1)'}
@@ -455,12 +456,12 @@ def scanpy_normalize_and_pca(
             show=False,
             save='-{}.pdf'.format(output_file)
         )
-        _ = sc.pl.highly_variable_genes(
-            adata,
-            log=True,
-            show=False,
-            save='-{}-log.pdf'.format(output_file)
-        )
+        # _ = sc.pl.highly_variable_genes(
+        #     adata,
+        #     log=True,
+        #     show=False,
+        #     save='-{}-log.pdf'.format(output_file)
+        # )
 
     # After calculating highly variable genes, we subsquently remove any custom
     # for highly variable gene selection. This way we retain the normalized
@@ -600,42 +601,42 @@ def scanpy_normalize_and_pca(
         adata.uns['df_score_genes'] = score_genes_df_updated
 
     # Calculate PCs.
-    # # 20/06/17 DLT: We achieved reproducible results with the same user;
-    # # However, we found different results when different people ran this.
-    # # 20/06/17 DLT: Very confusing results with PCA here. On smaller datasets,
-    # # I find exactly the same results no matter what the solver. However,
-    # # on TI freeze_002 (~160k cells) there was very minor variablity between
-    # # runs that resulted in more substantial differences in downstream BBKNN.
-    # # Here variability = differences as small as 1x10-6. However, re-setting
-    # # all of these seeds right at this point seems to resolve the issue when
-    # # zero_center=True and svd_solver='arpack'. It makes no sense to me, but
-    # # at least it works. Leaving this for now.
-    # seed_value = 0
-    # # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
-    # os.environ['PYTHONHASHSEED'] = str(seed_value)
-    # # 1. Set `python` built-in pseudo-random generator at a fixed value
-    # random.seed(seed_value)
-    # # 2. Set `numpy` pseudo-random generator at a fixed value
-    # np.random.seed(seed_value)
-    # # print("sp.sparse.sp.sparse.issparse(adata.X)")
-    # # print(sp.sparse.sp.sparse.issparse(adata.X))
-    # sc.tl.pca(
-    #     adata,
-    #     n_comps=min(200, adata.var['highly_variable'].sum()),
-    #     zero_center=True,  # Set to true for standard PCA
-    #     svd_solver='arpack',  # arpack reproducible when zero_center = True
-    #     use_highly_variable=True,
-    #     copy=False,
-    #     random_state=np.random.RandomState(0),
-    #     chunked=False
-    # )
-    pca(
+    # 20/06/17 DLT: We achieved reproducible results with the same user;
+    # However, we found different results when different people ran this.
+    # 20/06/17 DLT: Very confusing results with PCA here. On smaller datasets,
+    # I find exactly the same results no matter what the solver. However,
+    # on TI freeze_002 (~160k cells) there was very minor variablity between
+    # runs that resulted in more substantial differences in downstream BBKNN.
+    # Here variability = differences as small as 1x10-6. However, re-setting
+    # all of these seeds right at this point seems to resolve the issue when
+    # zero_center=True and svd_solver='arpack'. It makes no sense to me, but
+    # at least it works. Leaving this for now.
+    seed_value = 0
+    # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+    os.environ['PYTHONHASHSEED'] = str(seed_value)
+    # 1. Set `python` built-in pseudo-random generator at a fixed value
+    random.seed(seed_value)
+    # 2. Set `numpy` pseudo-random generator at a fixed value
+    np.random.seed(seed_value)
+    # print("sp.sparse.sp.sparse.issparse(adata.X)")
+    # print(sp.sparse.sp.sparse.issparse(adata.X))
+    sc.tl.pca(
         adata,
         n_comps=min(200, adata.var['highly_variable'].sum()),
-        svd_solver='arpack',  # lobpcg not found in current sklearn
+        zero_center=True,  # Set to true for standard PCA
+        svd_solver='arpack',  # arpack reproducible when zero_center = True
         use_highly_variable=True,
-        copy=False
+        copy=False,
+        random_state=np.random.RandomState(0),
+        chunked=False
     )
+    # pca(
+    #     adata,
+    #     n_comps=min(200, adata.var['highly_variable'].sum()),
+    #     svd_solver='arpack',  # lobpcg not found in current sklearn
+    #     use_highly_variable=True,
+    #     copy=False
+    # )
 
     # Save PCs to a seperate file for Harmony.
     pca_df = pd.DataFrame(
