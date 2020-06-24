@@ -187,6 +187,7 @@ def main():
     # Load the AnnData file.
     adata = sc.read_h5ad(filename=options.h5)
 
+    # See https://github.com/theislab/scanpy/issues/967
     print(
         'WARNING: All functions in this script set use_raw=True,',
         'assuming that adata.raw.to_adata stores ln(CPM+1) or ln(CP10K+1)',
