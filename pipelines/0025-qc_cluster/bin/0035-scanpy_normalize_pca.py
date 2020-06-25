@@ -816,6 +816,28 @@ def main():
     # Load the AnnData file
     adata = sc.read_h5ad(filename=options.h5)
 
+    # If we have a flag for cells that pass QC then filter down to them
+    if 'cell_passes_qc' in adata.obs:
+        cells_prior_filters = adata.n_obs
+        adata = adata[adata.obs['cell_passes_qc'], :]
+        del adata.obs['cell_passes_qc']
+        print(
+            'filtered down to cell_passes_qc: {} old {} new adata'.format(
+                cells_prior_filters,
+                adata.n_obs
+            )
+        )
+        # Re-calculate basic qc metrics of var (genes) for the whole dataset
+        # after filters.
+        # NOTE: we are only changing adata.var
+        obs_prior = adata.obs.copy()
+        sc.pp.calculate_qc_metrics(
+            adata,
+            qc_vars=['mito_gene'],
+            inplace=True
+        )
+        adata.obs = obs_prior
+
     # Split the vars to regress list
     vars_to_regress = []
     if options.vr != '':

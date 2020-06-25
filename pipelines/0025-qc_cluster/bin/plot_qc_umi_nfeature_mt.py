@@ -27,7 +27,8 @@ def comma_labels(x_list):
 def plot_umi_ngene_mt(
     df_plot,
     output_file='plot_umi_ngene_mt',
-    facet_column='none'
+    facet_column='none',
+    color_var='pct_counts_mito_gene'
 ):
     """Plot plot_umi_ngene_mt to png.
 
@@ -45,12 +46,22 @@ def plot_umi_ngene_mt(
     -------
     NULL
     """
+    if color_var == 'pct_counts_mito_gene':
+        color_title = '% MT\n'
+    elif color_var == 'cell_passes_qc':
+        color_title = 'Cell passed QC\n'
+    elif color_var == 'density':
+        color_title = 'Density\n'
+    else:
+        color_title = color_var
     gplt = plt9.ggplot(df_plot, plt9.aes(
         x='total_counts',
         y='n_genes_by_counts',
-        color='pct_counts_mito_gene'
+        color=color_var
     ))
     gplt = gplt + plt9.theme_bw()
+    if color_var == 'density':
+        gplt = gplt + plt9.geom_density_2d_filled(alpha=0.5)
     gplt = gplt + plt9.geom_point(alpha=0.5, size=0.8)
     gplt = gplt + plt9.scale_x_continuous(
         trans='log10',
@@ -62,17 +73,20 @@ def plot_umi_ngene_mt(
         labels=comma_labels,
         minor_breaks=0
     )
-    gplt = gplt + plt9.scale_color_gradient2(
-        low='#3B9AB2',
-        mid='#EBCC2A',
-        high='#F21A00',
-        midpoint=50,
-        limits=[0, 100]
-    )
+    if color_var == 'pct_counts_mito_gene':
+        gplt = gplt + plt9.scale_color_gradient2(
+            low='#3B9AB2',
+            mid='#EBCC2A',
+            high='#F21A00',
+            midpoint=50,
+            limits=[0, 100]
+        )
+    elif color_var == 'cell_passes_qc':
+        gplt = gplt + plt9.scale_colour_brewer(type='qual', palette='Dark2')
     gplt = gplt + plt9.labs(
         x='Number of molecules',
         y='Number of genes detected',
-        color='% MT\n',
+        color=color_title,
         title=''
     )
     gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
@@ -232,8 +246,28 @@ def main():
                 facet,
                 options.of
             ),
-            facet_column=facet
+            facet_column=facet,
+            color_var='pct_counts_mito_gene'
         )
+        plot_umi_ngene_mt(
+            df_plot=adata.obs,
+            output_file='plot_umi_ngene_density.facet={}-{}'.format(
+                facet,
+                options.of
+            ),
+            facet_column=facet,
+            color_var='density'
+        )
+        if 'cell_passes_qc' in adata.obs:
+            plot_umi_ngene_mt(
+                df_plot=adata.obs,
+                output_file='plot_umi_ngene_cellpassqc.facet={}-{}'.format(
+                    facet,
+                    options.of
+                ),
+                facet_column=facet,
+                color_var='cell_passes_qc'
+            )
 
 
 if __name__ == '__main__':

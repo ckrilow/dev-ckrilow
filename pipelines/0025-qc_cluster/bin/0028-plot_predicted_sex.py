@@ -59,6 +59,11 @@ def main():
     # Load the AnnData file
     adata = sc.read_h5ad(filename=options.h5)
 
+    # If we have a flag for cells that pass QC then filter down to them
+    if 'cell_passes_qc' in adata.obs:
+        adata = adata[adata.obs['cell_passes_qc'], :]
+        del adata.obs['cell_passes_qc']
+
     # Read Chr X and Chr Y genes
     if options.X != '':
         X = pd.read_csv(options.X, sep="\t")
