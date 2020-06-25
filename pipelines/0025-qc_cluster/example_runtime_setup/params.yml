@@ -6,11 +6,23 @@ sample_qc:
     description: 'Parameters for sample QC prior to merge.
         Filters are applied to all samples.'
     cell_filters:
-        description: 'Cell filters applied to each sample. Cells passing these
-            filters are kept. Note: n_genes_by_counts == n_detected_features.'
-        value:
-            - 'pct_counts_mito_gene < 80 and n_genes_by_counts > 100'
-            - 'n_genes_by_counts > 1'
+        description: 'Cell filters. Each bullet point is a seperate filter.
+            Cells that evaluate to true for any of these filters, will be
+            removed. Filters under "all_samples" are applied to all samples.
+            Filters under a sample id are applied to that specific sample.'
+        all_samples:
+            description: 'Cell filters applied to all samples.'
+            value:
+                - 'pct_counts_mito_gene >= 80 and n_genes_by_counts <= 1'
+                - 'pct_counts_mito_gene >= 80'
+        5892STDY8039073:
+            description: 'Cell filters applied to 5892STDY8039073 only.'
+            value:
+                - 'n_genes_by_counts <= 100'
+        5892STDY8644400:
+            description: 'Cell filters applied to 5892STDY8644400 only.'
+            value:
+                - 'n_genes_by_counts <= 100'
     downsample_cells_fraction:
         description: 'Downsample to this fraction of the number of
             observations (sc.pp.subsample). Use "" to indicate no downsampling.
