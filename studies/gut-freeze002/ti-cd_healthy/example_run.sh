@@ -27,6 +27,7 @@ export NXF_SINGULARITY_CACHEDIR="/software/team152/nextflow/cache_singularity"
 export QT_QPA_PLATFORM='offscreen'
 export LSB_DEFAULT_JOBGROUP="/${USER}/nf"
 export LSB_DEFAULTGROUP="team152"
+export PYTHONHASHSEED=0
 
 # One may need to unset R_LIBS to get the conda install
 # unset R_LIBS
