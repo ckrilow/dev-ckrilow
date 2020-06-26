@@ -2,10 +2,12 @@ sample_qc:
     description: 'Parameters for sample QC prior to merge.
         Filters are applied to all samples.'
     cell_filters:
-        description: 'Cell filters applied to each sample. Cells passing these
-            filters are kept. Note: n_genes_by_counts == n_detected_features.'
-        value:
-            - ''
+        description: 'Cell filters. Each bullet point is a seperate filter.
+            Cells that evaluate to true for any of these filters, will be
+            removed. Filters under "all_samples" are applied to all samples.
+            Filters under a sample id are applied to that specific sample.
+            NOTE: Here we use a pct_counts_mito_gene filter of X, which
+            is 3 MADs from the whole rectum dataset.'
     downsample_cells_fraction:
         description: 'Downsample to this fraction of the number of
             observations (sc.pp.subsample). Use "" to indicate no downsampling.
