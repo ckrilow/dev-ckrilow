@@ -82,6 +82,7 @@ def plot_umi_ngene_mt(
             midpoint=50,
             limits=[0, 100]
         )
+        gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
     elif color_var == 'cell_passes_qc':
         gplt = gplt + plt9.scale_colour_brewer(type='qual', palette='Dark2')
     gplt = gplt + plt9.labs(
@@ -90,7 +91,6 @@ def plot_umi_ngene_mt(
         color=color_title,
         title=''
     )
-    gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
     if facet_column != 'none':
         gplt = gplt + plt9.facet_wrap(
             '~ {}'.format(facet_column),
@@ -100,7 +100,7 @@ def plot_umi_ngene_mt(
         gplt.save(
             '{}.png'.format(output_file),
             dpi=300,
-            width=4*(n_samples/4),
+            width=4*(n_samples/2),
             height=4*(n_samples/4),
             limitsize=False
         )
