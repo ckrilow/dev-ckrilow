@@ -66,11 +66,16 @@ def main():
     df_before_filters = df[df.filter_type.isin(['before_filters'])]
     df_before_filters = df_before_filters.set_index('experiment_id')
 
-    # Check if any difference between before and after filters.	If not,	return early.
+    # Check if any difference between before and after filters.	If not,
+    # return early.
     df_after_filters = df[df.filter_type.isin(['after_filters'])]
-    if all(df_after_filters.n_cells == df_before_filters.loc[df_after_filters.experiment_id, 'n_cells'].values):
-       	print("No difference detected before and after filters. Returning without plotting.")
-       	return()
+    filt = df_after_filters.n_cells_left_in_adata == df_before_filters.loc[
+        df_after_filters.experiment_id,
+        'n_cells_left_in_adata'
+    ].values
+    if all(filt):
+        print("No difference detected before and after filters. No plots.")
+        return()
 
     # Set some plotting parameters
     plt_height = 16  # 1.5 * df.experiment_id.nunique()
@@ -79,7 +84,7 @@ def main():
     df_plt = df[df.filter_type.isin(['before_filters', 'after_filters'])]
     gplt = plt9.ggplot(df_plt, plt9.aes(
         x='experiment_id',
-        y='n_cells',
+        y='n_cells_left_in_adata',
         # label='n_cells',
         fill='filter_type'
     ))
@@ -117,6 +122,52 @@ def main():
         height=plt_height
     )
 
+    # Plot the final fraction of cells filtered per experiment
+    df_plt = df_after_filters.copy()
+    # Invert the numbers, so instead of the number of cells that pass, get
+    # the number of cells that fail at each filter.
+    df_plt.n_cells_left_in_adata = df_before_filters.loc[
+        df_plt.experiment_id, 'n_cells_left_in_adata'
+    ].values - df_plt.n_cells_left_in_adata
+    # Now calculate the fraction removed
+    df_plt['fraction_cells'] = df_plt.n_cells_left_in_adata / \
+        df_before_filters.loc[
+            df_plt.experiment_id,
+            'n_cells_left_in_adata'
+        ].values
+    gplt = plt9.ggplot(df_plt, plt9.aes(
+        x='experiment_id',
+        y='fraction_cells',
+        fill='filter_type'
+    ))
+    gplt = gplt + plt9.theme_bw()
+    gplt = gplt + plt9.geom_bar(stat='identity', position='dodge')
+    if df_plt.filter_type.nunique() < 9:
+        gplt = gplt + plt9.scale_fill_brewer(
+            palette='Dark2',
+            type='qual'
+        )
+    gplt = gplt + plt9.labs(
+        title='',
+        y='Fraction of total cells excluded',
+        x='',
+        fill='Filter'
+    )
+    # NOTE: legend_position bug https://github.com/has2k1/plotnine/issues/245
+    gplt = gplt + plt9.theme(
+        # legend_position='bottom',
+        subplots_adjust={'bottom': 0.15},
+        legend_position=(.5, .05),
+        legend_direction='vertical'
+    )
+    gplt = gplt + plt9.coord_flip()
+    gplt.save(
+        '{}-fraction_before_after.png'.format(out_file_base),
+        dpi=300,
+        width=4,
+        height=plt_height
+    )
+
     # Plot the number of cells falling into each filter acoss experiments.
     # NOTE: cells can fall into multiple filters.
     # Remove the rows that we do not want
@@ -124,12 +175,12 @@ def main():
     df_plt = df_plt[~df_plt.filter_type.str.contains('after_filter')]
     # Invert the numbers, so instead of the number of cells that pass, get
     # the number of cells that fail at each filter.
-    df_plt.n_cells = df_before_filters.loc[
-        df_plt.experiment_id, 'n_cells'
-    ].values - df_plt.n_cells
+    df_plt.n_cells_left_in_adata = df_before_filters.loc[
+        df_plt.experiment_id, 'n_cells_left_in_adata'
+    ].values - df_plt.n_cells_left_in_adata
     gplt = plt9.ggplot(df_plt, plt9.aes(
         x='experiment_id',
-        y='n_cells',
+        y='n_cells_left_in_adata',
         fill='filter_type'
     ))
     gplt = gplt + plt9.theme_bw()
@@ -162,9 +213,12 @@ def main():
 
     # Plot the ratio of the total number of cells removed in each filter across
     # experiments.
-    df_plt['fraction_cells'] = df_plt.n_cells / df_before_filters.loc[
-        df_plt.experiment_id, 'n_cells'
-    ].values
+    # NOTE: cells can fall into multiple filters.
+    df_plt['fraction_cells'] = df_plt.n_cells_left_in_adata / \
+        df_before_filters.loc[
+            df_plt.experiment_id,
+            'n_cells_left_in_adata'
+        ].values
     gplt = plt9.ggplot(df_plt, plt9.aes(
         x='experiment_id',
         y='fraction_cells',
