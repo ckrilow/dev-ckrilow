@@ -1,0 +1,17 @@
+experiment_id	data_path_10x_format	short_experiment_id
+19_S0	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_S0/outs/filtered_feature_bc_matrix	19_S0
+41_S0	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_S0/outs/filtered_feature_bc_matrix	41_S0
+19_S1	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_S1/outs/filtered_feature_bc_matrix	19_S1
+41_S1	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_S1/outs/filtered_feature_bc_matrix	41_S1
+19_S4	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_S4/outs/filtered_feature_bc_matrix	19_S4
+41_S4	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_S4/outs/filtered_feature_bc_matrix	41_S4
+19_S6	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_S6/outs/filtered_feature_bc_matrix	19_S6
+41_S6	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_S6/outs/filtered_feature_bc_matrix	41_S6
+19_L1	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_L1/outs/filtered_feature_bc_matrix	19_L1
+19_L2	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_L2/outs/filtered_feature_bc_matrix	19_L2
+19_H1	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_H1/outs/filtered_feature_bc_matrix	19_H1
+19_H2	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/19_H2/outs/filtered_feature_bc_matrix	19_H2
+41_L1	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_L1/outs/filtered_feature_bc_matrix	41_L1
+41_L2	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_L2/outs/filtered_feature_bc_matrix	41_L2
+41_H1	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_H1/outs/filtered_feature_bc_matrix	41_H1
+41_H2	/cluster/ifs/projects/collins/single_cell/tenX/projects/E11_ipsc2beta_20200113/results/aligned/41_H2/outs/filtered_feature_bc_matrix	41_H2
