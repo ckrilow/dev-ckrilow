@@ -11,7 +11,6 @@ import numpy as np
 import plotnine as plt9
 import scipy.stats as stat
 
-
 def comma_labels(x_list):
     """Change list of int to comma format."""
     result = []
@@ -27,7 +26,7 @@ def calculate_density(df_plot, facet_column):
     """
     if facet_column == 'none':
         den_array = np.vstack([
-            df_plot['total_counts'],
+            np.log10(df_plot['total_counts']),
             df_plot['pct_counts_mito_gene']
         ])
         return(stat.gaussian_kde(den_array)(den_array))
@@ -98,12 +97,9 @@ def plot_umi_mt_density(
         gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
     elif color_var == 'cell_passes_qc':
         gplt = gplt + plt9.scale_colour_brewer(type='qual', palette='Dark2')
-    # elif color_var == '1251234_density':
-    #     gplt = gplt + plt9.scale_color_distiller(
-    #         type='div',
-    #         palette='viridis'
-    #         # palette='Spectral'
-    #     )
+    elif color_var == '1251234_density':
+        gplt = gplt + plt9.scale_color_cmap(cmap_name = 'viridis')
+
     if density_contour:
         gplt = gplt + plt9.geom_density_2d(alpha=0.5)
     gplt = gplt + plt9.labs(
