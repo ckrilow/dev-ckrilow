@@ -19,13 +19,17 @@ def comma_labels(x_list):
         result.append(format(int(x), ','))
     return(result)
 
+
 def calculate_density(df_plot, facet_column):
     """
     Calculate the density for each category in the facet. Return an array
     that corresponds to the row of the df_plot
     """
     if facet_column == 'none':
-        den_array = np.vstack([df_plot['total_counts'], df_plot['pct_counts_mito_gene']])
+        den_array = np.vstack([
+            df_plot['total_counts'],
+            df_plot['pct_counts_mito_gene']
+        ])
         return(stat.gaussian_kde(den_array)(den_array))
 
     sorted_df = df_plot.sort_values(facet_column)
@@ -36,11 +40,13 @@ def calculate_density(df_plot, facet_column):
     sorted_df['temp_12345676'] = density_array
     return(sorted_df.loc[df_plot.index.tolist(), "temp_12345676"].values)
 
+
 def plot_umi_mt_density(
     df_plot,
     output_file='plot_umi_mt_density',
     facet_column='none',
-    color_var='density'
+    color_var='density',
+    density_contour=False
 ):
     """Plot plot_umi_mt_density to png.
 
@@ -59,7 +65,8 @@ def plot_umi_mt_density(
     """
     if color_var == 'density':
         color_title = 'Density\n'
-        ## Also calculate density using a gaussian 2d kernal -- use random name for plot column
+        # Also calculate density using a gaussian 2d kernal -- use random
+        # name for plot column
         color_var = "1251234_density"
         df_plot[color_var] = calculate_density(df_plot, facet_column)
     elif color_var == 'pct_counts_mito_gene':
@@ -80,9 +87,7 @@ def plot_umi_mt_density(
         labels=comma_labels,
         minor_breaks=0
     )
-    if color_var == '1251234_density':
-        gplt = gplt + plt9.scale_color_distiller(type='div', palette='Spectral')
-    elif color_var == 'pct_counts_mito_gene':
+    if color_var == 'pct_counts_mito_gene':
         gplt = gplt + plt9.scale_color_gradient2(
             low='#3B9AB2',
             mid='#EBCC2A',
@@ -93,6 +98,14 @@ def plot_umi_mt_density(
         gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
     elif color_var == 'cell_passes_qc':
         gplt = gplt + plt9.scale_colour_brewer(type='qual', palette='Dark2')
+    # elif color_var == '1251234_density':
+    #     gplt = gplt + plt9.scale_color_distiller(
+    #         type='div',
+    #         palette='viridis'
+    #         # palette='Spectral'
+    #     )
+    if density_contour:
+        gplt = gplt + plt9.geom_density_2d(alpha=0.5)
     gplt = gplt + plt9.labs(
         x='Number of molecules',
         y='Percent of molecules from MT genes',
@@ -186,7 +199,8 @@ def main():
                 options.of
             ),
             facet_column=facet,
-            color_var='density'
+            color_var='density',
+            density_contour=False
         )
         if 'cell_passes_qc' in adata.obs:
             plot_umi_mt_density(
@@ -196,7 +210,8 @@ def main():
                     options.of
                 ),
                 facet_column=facet,
-                color_var='cell_passes_qc'
+                color_var='cell_passes_qc',
+                density_contour=False
             )
 
 

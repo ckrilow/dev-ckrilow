@@ -6,8 +6,10 @@ __date__ = '2020-03-13'
 __version__ = '0.0.1'
 
 import argparse
+import numpy as np
 import scanpy as sc
 import plotnine as plt9
+import scipy.stats as stat
 # altair: good python plotting package
 # import altair
 # Seaborn imports below - another good python plotting package
@@ -24,12 +26,33 @@ def comma_labels(x_list):
     return(result)
 
 
+def calculate_density(df_plot, facet_column):
+    """
+    Calculate the density for each category in the facet. Return an array
+    that corresponds to the row of the df_plot
+    """
+    if facet_column == 'none':
+        den_array = np.vstack([
+            df_plot['total_counts'],
+            df_plot['n_genes_by_counts']
+        ])
+        return(stat.gaussian_kde(den_array)(den_array))
+
+    sorted_df = df_plot.sort_values(facet_column)
+    density_array = []
+    for facet_key in np.unique(sorted_df[facet_column]):
+        sub_df = sorted_df[sorted_df[facet_column] == facet_key]
+        density_array += calculate_density(sub_df, 'none').tolist()
+    sorted_df['temp_12345676'] = density_array
+    return(sorted_df.loc[df_plot.index.tolist(), "temp_12345676"].values)
+
+
 def plot_umi_ngene_mt(
     df_plot,
     output_file='plot_umi_ngene_mt',
     facet_column='none',
     color_var='pct_counts_mito_gene',
-    density=False
+    density_contour=False
 ):
     """Plot plot_umi_ngene_mt to png.
 
@@ -51,8 +74,12 @@ def plot_umi_ngene_mt(
         color_title = '% MT\n'
     elif color_var == 'cell_passes_qc':
         color_title = 'Cell passed QC\n'
-    # elif color_var == 'density':
-    #     color_title = 'Density\n'
+    elif color_var == 'density':
+        color_title = 'Density\n'
+        # Also calculate density using a gaussian 2d kernal -- use random
+        # name for plot column
+        color_var = "1251234_density"
+        df_plot[color_var] = calculate_density(df_plot, facet_column)
     else:
         color_title = color_var
     gplt = plt9.ggplot(df_plot, plt9.aes(
@@ -62,7 +89,7 @@ def plot_umi_ngene_mt(
     ))
     gplt = gplt + plt9.theme_bw()
     gplt = gplt + plt9.geom_point(alpha=0.5, size=0.8)
-    if density:
+    if density_contour:
         gplt = gplt + plt9.geom_density_2d(alpha=0.5)
     gplt = gplt + plt9.scale_x_continuous(
         trans='log10',
@@ -85,6 +112,12 @@ def plot_umi_ngene_mt(
         gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
     elif color_var == 'cell_passes_qc':
         gplt = gplt + plt9.scale_colour_brewer(type='qual', palette='Dark2')
+    # elif color_var == '1251234_density':
+    #     gplt = gplt + plt9.scale_color_distiller(
+    #         type='div',
+    #         palette='viridis'
+    #         # palette='Spectral'
+    #     )
     gplt = gplt + plt9.labs(
         x='Number of molecules',
         y='Number of genes detected',
@@ -248,7 +281,8 @@ def main():
                 options.of
             ),
             facet_column=facet,
-            color_var='pct_counts_mito_gene'
+            color_var='pct_counts_mito_gene',
+            density_contour=False
         )
         plot_umi_ngene_mt(
             df_plot=adata.obs,
@@ -257,8 +291,8 @@ def main():
                 options.of
             ),
             facet_column=facet,
-            color_var='pct_counts_mito_gene',
-            density=True
+            color_var='density',
+            density_contour=False
         )
         if 'cell_passes_qc' in adata.obs:
             plot_umi_ngene_mt(
@@ -268,7 +302,8 @@ def main():
                     options.of
                 ),
                 facet_column=facet,
-                color_var='cell_passes_qc'
+                color_var='cell_passes_qc',
+                density_contour=False
             )
 
 
