@@ -10,6 +10,7 @@ include {
     wf__multiplet;
 } from "./modules/multiplet.nf"
 include {
+    prep_merge_samples;
     merge_samples;
     plot_predicted_sex;
     plot_qc;
@@ -212,6 +213,7 @@ channel__file_paths_10x = Channel
         file("${row.data_path_10x_format}/features.tsv.gz"),
         file("${row.data_path_10x_format}/matrix.mtx.gz")
     )}
+//n_experiments = file(params.file_paths_10x).countLines()
 // file_paths_10x = Channel
 //     .fromPath(params.file_paths_10x)
 // file_metadata = Channel
@@ -246,13 +248,17 @@ workflow {
         }
         // Merge the samples, perform cell + gene filtering, add metadata.
         file_sample_qc = file(params.file_sample_qc)
+        prep_merge_samples(channel__file_paths_10x)
         merge_samples(
             params.output_dir,
             params.file_paths_10x,
             params.file_metadata,
             file_sample_qc,
             file_cellmetadata,
-            params.metadata_key_column.value
+            params.metadata_key_column.value,
+            prep_merge_samples.out.barcodes.collect(),
+            prep_merge_samples.out.features.collect(),
+            prep_merge_samples.out.matrix.collect()
         )
         // Predict sex from gene expression and check against phenotypes.
         plot_predicted_sex(
