@@ -289,7 +289,7 @@ def main():
             ),
             facet_column=facet,
             color_var='density',
-            density_contour=False
+            density_contour=True
         )
         if 'cell_passes_qc' in adata.obs:
             plot_umi_ngene_mt(
