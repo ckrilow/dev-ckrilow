@@ -186,6 +186,10 @@ process plot_qc {
             --h5_anndata ${file__anndata} \
             --output_file ${outfile} \
             ${cmd__facet_columns}
+        plot_qc_umi_mt_density.py \
+            --h5_anndata ${file__anndata} \
+            --output_file ${outfile} \
+            ${cmd__facet_columns}
         ${cmd__anndataobs}
         ${cmd__anndataobs_ecdf}
         mkdir plots
