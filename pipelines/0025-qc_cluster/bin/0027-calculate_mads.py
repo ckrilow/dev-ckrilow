@@ -40,23 +40,33 @@ def main():
     )
 
     parser.add_argument(
-            '-qck', '--qc_key',
-            action='store',
-            dest='qc_key',
-            default='pct_counts_mito_gene',
-            help='QC key for MADs calculation.'
+        '-qck', '--qc_key',
+        action='store',
+        dest='qc_key',
+        default='pct_counts_mito_gene',
+        help='QC key for MADs calculation.'
     )
 
     parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
-        default='pct_counts_mito_gene',
-        help='Basename of output png file.\
+        default='',
+        help='Basename of output png file. Will have -mads-<qc_key> appended\
             (default: %(default)s)'
     )
 
     options = parser.parse_args()
+
+    if options.of == '':
+        output_file = 'mads-{}'.format(
+            options.qc_key
+        )
+    else:
+        output_file = '{}-mads-{}'.format(
+            options.of,
+            options.qc_key
+        )
 
     # Load the AnnData file
     adata = sc.read_h5ad(filename=options.h5)
@@ -76,7 +86,7 @@ def main():
         index=['median', 'median + 1*mad', 'median + 2*mad', 'median + 3*mad'])
 
     df1.to_csv(
-        '{}-mads.tsv'.format(options.of),
+        '{}-mads.tsv'.format(output_file),
         sep='\t',
         index=True
     )
@@ -93,10 +103,10 @@ def main():
                             xintercept=mad3, linetype="dashed", color="red")
 
     gplt.save(
-            '{}.png'.format(options.of),
-            dpi=300,
-            width=5,
-            height=4
+        '{}.png'.format(output_file),
+        dpi=300,
+        width=5,
+        height=4
     )
 
 
