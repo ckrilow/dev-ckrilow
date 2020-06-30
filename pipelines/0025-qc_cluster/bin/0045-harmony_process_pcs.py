@@ -134,6 +134,14 @@ def main():
     df_meta = pd.read_csv(options.mf, sep='\t', index_col='cell_barcode')
     # Ensure cell order in df_meta is the same as df_pca
     df_meta = df_meta.loc[df_pca.index, metadata_columns]
+    # Also ensure that the metadata columns are categorical -- run_harmony
+    # fails if not categorical
+    try:
+        df_meta[metadata_columns].describe().loc['unique']
+    except KeyError:
+        print("metadata_columns contains non-categorical attributes. Harmony does \
+        not work with continuous variables. Either make attributes a string or \
+        use a different column.")
 
     # Get the theta values for each column (if none, set to 2 for all columns).
     theta = [2] * len(metadata_columns)
