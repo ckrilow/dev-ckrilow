@@ -412,11 +412,27 @@ def main():
     #       functionality is an ongoing issue in scanpy.
     #       See: https://github.com/theislab/scanpy/issues/455
     adata_raw = adata.raw.to_adata()
+    # Generate dendrogram using the marker genes... this will be used in the
+    # below dotplots.
+    # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error.
+    run_dendrogram = False
+    if run_dendrogram:
+        sc.tl.dendrogram(
+            adata_raw,
+            groupby='cluster',
+            use_rep='X_pca',
+            var_names=marker_dict_plt,
+            use_raw=False,
+            cor_method='pearson',
+            linkage_method='complete',
+            optimal_ordering=True,
+            inplace=True
+        )
     _ = sc.pl.dotplot(
         adata_raw,
         var_names=marker_dict_plt,
         groupby='cluster',
-        dendrogram=True,
+        dendrogram=run_dendrogram,
         use_raw=False,
         show=False,
         color_map='Blues',
@@ -426,7 +442,7 @@ def main():
         adata_raw,
         var_names=marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
-        dendrogram=True,
+        dendrogram=run_dendrogram,
         gene_symbols='gene_symbols',
         use_raw=False,
         show=False,
@@ -437,7 +453,7 @@ def main():
         adata_raw,
         marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
-        dendrogram=True,
+        dendrogram=run_dendrogram,
         gene_symbols='gene_symbols',
         standard_scale='var',  # Scale color between 0 and 1
         use_raw=False,
@@ -449,7 +465,7 @@ def main():
         adata_raw,
         marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
-        dendrogram=True,
+        dendrogram=run_dendrogram,
         gene_symbols='gene_symbols',
         use_raw=False,
         show=False,
@@ -459,7 +475,7 @@ def main():
         adata_raw,
         marker_df_plt['gene_symbols'].to_list(),
         groupby='cluster',
-        dendrogram=True,
+        dendrogram=run_dendrogram,
         gene_symbols='gene_symbols',
         standard_scale='var',  # Scale color between 0 and 1
         use_raw=False,

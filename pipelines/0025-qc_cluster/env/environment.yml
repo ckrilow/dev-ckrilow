@@ -6,6 +6,7 @@ channels:
   - defaults
 dependencies:
   - pyyaml=5.3.1
+  - pandas=1.0.5
   - scipy=1.5.0
   - scanpy=1.5.1
   - leidenalg=0.7.0
@@ -17,7 +18,5 @@ dependencies:
   - kneed=0.6.0
   - keras-gpu=2.3.1
   - tensorflow-gpu=2.2.0
-  - dask-ml=1.2.0
-  - dask-jobqueue=0.7.1
-  - joblib=0.14.1
   - scikit-learn=0.23.1
+  - joblib=0.15.1

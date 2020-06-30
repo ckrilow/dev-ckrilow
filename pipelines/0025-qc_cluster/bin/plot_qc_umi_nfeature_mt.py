@@ -113,7 +113,7 @@ def plot_umi_ngene_mt(
     elif color_var == 'cell_passes_qc':
         gplt = gplt + plt9.scale_colour_brewer(type='qual', palette='Dark2')
     elif color_var == '1251234_density':
-        gplt = gplt + plt9.scale_color_cmap(cmap_name = 'viridis')
+        gplt = gplt + plt9.scale_color_cmap(cmap_name='viridis')
 
     gplt = gplt + plt9.labs(
         x='Number of molecules',
@@ -289,7 +289,7 @@ def main():
             ),
             facet_column=facet,
             color_var='density',
-            density_contour=False
+            density_contour=True
         )
         if 'cell_passes_qc' in adata.obs:
             plot_umi_ngene_mt(

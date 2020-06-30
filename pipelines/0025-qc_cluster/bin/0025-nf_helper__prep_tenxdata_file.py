@@ -6,14 +6,8 @@ __date__ = '2020-03-13'
 __version__ = '0.0.1'
 
 import argparse
-import csv
 import os
-import yaml
-import random
-import warnings
-import numpy as np
 import pandas as pd
-import scanpy as sc
 
 
 def main():
@@ -126,7 +120,7 @@ def main():
         #     value['barcode'],
         #     'tenx_input_data/{}/barcode.tsv.gz'.format(experiment_id)
         # )
-        f = 'tenx_input_data/{}/barcode.tsv.gz'.format(experiment_id)
+        f = 'tenx_input_data/{}/barcodes.tsv.gz'.format(experiment_id)
         if not os.path.exists(f):
             os.link(value['barcode'], f)
         f = 'tenx_input_data/{}/features.tsv.gz'.format(experiment_id)
