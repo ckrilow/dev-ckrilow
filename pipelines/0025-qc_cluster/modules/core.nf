@@ -98,9 +98,10 @@ process merge_samples {
             --barcodes_list ${files__barcodes} \
             --features_list ${files__features} \
             --matrix_list ${files__matrix} \
-            --tenxdata_file ${file_paths_10x}
-        0025-scanpy_merge.py \
             --tenxdata_file ${file_paths_10x} \
+            --output_file nf_prepped__file_paths_10x.tsv
+        0025-scanpy_merge.py \
+            --tenxdata_file nf_prepped__file_paths_10x.tsv \
             --sample_metadata_file ${file_metadata} \
             --sample_metadata_columns_delete "sample_status,study,study_id" \
             --metadata_key ${metadata_key} \
@@ -230,7 +231,7 @@ process plot_qc {
         0027-calculate_mads.py \
             --h5_anndata ${file__anndata} \
             --qc_key 'pct_counts_mito_gene' \
-            --output_file ${outfile} 
+            --output_file ${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
