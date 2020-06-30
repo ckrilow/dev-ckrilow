@@ -58,56 +58,64 @@ def main():
 
     options = parser.parse_args()
 
-    if options.of == '':
+    output_file = options.of
+    if output_file == '':
         output_file = 'mads-{}'.format(
-            options.qc_key
-        )
-    else:
-        output_file = '{}-mads-{}'.format(
-            options.of,
             options.qc_key
         )
 
     # Load the AnnData file
     adata = sc.read_h5ad(filename=options.h5)
 
-    df = adata.obs[[options.qc_key]]
-    med = np.median(df[options.qc_key])
-    mad = stats.median_abs_deviation(df[options.qc_key])
-    mad1 = med+(1*mad)
-    mad2 = med+(2*mad)
-    mad3 = med+(3*mad)
+    qc_keys = options.qc_key.split(',')
+    df_dict = {
+        'variable': [],
+        'experiment_id': [],
+        'cutoff_type': [],
+        'cutoff': [],
+        'cutoff_round': []
+    }
+    for qc_key in qc_keys:
+        med = np.median(adata.obs[qc_key])
+        mad = stats.median_abs_deviation(adata.obs[qc_key])
+        for i in [1, 2, 3]:
+            df_dict['variable'].append(qc_key)
+            df_dict['experiment_id'].append('all_experiment_ids')
+            df_dict['cutoff_type'].append('median+({}*mad)'.format(i))
+            df_dict['cutoff'].append(med+(i*mad))
+            df_dict['cutoff_round'].append(round(med+(i*mad)))
+        for i in [1, 2, 3]:
+            df_dict['variable'].append(qc_key)
+            df_dict['experiment_id'].append('all_experiment_ids')
+            df_dict['cutoff_type'].append('median-({}*mad)'.format(i))
+            df_dict['cutoff'].append(med-(i*mad))
+            df_dict['cutoff_round'].append(round(med-(i*mad)))
 
-    dat = {
-        'stats': [med, mad1, mad2, mad3],
-        'round': [round(med), round(mad1), round(mad2), round(mad3)]}
-    df1 = pd.DataFrame(
-        dat,
-        index=['median', 'median + 1*mad', 'median + 2*mad', 'median + 3*mad'])
-
-    df1.to_csv(
-        '{}-mads.tsv'.format(output_file),
+    df = pd.DataFrame(df_dict)
+    df.to_csv(
+        '{}.tsv'.format(output_file),
         sep='\t',
-        index=True
+        index=False
     )
 
-    gplt = plt9.ggplot(df, plt9.aes(x=options.qc_key))
-    gplt = gplt + plt9.geom_histogram()
-    gplt = gplt + plt9.geom_vline(
-                            xintercept=med, linetype="dashed", color="red")
-    gplt = gplt + plt9.geom_vline(
-                            xintercept=mad1, linetype="dashed", color="red")
-    gplt = gplt + plt9.geom_vline(
-                            xintercept=mad2, linetype="dashed", color="red")
-    gplt = gplt + plt9.geom_vline(
-                            xintercept=mad3, linetype="dashed", color="red")
-
-    gplt.save(
-        '{}.png'.format(output_file),
-        dpi=300,
-        width=5,
-        height=4
-    )
+    for qc_key in qc_keys:
+        gplt = plt9.ggplot(adata.obs, plt9.aes(x=qc_key))
+        gplt = gplt + plt9.geom_histogram()
+        filt = (df['variable'] == qc_key) & np.in1d(df['cutoff_type'].values, [
+            'median+({}*mad)'.format(i) for i in [1, 2, 3]
+        ])
+        for cut in df.loc[filt, 'cutoff']:
+            gplt = gplt + plt9.geom_vline(
+                xintercept=cut,
+                linetype="dashed",
+                color="red"
+            )
+        gplt.save(
+            '{}-{}.png'.format(output_file, qc_key),
+            dpi=300,
+            width=5,
+            height=4
+        )
 
 
 if __name__ == '__main__':
