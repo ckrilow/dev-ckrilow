@@ -31,6 +31,9 @@ np.random.seed(seed_value)
 
 sns.set(style='whitegrid')
 
+# Set the default dpi
+plt9.options.dpi = 100
+
 
 def custom_cmap(rgb_list):
     """Make a custom cmap."""
@@ -121,8 +124,8 @@ def plot_scrub_hist(
     gplt = gplt + plt9.theme(subplots_adjust={'wspace': 0.35})
 
     gplt.save(
-        '{}.pdf'.format(output_file),
-        dpi=300,
+        '{}.png'.format(output_file),
+        # dpi=300,
         width=4,
         height=2,
         limitsize=False
@@ -296,58 +299,26 @@ def run_scrublet(
     plot_scrub_hist(
         scrub=scrub,
         threshold=threshold,
-        density=True,
-        scale_y_log10=False,
-        output_file='{}-density_multiplet_scores'.format(out_file_base)
-    )
-    plot_scrub_hist(
-        scrub=scrub,
-        threshold=threshold,
         zscores=True,
         output_file='{}-histogram_multiplet_zscores'.format(out_file_base)
     )
+    # plot_scrub_hist(
+    #     scrub=scrub,
+    #     threshold=threshold,
+    #     density=True,
+    #     scale_y_log10=False,
+    #     output_file='{}-density_multiplet_scores'.format(out_file_base)
+    # )
     # fig, ax = scrub.plot_histogram(
     #     scale_hist_obs='linear',
     #     scale_hist_sim='linear'
     # )
     # fig.savefig(
     #     '{}-histogram_multiplet_scores_v2.pdf'.format(out_file_base),
-    #     dpi=300,
+    #     # dpi=300,
     #     bbox_inches='tight'
     # )
     # plt.close(fig)
-
-    # Plot UMAP embedding.
-    scrub.set_embedding('UMAP', scr.get_umap(scrub.manifold_obs_))
-    fig, ax = scrub.plot_embedding(
-        'UMAP',
-        marker_size=1.5,
-        color_map=custom_cmap(zissou_palette_rgb),
-        order_points=True
-    )
-    fig.savefig(
-        '{}-umap_multiplet_scores.png'.format(out_file_base),
-        dpi=300,
-        bbox_inches='tight'
-    )
-    plt.close(fig)
-
-    fig, ax = scrub.plot_embedding(
-        'UMAP',
-        score='zscore',
-        marker_size=1.5,
-        color_map=custom_cmap(zissou_palette_rgb),
-        order_points=True
-    )
-    fig.savefig(
-        '{}-umap_multiplet_zscores.png'.format(out_file_base),
-        dpi=300,
-        bbox_inches='tight'
-    )
-    plt.close(fig)
-
-    # Plot tSNE embedding.
-    # scrub.set_embedding('tSNE', scr.get_tsne(scrub.manifold_obs_, angle=0.9))
 
     # Plot the average number of UMIs in multiplets vs singlets.
     if 'total_counts' not in adata.obs.columns:
@@ -376,10 +347,44 @@ def run_scrublet(
     # plt.legend(loc='upper left', bbox_to_anchor=(1.03, 1))
     fig.savefig(
         '{}-boxplot_total_umi_counts.png'.format(out_file_base),
-        dpi=300,
+        # dpi=300,
         bbox_inches='tight'
     )
     plt.close(fig)  # Close the figure.
+
+    # NOTE: Removed UMAP embedding on 30/06/2020 because it would not
+    # work with singularity.
+    # Plot UMAP embedding.
+    # scrub.set_embedding('UMAP', scr.get_umap(scrub.manifold_obs_))
+    # fig, ax = scrub.plot_embedding(
+    #     'UMAP',
+    #     marker_size=1.5,
+    #     color_map=custom_cmap(zissou_palette_rgb),
+    #     order_points=True
+    # )
+    # fig.savefig(
+    #     '{}-umap_multiplet_scores.png'.format(out_file_base),
+    #     # dpi=300,
+    #     bbox_inches='tight'
+    # )
+    # plt.close(fig)
+    #
+    # fig, ax = scrub.plot_embedding(
+    #     'UMAP',
+    #     score='zscore',
+    #     marker_size=1.5,
+    #     color_map=custom_cmap(zissou_palette_rgb),
+    #     order_points=True
+    # )
+    # fig.savefig(
+    #     '{}-umap_multiplet_zscores.png'.format(out_file_base),
+    #     # dpi=300,
+    #     bbox_inches='tight'
+    # )
+    # plt.close(fig)
+
+    # Plot tSNE embedding.
+    # scrub.set_embedding('tSNE', scr.get_tsne(scrub.manifold_obs_, angle=0.9))
 
 
 def main():
