@@ -13,6 +13,29 @@ if (binding.hasVariable("echo_mode") == false) {
 }
 
 
+process prep_merge_samples {
+    input:
+        tuple(
+            val(experiment_id),
+            path(file_10x_barcodes),
+            path(file_10x_features),
+            path(file_10x_matrix)
+        )
+
+    output:
+        path("${experiment_id}---barcodes.tsv.gz", emit: barcodes)
+        path("${experiment_id}---features.tsv.gz", emit: features)
+        path("${experiment_id}---matrix.mtx.gz", emit: matrix)
+
+    script:
+        """
+        ln --physical ${file_10x_barcodes} ${experiment_id}---barcodes.tsv.gz
+        ln --physical ${file_10x_features} ${experiment_id}---features.tsv.gz
+        ln --physical ${file_10x_matrix} ${experiment_id}---matrix.mtx.gz
+        """
+}
+
+
 process merge_samples {
     // Takes a list of raw 10x files and merges them into one anndata object.
     // ------------------------------------------------------------------------
@@ -33,6 +56,9 @@ process merge_samples {
         path(file_params)
         path(file_cellmetadata)
         val(metadata_key)
+        file(file_10x_barcodes)
+        file(file_10x_features)
+        file(file_10x_matrix)
 
     // NOTE: use path here and not file see:
     //       https://github.com/nextflow-io/nextflow/issues/1414
@@ -59,14 +85,23 @@ process merge_samples {
         if (file_cellmetadata.name != "no_file__file_cellmetadata") {
             cmd__cellmetadata = "--cell_metadata_file ${file_cellmetadata}"
         }
+        files__barcodes = file_10x_barcodes.join(',')
+        files__features = file_10x_features.join(',')
+        files__matrix = file_10x_matrix.join(',')
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "merge_samples: ${process_info}"
         rm -fr plots
-        0025-scanpy_merge.py \
+        0025-nf_helper__prep_tenxdata_file.py \
+            --barcodes_list ${files__barcodes} \
+            --features_list ${files__features} \
+            --matrix_list ${files__matrix} \
             --tenxdata_file ${file_paths_10x} \
+            --output_file nf_prepped__file_paths_10x.tsv
+        0025-scanpy_merge.py \
+            --tenxdata_file nf_prepped__file_paths_10x.tsv \
             --sample_metadata_file ${file_metadata} \
             --sample_metadata_columns_delete "sample_status,study,study_id" \
             --metadata_key ${metadata_key} \
@@ -150,6 +185,7 @@ process plot_qc {
         val(outdir, emit: outdir)
         path("plots/*.png")
         path("plots/*.pdf") optional true
+        path("*.tsv") optional true
 
     script:
         runid = random_hex(16)
@@ -192,6 +228,10 @@ process plot_qc {
             ${cmd__facet_columns}
         ${cmd__anndataobs}
         ${cmd__anndataobs_ecdf}
+        0027-calculate_mads.py \
+            --h5_anndata ${file__anndata} \
+            --qc_key 'pct_counts_mito_gene,total_counts,n_genes_by_counts' \
+            --output_file ${outfile}-mads
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true

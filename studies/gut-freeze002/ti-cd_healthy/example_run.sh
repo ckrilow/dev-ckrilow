@@ -8,6 +8,8 @@ export REPO_MODULE="${HOME}/repo/sc_nextflow/pipelines/0025-qc_cluster"
 export STUDY_DIR="${HOME}/repo/sc_nextflow/studies/gut-freeze002/ti-cd_healthy"
 
 # Add Sanger install of singularity if not already in path.
+# NOTE: if image is pulled from shub, the singularity version should match
+# shub... currently 3.4.2 is the most up to date version on shub.
 if [ -z "$(command -v singularity)" ]; then
    echo "adding singularity to path"
    export PATH="/software/singularity-v3.5.3/bin:${PATH}"

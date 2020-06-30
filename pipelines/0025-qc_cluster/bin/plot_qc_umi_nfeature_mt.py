@@ -33,8 +33,8 @@ def calculate_density(df_plot, facet_column):
     """
     if facet_column == 'none':
         den_array = np.vstack([
-            df_plot['total_counts'],
-            df_plot['n_genes_by_counts']
+            np.log10(df_plot['total_counts']),
+            np.log10(df_plot['n_genes_by_counts'])
         ])
         return(stat.gaussian_kde(den_array)(den_array))
 
@@ -112,12 +112,9 @@ def plot_umi_ngene_mt(
         gplt = gplt + plt9.guides(color=plt9.guide_colorbar(ticks=False))
     elif color_var == 'cell_passes_qc':
         gplt = gplt + plt9.scale_colour_brewer(type='qual', palette='Dark2')
-    # elif color_var == '1251234_density':
-    #     gplt = gplt + plt9.scale_color_distiller(
-    #         type='div',
-    #         palette='viridis'
-    #         # palette='Spectral'
-    #     )
+    elif color_var == '1251234_density':
+        gplt = gplt + plt9.scale_color_cmap(cmap_name='viridis')
+
     gplt = gplt + plt9.labs(
         x='Number of molecules',
         y='Number of genes detected',
@@ -292,7 +289,7 @@ def main():
             ),
             facet_column=facet,
             color_var='density',
-            density_contour=False
+            density_contour=True
         )
         if 'cell_passes_qc' in adata.obs:
             plot_umi_ngene_mt(
