@@ -230,8 +230,8 @@ process plot_qc {
         ${cmd__anndataobs_ecdf}
         0027-calculate_mads.py \
             --h5_anndata ${file__anndata} \
-            --qc_key 'pct_counts_mito_gene' \
-            --output_file ${outfile}
+            --qc_key 'pct_counts_mito_gene,total_counts,n_genes_by_counts' \
+            --output_file ${outfile}-mads
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
