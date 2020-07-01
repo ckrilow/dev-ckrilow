@@ -73,8 +73,8 @@ def main():
     elif data_scale == 'log1p_cp10k':  # Set X to log1p_cp10k
         adata.X = adata.layers['log1p_cp10k']
     elif data_scale == 'counts':
-        # adata.X = adata.layers['counts']
-        adata = adata.raw.to_adata()
+        adata.X = adata.layers['counts']
+        #adata = adata.raw.to_adata() # This is not counts.
 
     # Read in the marker database file
     df = pd.read_table(options.markers_database_tsv)
@@ -103,12 +103,29 @@ def main():
         print(i, i_out)
 
         # Dotplots
+        # Generate dendrogram using the marker genes... this will be used in the
+        # below dotplots.
+        # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error.
+        run_dendrogram = False
+        if run_dendrogram:
+            sc.tl.dendrogram(
+                adata,
+                groupby='cluster',
+                use_rep='X_pca',
+                var_names=marker_dict_plt,
+                use_raw=False,
+                cor_method='pearson',
+                linkage_method='complete',
+                optimal_ordering=True,
+                inplace=True
+            )
+                                                                                                                                            )
         _ = sc.pl.dotplot(
             adata=adata,
             var_names=marker_genes_found,
             groupby='cluster',
             gene_symbols='gene_symbols',
-            dendrogram=True,
+            dendrogram=run_dendrogram,
             show=False,
             use_raw=False,
             log=False,
@@ -124,7 +141,7 @@ def main():
             var_names=marker_genes_found,
             groupby='cluster',
             gene_symbols='gene_symbols',
-            dendrogram=True,
+            dendrogram=run_dendrogram,
             show=False,
             standard_scale='var',  # Scale color between 0 and 1
             use_raw=False,
