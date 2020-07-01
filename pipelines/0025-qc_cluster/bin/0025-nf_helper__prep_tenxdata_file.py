@@ -131,6 +131,10 @@ def main():
             os.link(value['matrix'], f)
 
     output_df = pd.DataFrame(output_dict)
+    output_df = output_df.sort_values(
+        by=['experiment_id'],
+        ascending=[True]
+    )
     output_df.to_csv(options.of, sep='\t')
 
 
