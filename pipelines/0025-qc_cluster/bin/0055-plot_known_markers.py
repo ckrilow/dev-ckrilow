@@ -119,7 +119,7 @@ def main():
                 optimal_ordering=True,
                 inplace=True
             )
-                                                                                                                                            )
+        
         _ = sc.pl.dotplot(
             adata=adata,
             var_names=marker_genes_found,
