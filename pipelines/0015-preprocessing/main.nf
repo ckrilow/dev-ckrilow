@@ -87,7 +87,8 @@ channel__file_paths_10x = Channel
         row.experiment_id,
         file("${row.data_path_10x_format}/barcodes.tsv.gz"),
         file("${row.data_path_10x_format}/features.tsv.gz"),
-        file("${row.data_path_10x_format}/matrix.mtx.gz")
+        file("${row.data_path_10x_format}/matrix.mtx.gz"),
+        ncells_expected
     )}
 //n_experiments = file(params.file_paths_10x).countLines()
 
