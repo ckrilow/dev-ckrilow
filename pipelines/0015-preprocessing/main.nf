@@ -14,7 +14,11 @@ include {
 // Set default parameters.
 params.output_dir           = "nf-preprocessing"
 params.help                 = false
-
+// Default parameters for cellbender remove_background
+params.cellbender_rb = [
+    epochs: [value: [200]],
+    learning_rate: [value: [0.0001]]
+]
 
 // Define the help messsage.
 def help_message() {
@@ -94,7 +98,9 @@ workflow {
         // Correct counts matrix to remove ambient RNA
         cellbender__remove_background(
             params.output_dir,
-            channel__file_paths_10x
+            channel__file_paths_10x,
+            params.cellbender_rb.epochs,
+            params.cellbender_rb.learning_rate
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure

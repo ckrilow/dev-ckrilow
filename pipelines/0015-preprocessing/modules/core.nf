@@ -31,6 +31,8 @@ process cellbender__remove_background {
             path(file_10x_features),
             path(file_10x_matrix)
         )
+        val(epochs)
+        val(learning_rate)
 
     output:
         path("cellbender.h5", emit: h5)
@@ -46,7 +48,10 @@ process cellbender__remove_background {
     //       USER may need to play with the traing fraction and learning rate
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}"
+        outdir = "${outdir_prev}/${experiment_id}"
+        lr_string = "${learning_rate}".replaceAll("\\.", "pt")
+        outfile = "cellbender-epochs_${epochs}"
+        outfile = "${outfile}-learningrate_${lr_string}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -59,16 +64,16 @@ process cellbender__remove_background {
         ln --physical ${file_10x_matrix} input/matrix.mtx.gz
         cellbender remove-background \
             --input input
-            --output cellbender \
+            --output ${outfile} \
             --cuda \
             --expected-cells 6036 \
             --total-droplets-included 250000 \
             --z-dim 200 \
             --z-layers 1000 \
             --low-count-threshold 5 \
-            --epochs 200 \
-            --empty-drop-training-fraction 0.25 \
-            --learning-rate 0.0001
+            --epochs ${epochs} \
+            --empty-drop-training-fraction 0.5 \
+            --learning-rate ${learning_rate}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
