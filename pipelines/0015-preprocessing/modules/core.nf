@@ -62,12 +62,15 @@ process cellbender__remove_background {
         ln --physical ${file_10x_barcodes} input/barcodes.tsv.gz
         ln --physical ${file_10x_features} input/features.tsv.gz
         ln --physical ${file_10x_matrix} input/matrix.mtx.gz
+        015-get_estimates_from_umi_counts.py \
+            --tenxdata_path input \
+            --output_file ${experiment_id}
         cellbender remove-background \
             --input input
             --output ${outfile} \
             --cuda \
-            --expected-cells 6036 \
-            --total-droplets-included 250000 \
+            --expected-cells $(cat ${experiment_id}-expected_cells.txt) \
+            --total-droplets-included $(cat ${experiment_id}-total_droplets_included.txt) \
             --z-dim 200 \
             --z-layers 1000 \
             --low-count-threshold 5 \
