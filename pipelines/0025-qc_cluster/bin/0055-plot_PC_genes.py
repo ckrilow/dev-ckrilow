@@ -11,14 +11,64 @@ import re
 import scanpy as sc
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
+from matplotlib import gridspec
 
+# Nice large palette.
+COLORS_LARGE_PALLETE = [
+    '#0F4A9C', '#3F84AA', '#C9EBFB', '#8DB5CE', '#C594BF', '#DFCDE4',
+    '#B51D8D', '#6f347a', '#683612', '#B3793B', '#357A6F', '#989898',
+    '#CE778D', '#7F6874', '#E09D37', '#FACB12', '#2B6823', '#A0CC47',
+    '#77783C', '#EF4E22', '#AF1F26'
+]
+
+def save_pc_fig(
+     adata,
+    dict__umap_dim_and_params,
+    out_file_base,
+    color_var,
+    colors_quantitative=True,
+    colors_large_palette=COLORS_LARGE_PALLETE,
+    drop_legend=-1
+):
+    """
+    Create and save a figure containing the cells plotted in the space of \
+    two principal components.
+    """
+
+def save_pc_genes_fig(
+     adata,
+    dict__umap_dim_and_params,
+    out_file_base,
+    color_var,
+    colors_quantitative=True,
+    colors_large_palette=COLORS_LARGE_PALLETE,
+    drop_legend=-1
+):
+    """
+    Create and save a figure containing the top genes that contribute to a \
+    principal component.
+    """
+    
+    # Plot the top genes contributing to each principal component
+    adata_temp = adata.copy()
+    adata_temp.var_names = adata_temp.var.gene_symbols
+    pcs_to_plot = ','.join(map(str,list(range(1,num_PCs))))
+
+    sc.pl.pca_loadings(
+        adata=adata_temp,
+        include_lowest=False,
+        components = pcs_to_plot
+        )
 
 def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read AnnData object with principal components. Plot the PC loadings \
-            principal component, plot top genes ranked by their contribution.
+            Read AnnData object with principal components. Plot the cells in \
+            principal component coordinates and plot top genes in each component\
+            ranked by their contribution.
             """
     )
 
@@ -31,7 +81,7 @@ def main():
     )
 
     parser.add_argument(
-        '--num_pcs}',
+        '--num_pcs',
         action='store',
         dest='num_PCs',
         default='20',
@@ -66,53 +116,23 @@ def main():
     # Read in the data
     adata = sc.read_h5ad(filename=options.h5)
 
-    cell_type = np.unique(df['cell_type'])
-    for i in cell_type:
-        marker_genes = df.loc[df['cell_type'] == i]['hgnc_symbol']
-        marker_genes_found = adata.var['gene_symbols'][
-            adata.var['gene_symbols'].isin(marker_genes)
-        ]
-        # If there are loads of markers, just take the top 100
-        if marker_genes_found.size > 100:
-            marker_genes_found = marker_genes_found[0:100]
+    # Plot the cells in the principal component space
+    pc_pairs_to_plot = ["{},{}".format(i,i+1) for i in range(1,options.num_PCs,2)]
 
-        # Clean up cell id names
-        i_out = re.sub(r'\W+', '', i)  # Strip all non alphanumeric characters
-        print(i, i_out)
+    sc.pl.pca(
+        adata=adata,
+        color=color_var,
+        palette=color_palette,
+        components=pc_pairs_to_plot,
+        alpha=0.4
+        )
 
-        # Dotplots
-        _ = sc.pl.dotplot(
-            adata=adata,
-            var_names=marker_genes_found,
-            groupby='cluster',
-            gene_symbols='gene_symbols',
-            dendrogram=True,
-            show=False,
-            use_raw=False,
-            log=False,
-            color_map='Blues',
-            save='-{}-{}-{}.png'.format(
-                out_file_base,
-                i_out,
-                data_scale
-            )
-        )
-        _ = sc.pl.dotplot(
-            adata=adata,
-            var_names=marker_genes_found,
-            groupby='cluster',
-            gene_symbols='gene_symbols',
-            dendrogram=True,
-            show=False,
-            standard_scale='var',  # Scale color between 0 and 1
-            use_raw=False,
-            color_map='Blues',
-            save='-{}-{}-{}_standardized.png'.format(
-                out_file_base,
-                i_out,
-                data_scale
-            )
-        )
+
+    fig.savefig(
+        '{}-{}.png'.format(out_file_base, color_var),
+        dpi=300,
+        bbox_inches='tight'
+    )
 
 
 if __name__ == '__main__':
