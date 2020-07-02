@@ -1,0 +1,11 @@
+cellbender_rb:
+    description: 'Parameters for cellbender remove background.'
+    epochs:
+        description: 'Number of epochs for traning.'
+        value:
+            - 200
+    learning_rate:
+        description: 'Learning rate. If lower learning rate, may need to
+            increase the number of epochs.'
+        value:
+            - 0.0001

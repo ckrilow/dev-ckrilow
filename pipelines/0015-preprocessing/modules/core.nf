@@ -29,21 +29,21 @@ process cellbender__remove_background {
             val(experiment_id),
             path(file_10x_barcodes),
             path(file_10x_features),
-            path(file_10x_matrix)
+            path(file_10x_matrix),
+            val(ncells_expected)
         )
         val(epochs)
         val(learning_rate)
 
     output:
-        path("cellbender.h5", emit: h5)
-        path("cellbender_filtered.h5", emit: h5_filtered)
-        path("cellbender_cell_barcodes.csv", emit: barcodes)
-        path("cellbender.log", emit: log)
+        path("${outfile}.h5", emit: h5)
+        path("${outfile}_filtered.h5", emit: h5_filtered)
+        path("${outfile}_cell_barcodes.csv", emit: barcodes)
+        path("${outfile}.log", emit: log)
         path("plots/*.png") optional true
+        path("plots/*.pdf") optional true
 
-    // TODO: (a) automatically set --expected-cells and
-    //       --total-droplets-included based on UMI curve
-    //       (b) convert out h5 file to barcodes.tsv.gz, features.tsv.gz and
+    // TODO: convert out h5 file to barcodes.tsv.gz, features.tsv.gz and
     //           matrix.mtx.gz
     //       USER may need to play with the traing fraction and learning rate
     script:
@@ -52,6 +52,10 @@ process cellbender__remove_background {
         lr_string = "${learning_rate}".replaceAll("\\.", "pt")
         outfile = "cellbender-epochs_${epochs}"
         outfile = "${outfile}-learningrate_${lr_string}"
+        cmd__expected_ncells = ""
+        if ("${ncells_expected}" != "NA") {
+            cmd__expected_ncells = "--cmd__expected_ncells ${ncells_expected}"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -64,7 +68,10 @@ process cellbender__remove_background {
         ln --physical ${file_10x_matrix} input/matrix.mtx.gz
         015-get_estimates_from_umi_counts.py \
             --tenxdata_path input \
-            --output_file ${experiment_id}
+            --output_file ${experiment_id} \
+            --lower_bound_cell_estimate 100 \
+            --lower_bound_total_droplets_included 10 \
+            ${cmd__expected_ncells}
         cellbender remove-background \
             --input input
             --output ${outfile} \
@@ -73,7 +80,7 @@ process cellbender__remove_background {
             --total-droplets-included $(cat ${experiment_id}-total_droplets_included.txt) \
             --z-dim 200 \
             --z-layers 1000 \
-            --low-count-threshold 5 \
+            --low-count-threshold 10 \
             --epochs ${epochs} \
             --empty-drop-training-fraction 0.5 \
             --learning-rate ${learning_rate}
