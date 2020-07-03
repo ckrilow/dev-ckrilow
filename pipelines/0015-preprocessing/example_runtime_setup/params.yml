@@ -4,8 +4,10 @@ cellbender_rb:
         description: 'Number of epochs for traning.'
         value:
             - 200
+            - 1000
     learning_rate:
         description: 'Learning rate. If lower learning rate, may need to
             increase the number of epochs.'
         value:
+            - 0.001
             - 0.0001
