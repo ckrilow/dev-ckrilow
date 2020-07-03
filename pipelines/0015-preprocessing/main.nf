@@ -7,6 +7,7 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 
 // Modules to include.
 include {
+    cellbender__rb__get_input_cells;
     cellbender__remove_background;
 } from "./modules/core.nf"
 
@@ -17,7 +18,7 @@ params.help                 = false
 // Default parameters for cellbender remove_background
 params.cellbender_rb = [
     epochs: [value: [200]],
-    learning_rate: [value: [0.0001]]
+    learning_rate: [value: [0.001, 0.0001]]
 ]
 
 // Define the help messsage.
@@ -96,10 +97,19 @@ channel__file_paths_10x = Channel
 // Run the workflow.
 workflow {
     main:
-        // Correct counts matrix to remove ambient RNA
-        cellbender__remove_background(
+        // Prep the data for cellbender
+        cellbender__rb__get_input_cells(
             params.output_dir,
             channel__file_paths_10x,
+            100, // lower_bound_cell_estimate
+            10 // lower_bound_total_droplets_included
+        )
+        // Correct counts matrix to remove ambient RNA
+        cellbender__remove_background(
+            cellbender__rb__get_input_cells.out.outdir,
+            channel__file_paths_10x,
+            cellbender__rb__get_input_cells.out.expected_cells,
+            cellbender__rb__get_input_cells.out.total_droplets_include,
             params.cellbender_rb.epochs.value,
             params.cellbender_rb.learning_rate.value
         )
