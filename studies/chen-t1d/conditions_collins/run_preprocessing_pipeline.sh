@@ -1,6 +1,6 @@
 #!/bin/sh
 
-source activate sc_qc_cluster
+source activate sc_preprocessing
 
 # Remove old logs but not the most previous run
 rm -r *html.*;
