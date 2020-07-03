@@ -1,7 +1,7 @@
-experiment_id	data_path_10x_format
-5892STDY8039073	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8039073/filtered_feature_bc_matrix
-5892STDY8357647	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8357647/filtered_feature_bc_matrix
-OTARscRNA8356686	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356686/filtered_feature_bc_matrix
-5892STDY8644400	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8644400/filtered_feature_bc_matrix
-5892STDY8644401	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8644401/filtered_feature_bc_matrix
-OTARscRNA8356782	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356782/filtered_feature_bc_matrix
+experiment_id	data_path_10x_format	ncells_expected
+Crohns_Disease_Collection_Study8727392	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/blood/cd/Crohns_Disease_Collection_Study8727392/raw_feature_bc_matrix	NA
+Crohns_Disease_Collection_Study8727394	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/blood/cd/Crohns_Disease_Collection_Study8727394/raw_feature_bc_matrix	NA
+OTARscRNA8356110	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356110/raw_feature_bc_matrix	3000
+OTARscRNA8356782	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/healthy/OTARscRNA8356782/raw_feature_bc_matrix	3000
+5892STDY8644400	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8644400/raw_feature_bc_matrix	6000
+5892STDY8644401	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8644401/raw_feature_bc_matrix	6000
