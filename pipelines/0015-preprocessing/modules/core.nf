@@ -56,7 +56,7 @@ process cellbender__rb__get_input_cells {
         outfile = "${outfile}-lower_bound_total_droplets_included__${lower_bound_total_droplets_included}"
         cmd__expected_ncells = ""
         if ("${ncells_expected}" != "NA") {
-            cmd__expected_ncells = "--cmd__expected_ncells ${ncells_expected}"
+            cmd__expected_ncells = "--expected_ncells ${ncells_expected}"
         }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
@@ -147,6 +147,7 @@ process cellbender__remove_background {
             --epochs ${epochs} \
             --empty-drop-training-fraction 0.5 \
             --learning-rate ${learning_rate}
+        [ -f ${outfile} ] && mv ${outfile} ${outfile}.h5
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
