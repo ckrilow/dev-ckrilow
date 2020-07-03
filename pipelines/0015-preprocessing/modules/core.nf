@@ -19,6 +19,11 @@ process cellbender__rb__get_input_cells {
     scratch false        // use tmp directory
     echo echo_mode       // echo output from script
 
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
     input:
         val(outdir_prev)
         tuple(
@@ -91,6 +96,11 @@ process cellbender__remove_background {
     label 'gpu'          // use GPU
     scratch false        // use tmp directory
     echo echo_mode       // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
 
     input:
         val(outdir_prev)
