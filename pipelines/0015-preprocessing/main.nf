@@ -38,7 +38,7 @@ def help_message() {
 
     Optional arguments:
         --output_dir        Directory name to save results to. (Defaults to
-                            'nf-qc_cluster')
+                            '${params.output_dir}')
 
         -params-file        YAML file containing analysis parameters. See
                             example in example_runtime_setup/params.yml.

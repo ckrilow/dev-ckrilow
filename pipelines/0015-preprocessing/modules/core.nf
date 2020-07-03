@@ -76,8 +76,8 @@ process cellbender__remove_background {
             --input input
             --output ${outfile} \
             --cuda \
-            --expected-cells $(cat ${experiment_id}-expected_cells.txt) \
-            --total-droplets-included $(cat ${experiment_id}-total_droplets_included.txt) \
+            --expected-cells \$(cat ${experiment_id}-expected_cells.txt) \
+            --total-droplets-included \$(cat ${experiment_id}-total_droplets_included.txt) \
             --z-dim 200 \
             --z-layers 1000 \
             --low-count-threshold 10 \
