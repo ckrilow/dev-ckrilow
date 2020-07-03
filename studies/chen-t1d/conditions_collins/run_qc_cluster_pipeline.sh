@@ -41,11 +41,11 @@ export QT_QPA_PLATFORM='offscreen'
      -profile "sge_nih_trek" \
      --file_paths_10x "${STUDY_DIR}/file_paths_10x.tsv" \
      --file_metadata "${STUDY_DIR}/conditions_clinical_cr_metrics.tsv" \
-     --file_sample_qc "${STUDY_DIR}/params-sample_qc-doublets_parker_cutoffs.yml" \
+     --file_sample_qc "${STUDY_DIR}/qc_cluster_configs/params-sample_qc-doublets_parker_cutoffs.yml" \
      --genes_exclude_hvg "${STUDY_DIR}/../data-variable_gene_filter_ribo_mt.tsv" \
      --genes_score "${STUDY_DIR}/../data-gene_scores.tsv" \
      --output_dir "${OUTPUT_DIR}" \
-     -params-file "${STUDY_DIR}/params-analysis-parameter_sweep_v001_harmony.yml" \
+     -params-file "${STUDY_DIR}/qc_cluster_configs/params-analysis-parameter_sweep_v001_harmony.yml" \
      --run_multiplet \
      -with-report \
      -with-trace \
