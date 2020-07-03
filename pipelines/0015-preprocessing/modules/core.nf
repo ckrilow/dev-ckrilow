@@ -56,9 +56,11 @@ process cellbender__rb__get_input_cells {
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}/${experiment_id}"
-        outfile = "cellbender-umi_count_estimates"
-        outfile = "${outfile}-lower_bound_cell_estimate__${lower_bound_cell_estimate}"
-        outfile = "${outfile}-lower_bound_total_droplets_included__${lower_bound_total_droplets_included}"
+        outdir = "${outdir}/umi_count_estimate"
+        outdir = "${outdir}-ncells_expected__${ncells_expected}"
+        outdir = "${outdir}-lb_cell_estimate__${lower_bound_cell_estimate}"
+        outdir = "${outdir}-lb_total_droplets_include__${lower_bound_total_droplets_included}"
+        outfile = "umi_count_estimates"
         cmd__expected_ncells = ""
         if ("${ncells_expected}" != "NA") {
             cmd__expected_ncells = "--expected_ncells ${ncells_expected}"
@@ -132,7 +134,8 @@ process cellbender__remove_background {
         runid = random_hex(16)
         outdir = "${outdir_prev}" // /${experiment_id}"
         lr_string = "${learning_rate}".replaceAll("\\.", "pt")
-        outfile = "cellbender-epochs_${epochs}"
+        outfile = "cellbender"
+        outfile = "${outfile}-epochs_${epochs}"
         outfile = "${outfile}-learningrate_${lr_string}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
