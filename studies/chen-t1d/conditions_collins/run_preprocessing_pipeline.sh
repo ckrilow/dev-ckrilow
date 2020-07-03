@@ -39,7 +39,7 @@ export QT_QPA_PLATFORM='offscreen'
 /home/taylorhj/miniconda3/envs/nextflow20/bin/nextflow run \
     "${REPO_MODULE}/main.nf" \
      -profile "sge_nih_trek" \
-     --file_paths_10x "${STUDY_DIR}/file_paths_10x.tsv" \
+     --file_paths_10x "${STUDY_DIR}/file_paths_10x_unfiltered.tsv" \
      --file_metadata "${STUDY_DIR}/conditions_clinical_cr_metrics.tsv" \
      --file_sample_qc "${STUDY_DIR}/preprocessing_configs/params-sample_qc-doublets_parker_cutoffs.yml" \
      --genes_exclude_hvg "${STUDY_DIR}/../data-variable_gene_filter_ribo_mt.tsv" \
