@@ -12,7 +12,7 @@ sample_qc:
             description: 'Cell filters applied to all samples.'
             value:
                 - 'scrublet__predicted_multiplet == True'
-                - 'pct_counts_mito_gene > 38'
+                - 'pct_counts_mito_gene > 29'
                 - 'n_genes_by_counts < 100'
     downsample_cells_fraction:
         description: 'Downsample to this fraction of the number of
