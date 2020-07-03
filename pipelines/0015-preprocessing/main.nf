@@ -88,7 +88,7 @@ channel__file_paths_10x = Channel
         file("${row.data_path_10x_format}/barcodes.tsv.gz"),
         file("${row.data_path_10x_format}/features.tsv.gz"),
         file("${row.data_path_10x_format}/matrix.mtx.gz"),
-        ncells_expected
+        row.ncells_expected
     )}
 //n_experiments = file(params.file_paths_10x).countLines()
 
@@ -100,8 +100,8 @@ workflow {
         cellbender__remove_background(
             params.output_dir,
             channel__file_paths_10x,
-            params.cellbender_rb.epochs,
-            params.cellbender_rb.learning_rate
+            params.cellbender_rb.epochs.value,
+            params.cellbender_rb.learning_rate.value
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure

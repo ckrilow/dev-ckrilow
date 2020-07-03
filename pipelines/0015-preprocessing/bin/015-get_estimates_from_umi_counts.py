@@ -17,6 +17,9 @@ from kneed import KneeLocator
 from distutils.version import LooseVersion
 from scipy.interpolate import UnivariateSpline
 
+# To resolve strange TclError for interactive job
+import matplotlib
+matplotlib.use('Agg')  # Agg for png and pdf for pdf
 
 # Set seed for reproducibility
 seed_value = 0

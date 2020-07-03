@@ -32,8 +32,8 @@ process cellbender__remove_background {
             path(file_10x_matrix),
             val(ncells_expected)
         )
-        val(epochs)
-        val(learning_rate)
+        each epochs
+        each learning_rate
 
     output:
         path("${outfile}.h5", emit: h5)
@@ -62,18 +62,18 @@ process cellbender__remove_background {
         """
         echo "cellbender__remove_background: ${process_info}"
         rm -fr plots
-        mkdir input
-        ln --physical ${file_10x_barcodes} input/barcodes.tsv.gz
-        ln --physical ${file_10x_features} input/features.tsv.gz
-        ln --physical ${file_10x_matrix} input/matrix.mtx.gz
+        mkdir txd_input
+        ln --physical ${file_10x_barcodes} txd_input/barcodes.tsv.gz
+        ln --physical ${file_10x_features} txd_input/features.tsv.gz
+        ln --physical ${file_10x_matrix} txd_input/matrix.mtx.gz
         015-get_estimates_from_umi_counts.py \
-            --tenxdata_path input \
+            --tenxdata_path txd_input \
             --output_file ${experiment_id} \
             --lower_bound_cell_estimate 100 \
             --lower_bound_total_droplets_included 10 \
             ${cmd__expected_ncells}
         cellbender remove-background \
-            --input input
+            --input txd_input \
             --output ${outfile} \
             --cuda \
             --expected-cells \$(cat ${experiment_id}-expected_cells.txt) \
