@@ -38,7 +38,7 @@ export QT_QPA_PLATFORM='offscreen'
 /home/taylorhj/miniconda3/envs/nextflow20/bin/nextflow run \
     "${REPO_MODULE}/main.nf" \
      -profile "sge_nih_trek" \
-     --file_paths_10x "${STUDY_DIR}/file_paths_10x_unfiltered.tsv" \
+     --file_paths_10x "${STUDY_DIR}/file_paths_10x_unfiltered_single_sample.tsv" \
      --output_dir "${OUTPUT_DIR}" \
      -params-file "${STUDY_DIR}/preprocessing_configs/params.yml" \
      --run_multiplet \
