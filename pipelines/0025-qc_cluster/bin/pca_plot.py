@@ -24,7 +24,7 @@ COLORS_LARGE_PALLETE = [
 ]
 
 def save_pc_fig(
-     adata,
+    adata,
     dict__umap_dim_and_params,
     out_file_base,
     color_var,
@@ -36,14 +36,26 @@ def save_pc_fig(
     Create and save a figure containing the cells plotted in the space of \
     two principal components.
     """
+    # Plot the cells in the principal component space
+    pc_pairs_to_plot = ["{},{}".format(i,i+1) for i in range(1,options.num_PCs,2)]
+
+    sc.pl.pca(
+        adata=adata,
+        color=color_var,
+        palette=color_palette,
+        components=pc_pairs_to_plot,
+        alpha=0.4,
+        save='-{}-{}-pca.png'.format(
+            out_file_base,
+            color_var,
+        )
+
+
 
 def save_pc_genes_fig(
-     adata,
-    dict__umap_dim_and_params,
+    adata,
     out_file_base,
-    color_var,
-    colors_quantitative=True,
-    colors_large_palette=COLORS_LARGE_PALLETE,
+    component,
     drop_legend=-1
 ):
     """
@@ -59,16 +71,19 @@ def save_pc_genes_fig(
     sc.pl.pca_loadings(
         adata=adata_temp,
         include_lowest=False,
-        components = pcs_to_plot
+        components = pcs_to_plot,
+        save='-{}-{}-pc_loadings.png'.format(
+            out_file_base,
+            component,
         )
 
 def main():
     """Run CLI."""
     parser = argparse.ArgumentParser(
         description="""
-            Read AnnData object with principal components. Plot the cells in \
-            principal component coordinates and plot top genes in each component\
-            ranked by their contribution.
+            Read AnnData object with principal components calculated. Plot the \
+            cells in principal component coordinates and plot top genes in each \
+            component ranked by their contribution.
             """
     )
 
@@ -83,7 +98,7 @@ def main():
     parser.add_argument(
         '--num_pcs',
         action='store',
-        dest='num_PCs',
+        dest='num_pcs',
         default='20',
         help='Number of principal components to plot'
     )
@@ -98,6 +113,24 @@ def main():
             (default: None)'
     )
 
+    parser.add_argument(
+        '-cq', '--colors_quantitative',
+        action='store',
+        dest='cq',
+        default='',
+        help='Comma seperated list of quantitative variable names for colors.\
+            (default: "")'
+    )
+
+    parser.add_argument(
+        '-cc', '--colors_categorical',
+        action='store',
+        dest='cc',
+        default='',
+        help='Comma seperated list of categorical variable names for colors.\
+            (default: "")'
+    )
+
     options = parser.parse_args()
 
     # Scanpy settings
@@ -106,6 +139,10 @@ def main():
     # sc.settings.max_memory = 500  # in Gb
     sc.set_figure_params(dpi_save=300)
 
+
+    # Read in the data
+    adata = sc.read_h5ad(filename=options.h5)
+
     # Get the out file base.
     out_file_base = options.of
     if out_file_base == '':
@@ -113,27 +150,38 @@ def main():
             os.path.basename(options.h5.rstrip('h5ad').rstrip('.'))
         )
 
-    # Read in the data
-    adata = sc.read_h5ad(filename=options.h5)
+    
+    # Parse the color variables.
+    colors_quantitative = []
+    if options.cq != '':
+        colors_quantitative = options.cq.split(',')
 
-    # Plot the cells in the principal component space
-    pc_pairs_to_plot = ["{},{}".format(i,i+1) for i in range(1,options.num_PCs,2)]
+    colors_categorical = []
+    if options.cc != '':
+        colors_categorical = options.cc.split(',')
 
-    sc.pl.pca(
-        adata=adata,
-        color=color_var,
-        palette=color_palette,
-        components=pc_pairs_to_plot,
-        alpha=0.4
+    # For each color to plot, loop over the different iterations.
+    for color_var in colors_quantitative:
+        save_pc_fig(
+            adata=adata,
+            out_file_base=out_file_base,
+            color_var=color_var,
+            colors_quantitative=True
+        )
+    for color_var in colors_categorical:
+        save_pc_fig(
+            adata=adata,
+            out_file_base=out_file_base,
+            color_var=color_var,
+            colors_quantitative=False
         )
 
-
-    fig.savefig(
-        '{}-{}.png'.format(out_file_base, color_var),
-        dpi=300,
-        bbox_inches='tight'
-    )
-
+    for i in range(1, num_PCs):
+        save_pc_genes_fig(
+            adata=adata,
+            out_file_base=out_file_base,
+            component=i
+            )
 
 if __name__ == '__main__':
     main()

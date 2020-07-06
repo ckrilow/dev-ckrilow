@@ -16,6 +16,7 @@ include {
     estimate_pca_elbow;
     normalize_and_pca;
     subset_pcs;
+    plot_pcs;
     harmony;
     bbknn;
     lisi;
@@ -485,6 +486,13 @@ workflow {
                 params.umap.umap_init.value,
                 params.umap.umap_min_dist.value,
                 params.umap.umap_spread.value
+            )
+            plot_pcs(
+                cluster_subset_pcs__outdir,
+                cluster_subset_pcs__anndata,
+                params.reduced_dims.n_dims.value,
+                params.umap.colors_quantitative.value,
+                params.umap.colors_categorical.value
             )
         }
         if (params.harmony.run_process) {
