@@ -1,2 +1,2 @@
-experiment_id	data_path_10x_format	short_experiment_id	ncells_expected
-HPAP036	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP036/processed/raw_feature_bc_matrix	HPAP036	4243
+experiment_id	data_path_10x_format	short_experiment_id	ncells_expected	ndroplets_include_cellbender
+HPAP036	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP036/processed/raw_feature_bc_matrix	HPAP036	4243	NA
