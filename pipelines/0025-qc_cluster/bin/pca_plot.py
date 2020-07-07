@@ -22,6 +22,7 @@ COLORS_LARGE_PALLETE = [
     '#CE778D', '#7F6874', '#E09D37', '#FACB12', '#2B6823', '#A0CC47',
     '#77783C', '#EF4E22', '#AF1F26'
 ]
+VERBOSE = True
 
 def save_pc_fig(
     adata,
@@ -49,6 +50,7 @@ def save_pc_fig(
             out_file_base,
             color_var,
         )
+    )
 
 
 
@@ -76,6 +78,7 @@ def save_pc_genes_fig(
             out_file_base,
             component,
         )
+    )
 
 def main():
     """Run CLI."""
@@ -141,8 +144,11 @@ def main():
 
 
     # Read in the data
+    if VERBOSE:
+        print('Loading data')
     adata = sc.read_h5ad(filename=options.h5)
-
+    if VERBOSE:
+        print('Finished loading data')
     # Get the out file base.
     out_file_base = options.of
     if out_file_base == '':
@@ -175,8 +181,9 @@ def main():
             color_var=color_var,
             colors_quantitative=False
         )
-
+    num_PCs = int(options.num_pcs)
     for i in range(1, num_PCs):
+        print(i)
         save_pc_genes_fig(
             adata=adata,
             out_file_base=out_file_base,
