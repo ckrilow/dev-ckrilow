@@ -106,20 +106,20 @@ def main():
         # Generate dendrogram using the marker genes... this will be used in the
         # below dotplots.
         # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error.
-        run_dendrogram = False
+        run_dendrogram = True
         if run_dendrogram:
             sc.tl.dendrogram(
                 adata,
                 groupby='cluster',
                 use_rep='X_pca',
-                var_names=marker_dict_plt,
+                var_names=marker_genes_found,
                 use_raw=False,
                 cor_method='pearson',
                 linkage_method='complete',
                 optimal_ordering=True,
                 inplace=True
             )
-        
+
         _ = sc.pl.dotplot(
             adata=adata,
             var_names=marker_genes_found,
