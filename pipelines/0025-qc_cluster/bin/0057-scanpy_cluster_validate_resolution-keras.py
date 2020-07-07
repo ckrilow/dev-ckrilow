@@ -14,6 +14,8 @@ import scipy as sp
 import pandas as pd
 import scanpy as sc
 import csv
+from distutils.version import LooseVersion
+
 # import joblib  # for numpy matrix, joblib faster than pickle
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -50,6 +52,11 @@ random.seed(seed_value)
 np.random.seed(seed_value)
 # 3. Set the `tensorflow` pseudo-random generator at a fixed value
 tf.random.set_seed(seed_value)
+
+# Get compression opts for pandas
+compression_opts = 'gzip'
+if LooseVersion(pd.__version__) > '1.0.0':
+    compression_opts = dict(method='gzip', compresslevel=9)
 
 
 def _create_colors(classes):
@@ -723,7 +730,7 @@ def main():
             index=False,
             quoting=csv.QUOTE_NONNUMERIC,
             na_rep='',
-            compression='gzip'
+            compression=compression_opts
         )
 
         # Add a single columns that summarizes params
@@ -883,7 +890,7 @@ def main():
             index_label='cell_label',
             quoting=csv.QUOTE_NONNUMERIC,
             na_rep='',
-            compression='gzip'
+            compression=compression_opts
         )
         if verbose:
             print('Completed: save {}.'.format(out_f))
@@ -903,7 +910,7 @@ def main():
             # index_label='cell_label',
             quoting=csv.QUOTE_NONNUMERIC,
             na_rep='',
-            compression='gzip'
+            compression=compression_opts
         )
         if verbose:
             print('Completed: save {}.'.format(out_f))
@@ -926,7 +933,7 @@ def main():
             index_label='ensembl_gene_id',
             quoting=csv.QUOTE_NONNUMERIC,
             na_rep='',
-            compression='gzip'
+            compression=compression_opts
         )
         if verbose:
             print('Completed: save {}.'.format(out_f))
