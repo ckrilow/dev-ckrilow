@@ -19,8 +19,11 @@ import warnings
 
 # Silence NumbaPerformanceWarning in umap. See below:
 # https://github.com/lmcinnes/umap/issues/252
-from numba.errors import NumbaPerformanceWarning
-warnings.filterwarnings('ignore', category=NumbaPerformanceWarning)
+try:
+    from numba.errors import NumbaPerformanceWarning
+    warnings.filterwarnings('ignore', category=NumbaPerformanceWarning)
+except ImportError:
+    pass
 
 # To error out when 'FloatingPointError: divide by zero encountered in power'
 # from UMAP. This is usually caused by a poor choice of min_dist and spread
