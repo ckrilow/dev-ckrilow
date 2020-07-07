@@ -10,15 +10,15 @@ cellbender_rb:
             tissue / dataset - evaluate the UMI count plots across the full
             dataset before setting.'
         value:
-            - 50000
+            - 65000
     epochs:
         description: 'Number of epochs for traning.'
         value:
+            - 400
             - 1000
     learning_rate:
         description: 'Learning rate. If lower learning rate, may need to
             increase the number of epochs.'
         value:
-            - 0.001
             - 0.0001
             - 0.00001

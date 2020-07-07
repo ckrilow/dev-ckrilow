@@ -10,7 +10,7 @@ rm trace.txt.*;
 
 export REPO_MODULE="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/pipelines/0015-preprocessing"
 export STUDY_DIR="/cluster/ifs/projects/collins/taylorhj/projects/sc_nextflow/studies/chen-t1d/conditions_collins"
-export OUTPUT_DIR="${STUDY_DIR}/results/nf-preprocessing=parker_test"
+export OUTPUT_DIR="${STUDY_DIR}/results/nf-preprocessing=parker"
 
 # Nextflow settings
 export JAVA_HOME="/cluster/ifs/projects/collins/taylorhj/bin/jre1.8.0_251"
@@ -38,7 +38,7 @@ export QT_QPA_PLATFORM='offscreen'
 /home/taylorhj/miniconda3/envs/nextflow20/bin/nextflow run \
     "${REPO_MODULE}/main.nf" \
      -profile "sge_nih_trek" \
-     --file_paths_10x "${STUDY_DIR}/file_paths_10x_unfiltered_single_sample.tsv" \
+     --file_paths_10x "${STUDY_DIR}/file_paths_10x_unfiltered.tsv" \
      --output_dir "${OUTPUT_DIR}" \
      -params-file "${STUDY_DIR}/preprocessing_configs/params.yml" \
      --run_multiplet \
