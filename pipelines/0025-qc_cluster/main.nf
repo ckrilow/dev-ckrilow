@@ -219,9 +219,13 @@ channel__file_paths_10x = Channel
 // Initialize known markers channel
 // cluster__known_markers is a list of tsv files, first serialize
 // the array then run plot_known_markers
-channel__cluster__known_markers = Channel
-    .fromList(params.cluster.known_markers.value)
-    .map{row -> tuple(row.file_id, file(row.file))}
+if (params.cluster.known_markers.run_process) {
+    channel__cluster__known_markers = Channel
+        .fromList(params.cluster.known_markers.value)
+        .map{row -> tuple(row.file_id, file(row.file))}
+} else {
+    channel__cluster__known_markers = tuple('', '')
+}
 
 
 // Run the workflow.
