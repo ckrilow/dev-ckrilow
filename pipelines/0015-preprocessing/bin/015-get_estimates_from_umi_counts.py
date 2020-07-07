@@ -30,10 +30,15 @@ random.seed(seed_value)
 # 2. Set `numpy` pseudo-random generator at a fixed value
 np.random.seed(seed_value)
 
-# sc verbosity: errors (0), warnings (1), info (2), hints (3)
-# sc.settings.verbosity = 3
-# sc.logging.print_versions()
-# sc.settings.set_figure_params(dpi=80)
+# Set valid methods for estimators
+valid_methods = [
+    'dropletutils::barcoderanks::inflection',
+    'dropletutils::barcoderanks::knee',
+    'kneedle::spline=None',
+    'kneedle::spline=interp1d',
+    'kneedle::spline=polynomial'
+]
+
 
 
 def comma_labels(x_list):
@@ -250,22 +255,55 @@ def main():
     )
 
     parser.add_argument(
-        '-e', '--expected_ncells',
+        '--expected_ncells',
         action='store',
         dest='expected_ncells',
         default=0,
         type=int,
-        help='Expected number of cells. (default: %(default)s)'
+        help='Expected number of cells. If != 0, this number of cells \
+            will be used for expected_cells.txt. (default: %(default)s).'
     )
 
     parser.add_argument(
-        '--lower_bound_cell_estimate',
+        '--total_ndroplets',
         action='store',
-        dest='lb_cell_estimate',
+        dest='total_ndroplets',
+        default=0,
+        type=int,
+        help='Expected total number of droplets. If != 0, this number of \
+            will be used for total_droplets_included.txt. \
+            (default: %(default)s).'
+    )
+
+    parser.add_argument(
+        '--method_expected_ncells',
+        action='store',
+        dest='method_expected_ncells',
+        default='dropletutils::barcoderanks::inflection',
+        help='Method to use to estimate number of cells if \
+            expected_ncells == 0. Valid options = [{}]. \
+            (default: %(default)s)'.format(','.join(valid_methods))
+    )
+
+    parser.add_argument(
+        '--method_total_ndroplets',
+        action='store',
+        dest='method_total_ndroplets',
+        default='dropletutils::barcoderanks::inflection',
+        help='Method to use to estimate total number of droplets if \
+            total_ndroplets == 0. Valid options = [{}]. \
+            (default: %(default)s)'.format(','.join(valid_methods))
+    )
+
+    parser.add_argument(
+        '--lower_bound_expected_ncells',
+        action='store',
+        dest='lb_expected_ncells',
         default=100,
         type=int,
         help='The lower bound on the total UMI count at or below which all \
-            barcodes are assumed to correspond to empty droplets. \
+            barcodes are assumed to correspond to empty droplets (for \
+            estimating expected ncells). \
             (default: %(default)s)'
     )
 
@@ -279,6 +317,17 @@ def main():
             with ambient RNA that will be included in cellbender to \
             estimate the background. \
             (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '--total_ndroplets_subtract_factor',
+        action='store',
+        dest='total_ndroplets_subtract_factor',
+        default=2500,
+        type=int,
+        help='Subtract this number from total number of droplets \
+            (either estimated or passed directly) to get the final \
+            total_ndroplets. (default: %(default)s)'
     )
 
     parser.add_argument(
@@ -298,11 +347,19 @@ def main():
     if LooseVersion(pd.__version__) > '1.0.0':
         compression_opts = dict(method='gzip', compresslevel=9)
 
+    # Get clean names
     expected_ncells = options.expected_ncells
-    lb_cell_estimate = options.lb_cell_estimate
+    total_ndroplets = options.total_ndroplets
+    lb_cell_estimate = options.lb_expected_ncells
     lb_total_droplets_included = options.lb_total_droplets_included
     output_file = options.of
     verbose = True
+
+    # Check the methods
+    if options.method_expected_ncells not in valid_methods:
+        raise Exception('Invalid method_expected_ncells.')
+    if options.method_total_ndroplets not in valid_methods:
+        raise Exception('Invalid method_total_ndroplets.')
 
     # Load a file of the samples to analyse
     file = options.txd
@@ -394,10 +451,10 @@ def main():
     )
     # Get the expected number of cells based from the umi plot.
     # By default this is 'dropletutils::barcoderanks::inflection'
-    i = 'dropletutils::barcoderanks::inflection'
+    method_expected_ncells = options.method_expected_ncells
     if expected_ncells != 0:
-        i = 'expected_ncells'
-    filt = df_cell_estimate_cutoff['method'] == i
+        method_expected_ncells = 'expected_ncells'
+    filt = df_cell_estimate_cutoff['method'] == method_expected_ncells
     expected_cells = df_cell_estimate_cutoff.loc[filt, 'n_cells'].values[0]
     with open('{}-expected_cells.txt'.format(output_file), 'w') as f:
         f.write(str(int(expected_cells)))
@@ -420,6 +477,14 @@ def main():
     for i in result_kneedle:
         total_droplets_estimate_outdict.append(i)
 
+    # If we have an expected total number of droplets use that.
+    if total_ndroplets != 0:
+        total_droplets_estimate_outdict.append({
+            'method': 'expected_total_ndroplets',
+            'umi_counts_cutoff': df['umi_counts'][total_ndroplets],
+            'n_cells': total_ndroplets
+        })
+
     df_total_droplets_cutoff = pd.DataFrame(
         total_droplets_estimate_outdict
     )
@@ -434,15 +499,19 @@ def main():
     )
     # Get the expected number of cells based from the umi plot.
     # By default this is 'dropletutils::barcoderanks::inflection'
-    i = 'dropletutils::barcoderanks::inflection'
-    filt = df_total_droplets_cutoff['method'] == i
+    method_total_ndroplets = options.method_total_ndroplets
+    if total_ndroplets != 0:
+        method_expected_ncells = 'expected_total_ndroplets'
+    filt = df_total_droplets_cutoff['method'] == method_total_ndroplets
     total_droplets_cutoff_knee = df_total_droplets_cutoff.loc[
         filt, 'n_cells'
     ].values[0]
     # Based on the knee, add in a few thousand cells that we think are empty
     # these will be used to build the background predictor in cellbdender
     # and passed via the --total-droplets-included command.
-    total_droplets_included = total_droplets_cutoff_knee - 25000
+    total_droplets_included = (
+        total_droplets_cutoff_knee - options.total_ndroplets_subtract_factor
+    )
     # Save total_droplets_included
     with open('{}-total_droplets_included.txt'.format(output_file), 'w') as f:
         f.write(str(int(total_droplets_included)))
@@ -457,9 +526,7 @@ def main():
     _ = estimate_cutoffs_plot(
         '{}-total_drops_estimate_cutoffs-zoomed'.format(output_file),
         df_analysis,
-        pd.DataFrame(
-            total_droplets_estimate_outdict
-        ),
+        pd.DataFrame(total_droplets_estimate_outdict),
         # df_fit=df_fit,
         scale_x_log10=False,
         save_plot=True
@@ -467,11 +534,39 @@ def main():
     _ = estimate_cutoffs_plot(
         '{}-total_drops_estimate_cutoffs'.format(output_file),
         df,
-        pd.DataFrame(
-            total_droplets_estimate_outdict
-        ),
+        pd.DataFrame(total_droplets_estimate_outdict),
         # df_fit=df_fit,
         scale_x_log10=True
+    )
+
+    # Plot the final estimates togher
+    final_cutoffs = []
+    final_cutoffs.append({
+        'method': 'Estimated expected # cells',
+        'umi_counts_cutoff': 0,
+        'n_cells': expected_cells
+    })
+    final_cutoffs.append({
+        'method': 'Estimated total # droplets',
+        'umi_counts_cutoff': 0,
+        'n_cells': total_droplets_included
+    })
+    df_plt = df.loc[df['barcode'] <= total_droplets_cutoff_knee + 100, :]
+    _ = estimate_cutoffs_plot(
+        '{}-final_estimates'.format(output_file),
+        df_plt,
+        pd.DataFrame(final_cutoffs),
+        # df_fit=df_fit,
+        scale_x_log10=False,
+        save_plot=True
+    )
+    _ = estimate_cutoffs_plot(
+        '{}-final_estimates-scale_x_log10'.format(output_file),
+        df_plt,
+        pd.DataFrame(final_cutoffs),
+        # df_fit=df_fit,
+        scale_x_log10=True,
+        save_plot=True
     )
 
 

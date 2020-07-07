@@ -31,12 +31,10 @@ process cellbender__rb__get_input_cells {
             path(file_10x_barcodes),
             path(file_10x_features),
             path(file_10x_matrix),
-            val(ncells_expected),
-            val(ndroplets_include_cellbender)
+            val(ncells_expected)
         )
         val(lower_bound_cell_estimate)
         val(lower_bound_total_droplets_included)
-        each total_ndroplets_subtract_factor
 
     // TODO: see if possible to return value in expected_cells.txt and
     // total_droplets_included.txt rather than the file itself
@@ -58,19 +56,12 @@ process cellbender__rb__get_input_cells {
     script:
         runid = random_hex(16)
         outdir = "${outdir_prev}/${experiment_id}"
-        outdir = "${outdir}/umi_count_estimate"
-        outdir = "${outdir}-ncells_expected__${ncells_expected}"
-        outdir = "${outdir}-lb_cell_estimate__${lower_bound_cell_estimate}"
-        outdir = "${outdir}-lb_total_droplets_include__${lower_bound_total_droplets_included}"
-        outdir = "${outdir}-ndroplets_subtract_factor__${total_ndroplets_subtract_factor}"
-        outfile = "umi_count_estimates"
+        outfile = "cellbender-umi_count_estimates"
+        outfile = "${outfile}-lower_bound_cell_estimate__${lower_bound_cell_estimate}"
+        outfile = "${outfile}-lower_bound_total_droplets_included__${lower_bound_total_droplets_included}"
         cmd__expected_ncells = ""
         if ("${ncells_expected}" != "NA") {
             cmd__expected_ncells = "--expected_ncells ${ncells_expected}"
-        }
-        cmd__droplets_include = ""
-        if ("${ndroplets_include_cellbender}" != "NA") {
-            cmd__droplets_include = "--total_ndroplets ${ndroplets_include_cellbender}"
         }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
@@ -85,13 +76,10 @@ process cellbender__rb__get_input_cells {
         015-get_estimates_from_umi_counts.py \
             --tenxdata_path txd_input \
             --output_file ${outfile} \
-            --total_ndroplets_subtract_factor \
-                ${total_ndroplets_subtract_factor} \
-            --lower_bound_expected_ncells ${lower_bound_cell_estimate} \
+            --lower_bound_cell_estimate ${lower_bound_cell_estimate} \
             --lower_bound_total_droplets_included \
                 ${lower_bound_total_droplets_included} \
-            ${cmd__expected_ncells} \
-            ${cmd__droplets_include}
+            ${cmd__expected_ncells}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
@@ -121,8 +109,7 @@ process cellbender__remove_background {
             path(file_10x_barcodes),
             path(file_10x_features),
             path(file_10x_matrix),
-            val(ncells_expected),
-            val(ndroplets_include_cellbender)
+            val(ncells_expected)
         )
         path(expected_cells)
         path(total_droplets_include)
@@ -145,8 +132,7 @@ process cellbender__remove_background {
         runid = random_hex(16)
         outdir = "${outdir_prev}" // /${experiment_id}"
         lr_string = "${learning_rate}".replaceAll("\\.", "pt")
-        outfile = "cellbender"
-        outfile = "${outfile}-epochs_${epochs}"
+        outfile = "cellbender-epochs_${epochs}"
         outfile = "${outfile}-learningrate_${lr_string}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"

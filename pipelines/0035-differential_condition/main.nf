@@ -17,7 +17,6 @@ params.output_dir           = "nf-preprocessing"
 params.help                 = false
 // Default parameters for cellbender remove_background
 params.cellbender_rb = [
-    total_ndroplets_subtract_factor: [value: [65000]],
     epochs: [value: [200]],
     learning_rate: [value: [0.001, 0.0001]]
 ]
@@ -90,8 +89,7 @@ channel__file_paths_10x = Channel
         file("${row.data_path_10x_format}/barcodes.tsv.gz"),
         file("${row.data_path_10x_format}/features.tsv.gz"),
         file("${row.data_path_10x_format}/matrix.mtx.gz"),
-        row.ncells_expected,
-        row.ndroplets_include_cellbender
+        row.ncells_expected
     )}
 //n_experiments = file(params.file_paths_10x).countLines()
 
@@ -104,8 +102,7 @@ workflow {
             params.output_dir,
             channel__file_paths_10x,
             100, // lower_bound_cell_estimate
-            10, // lower_bound_total_droplets_included
-            params.cellbender_rb.total_ndroplets_subtract_factor.value
+            10 // lower_bound_total_droplets_included
         )
         // Correct counts matrix to remove ambient RNA
         cellbender__remove_background(

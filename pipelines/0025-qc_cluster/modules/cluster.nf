@@ -163,7 +163,10 @@ process plot_known_markers {
     input:
         val(outdir_prev)
         path(file__anndata)
-        each marker_file
+        tuple(
+            val(file_id),
+            path(marker_file)
+        )
 
     output:
         val(outdir, emit: outdir)
@@ -177,13 +180,13 @@ process plot_known_markers {
         // from the file__anndata job.
         // outfile = "${file__anndata}".minus(".h5ad")
         //     .split("-").drop(1).join("-")
-        outfile = "${marker_file.file_id}"
+        outfile = "${file_id}"
         // Only run this script if there is a value
         cmd__run = ""
-        if (marker_file.file_id != "") {
+        if (file_id != "") {
             cmd__run = "0055-plot_known_markers.py"
             cmd__run = "${cmd__run} --h5_anndata ${file__anndata}"
-            cmd__run = "${cmd__run} --markers_database ${marker_file.file}"
+            cmd__run = "${cmd__run} --markers_database ${marker_file}"
             cmd__run = "${cmd__run} --output_file ${outfile}"
         }
         process_info = "${runid} (runid)"
@@ -778,7 +781,7 @@ workflow wf__cluster {
         umap_min_dist
         umap_spread
     main:
-        // Cluster the results, varying the resolution.
+        // Cluster the results, varying the resolution ------------------------
         cluster(
             outdir,
             anndata,
@@ -789,17 +792,22 @@ workflow wf__cluster {
             cluster__methods,
             cluster__resolutions
         )
-        // Boxplot of phenotype across clusters
+        // Boxplot of phenotype across clusters -------------------------------
         plot_phenotype_across_clusters(
             cluster.out.outdir,
             cluster.out.anndata,
             cluster__boxplot_variables
         )
-        // Dotplot of marker genes across clusters
+        // Dotplot of marker genes across clusters ----------------------------
+        // cluster__known_markers is a list of tsv files, first serialize
+        // the array then run plot_known_markers
+        channel__cluster__known_markers = Channel
+            .fromList(cluster__known_markers)
+            .map{row -> tuple(row.file_id, file(row.file))}
         plot_known_markers(
             cluster.out.outdir,
             cluster.out.anndata,
-            cluster__known_markers
+            channel__cluster__known_markers
         )
         // Validate the resolution
         // Do not use cluster_validate_resolution_sklearn process.

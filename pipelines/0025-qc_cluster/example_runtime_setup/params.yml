@@ -119,8 +119,12 @@ cluster:
             are optional: p_value_adj. Use "" for a single entry in the
             file_id and file value to indicate no plots.'
         value:
-            - file_id: ''
-              file: ''
+            - file_id: 'SmillieCS_31348891'
+              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon/SmillieCS-31348891/database.tsv'
+            - file_id: 'ParikhK_30814735'
+              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon/ParikhK-30814735/database.tsv'
+            - file_id: 'JamesKR_32066951'
+              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon-immune/JamesKR-32066951/database.tsv'
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
     sparsity:
