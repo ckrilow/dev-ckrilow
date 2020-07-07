@@ -57,8 +57,8 @@ def save_pc_fig(
 def save_pc_genes_fig(
     adata,
     out_file_base,
-    component,
-    drop_legend=-1
+    drop_legend=-1,
+    num_PCs
 ):
     """
     Create and save a figure containing the top genes that contribute to a \
@@ -74,9 +74,9 @@ def save_pc_genes_fig(
         adata=adata_temp,
         include_lowest=False,
         components = pcs_to_plot,
-        save='-{}-{}-pc_loadings.png'.format(
+        save='-{}-n_pcs={}-pc_loadings.png'.format(
             out_file_base,
-            component,
+            num_PCs,
         )
     )
 
@@ -182,13 +182,13 @@ def main():
             colors_quantitative=False
         )
     num_PCs = int(options.num_pcs)
-    for i in range(1, num_PCs):
-        print(i)
-        save_pc_genes_fig(
-            adata=adata,
-            out_file_base=out_file_base,
-            component=i
-            )
+    save_pc_genes_fig(
+        adata=adata,
+        out_file_base=out_file_base,
+        num_PCs=num_PCs
+        )
+    # for i in range(1, num_PCs):
+    #     print(i)
 
 if __name__ == '__main__':
     main()
