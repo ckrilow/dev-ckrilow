@@ -8,17 +8,6 @@ __version__ = '0.0.1'
 import argparse
 import numpy as np
 import scanpy as sc
-import warnings
-
-# Silence NumbaPerformanceWarning in umap. See below:
-# https://github.com/lmcinnes/umap/issues/252
-from numba.errors import NumbaPerformanceWarning
-warnings.filterwarnings('ignore', category=NumbaPerformanceWarning)
-
-# To error out when 'FloatingPointError: divide by zero encountered in power'
-# from UMAP. This is usually caused by a poor choice of min_dist and spread
-# parameters.
-np.seterr(all='raise')
 
 
 def add_info_to_adata_file(adata_root, adata_to_add):
