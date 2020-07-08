@@ -415,7 +415,7 @@ def main():
     # Generate dendrogram using the marker genes... this will be used in the
     # below dotplots.
     # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error.
-    run_dendrogram = False
+    run_dendrogram = True
     if run_dendrogram:
         sc.tl.dendrogram(
             adata_raw,
