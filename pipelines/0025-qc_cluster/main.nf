@@ -215,17 +215,17 @@ channel__file_paths_10x = Channel
         file("${row.data_path_10x_format}/matrix.mtx.gz")
     )}
 //n_experiments = file(params.file_paths_10x).countLines()
-// file_paths_10x = Channel
-//     .fromPath(params.file_paths_10x)
-// file_metadata = Channel
-//     .fromPath(params.file_metadata)
-// file_sample_qc = Channel
-//     .fromPath(params.file_sample_qc)
-// Channel: variables to regress out prior to scaling.
-// reduced_dims__vars_to_regress = Channel
-//     .fromList(params.reduced_dims__vars_to_regress)
-// harmony__variables_and_thetas = Channel
-//     .from(params.harmony.variables_and_thetas.value)
+
+// Initialize known markers channel
+// cluster__known_markers is a list of tsv files, first serialize
+// the array then run plot_known_markers
+if (params.cluster.known_markers.run_process) {
+    channel__cluster__known_markers = Channel
+        .fromList(params.cluster.known_markers.value)
+        .map{row -> tuple(row.file_id, file(row.file))}
+} else {
+    channel__cluster__known_markers = tuple('', '')
+}
 
 
 // Run the workflow.
@@ -484,7 +484,7 @@ workflow {
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
                 params.cluster.variables_boxplot.value,
-                params.cluster.known_markers.value,
+                channel__cluster__known_markers,
                 params.cluster_validate_resolution.sparsity.value,
                 params.cluster_validate_resolution.train_size_cells.value,
                 params.cluster_marker.methods.value,
@@ -506,7 +506,7 @@ workflow {
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
                 params.cluster.variables_boxplot.value,
-                params.cluster.known_markers.value,
+                channel__cluster__known_markers,
                 params.cluster_validate_resolution.sparsity.value,
                 params.cluster_validate_resolution.train_size_cells.value,
                 params.cluster_marker.methods.value,
@@ -528,7 +528,7 @@ workflow {
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
                 params.cluster.variables_boxplot.value,
-                params.cluster.known_markers.value,
+                channel__cluster__known_markers,
                 params.cluster_validate_resolution.sparsity.value,
                 params.cluster_validate_resolution.train_size_cells.value,
                 params.cluster_marker.methods.value,
