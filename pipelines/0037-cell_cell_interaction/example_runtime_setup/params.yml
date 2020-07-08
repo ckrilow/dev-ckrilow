@@ -1,0 +1,19 @@
+cellphonedb:
+    description: 'Parameters for cellphonedb.'
+    database:
+        description: 'Path to the database. If "" then will attempt to
+            download the database version specified in database_version.'
+        value: '/software/team152/cellphonedb/releases/v2.0.0/cellphone.db'
+    database_version:
+        description: 'If database is not set, then will download this database
+            version. If database_version == "" then will use the latest tag.'
+        value: ''
+    iterations:
+        description: 'Number of iterations for permutations.'
+        value:
+            - 1000
+            - 10000
+    threshold:
+        description: 'No idea what this does.'
+        value:
+            - 1

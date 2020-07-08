@@ -1,0 +1,3 @@
+experiment_id	data_path_10x_format	ncells_expected
+Crohns_Disease_Collection_Study8727392	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/blood/cd/Crohns_Disease_Collection_Study8727392/raw_feature_bc_matrix	NA
+5892STDY8644401	/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/scrna_cellranger/results/iget_cellranger/full_data/ti/cd/5892STDY8644401/raw_feature_bc_matrix	6000

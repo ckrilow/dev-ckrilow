@@ -10,6 +10,7 @@ include {
     wf__multiplet;
 } from "./modules/multiplet.nf"
 include {
+    prep_merge_samples;
     merge_samples;
     plot_predicted_sex;
     plot_qc;
@@ -87,7 +88,8 @@ params.lisi = [
 params.cluster = [
     number_neighbors: [value: [15, 20]],
     methods: [value: ["leiden"]],
-    resolutions: [value: [1.0, 3.0]]
+    resolutions: [value: [1.0, 3.0]],
+    variables_boxplot: [value: ["total_reads,pct_counts_mito_gene"]]
 ]
 // Default parameters for cluster resolution validation.
 params.cluster_validate_resolution = [
@@ -213,17 +215,18 @@ channel__file_paths_10x = Channel
         file("${row.data_path_10x_format}/features.tsv.gz"),
         file("${row.data_path_10x_format}/matrix.mtx.gz")
     )}
-// file_paths_10x = Channel
-//     .fromPath(params.file_paths_10x)
-// file_metadata = Channel
-//     .fromPath(params.file_metadata)
-// file_sample_qc = Channel
-//     .fromPath(params.file_sample_qc)
-// Channel: variables to regress out prior to scaling.
-// reduced_dims__vars_to_regress = Channel
-//     .fromList(params.reduced_dims__vars_to_regress)
-// harmony__variables_and_thetas = Channel
-//     .from(params.harmony.variables_and_thetas.value)
+//n_experiments = file(params.file_paths_10x).countLines()
+
+// Initialize known markers channel
+// cluster__known_markers is a list of tsv files, first serialize
+// the array then run plot_known_markers
+if (params.cluster.known_markers.run_process) {
+    channel__cluster__known_markers = Channel
+        .fromList(params.cluster.known_markers.value)
+        .map{row -> tuple(row.file_id, file(row.file))}
+} else {
+    channel__cluster__known_markers = tuple('', '')
+}
 
 
 // Run the workflow.
@@ -247,13 +250,17 @@ workflow {
         }
         // Merge the samples, perform cell + gene filtering, add metadata.
         file_sample_qc = file(params.file_sample_qc)
+        prep_merge_samples(channel__file_paths_10x)
         merge_samples(
             params.output_dir,
             params.file_paths_10x,
             params.file_metadata,
             file_sample_qc,
             file_cellmetadata,
-            params.metadata_key_column.value
+            params.metadata_key_column.value,
+            prep_merge_samples.out.barcodes.collect(),
+            prep_merge_samples.out.features.collect(),
+            prep_merge_samples.out.matrix.collect()
         )
         // Predict sex from gene expression and check against phenotypes.
         plot_predicted_sex(
@@ -478,7 +485,7 @@ workflow {
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
                 params.cluster.variables_boxplot.value,
-                params.cluster.known_markers.value,
+                channel__cluster__known_markers,
                 params.cluster_validate_resolution.sparsity.value,
                 params.cluster_validate_resolution.train_size_cells.value,
                 params.cluster_marker.methods.value,
@@ -507,7 +514,7 @@ workflow {
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
                 params.cluster.variables_boxplot.value,
-                params.cluster.known_markers.value,
+                channel__cluster__known_markers,
                 params.cluster_validate_resolution.sparsity.value,
                 params.cluster_validate_resolution.train_size_cells.value,
                 params.cluster_marker.methods.value,
@@ -529,7 +536,7 @@ workflow {
                 params.cluster.methods.value,
                 params.cluster.resolutions.value,
                 params.cluster.variables_boxplot.value,
-                params.cluster.known_markers.value,
+                channel__cluster__known_markers,
                 params.cluster_validate_resolution.sparsity.value,
                 params.cluster_validate_resolution.train_size_cells.value,
                 params.cluster_marker.methods.value,

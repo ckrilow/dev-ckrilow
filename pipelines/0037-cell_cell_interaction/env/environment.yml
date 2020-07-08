@@ -1,0 +1,15 @@
+channels:
+  - letaylor
+  - conda-forge
+  - bioconda
+  - r
+  - defaults
+dependencies:
+  - scanpy=1.5.1
+  - pandas<0.23.99
+  - cython<0.29.99
+  - r-pheatmap=1.0.12
+  - r-ggplot2=3.1.1
+  - pip
+  - pip:
+     - cellphonedb==2.1.4

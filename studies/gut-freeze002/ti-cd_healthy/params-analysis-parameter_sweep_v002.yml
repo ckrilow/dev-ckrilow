@@ -31,9 +31,10 @@ reduced_dims:
             - ''
     n_dims:
         description: 'Number of dimensions to use for calculating PCs,
-            harmony corrected PCs, and clusters.'
+            harmony corrected PCs, and clusters. For mito > 80 filter optimum
+            is 29. For mito > 29, optimum is 24.'
         value:
-            - 29
+            - 24
 harmony:
     run_process: false
     description: 'Parameters for harmony.'

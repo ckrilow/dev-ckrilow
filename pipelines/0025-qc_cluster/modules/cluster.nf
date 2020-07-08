@@ -146,6 +146,42 @@ process plot_phenotype_across_clusters {
 }
 
 
+process serialize_known_markers {
+    // Serializes known markers for analysis
+    // ------------------------------------------------------------------------
+    scratch false      // use tmp directory
+    echo echo_mode          // echo output from script
+
+    input:
+        tuple(
+            val(file_id),
+            file(marker_file)
+        )
+
+    output:
+        path("${outfile}", emit: marker_file)
+
+    script:
+        runid = random_hex(16)
+        outfile = "${file_id}"
+        cmd__run = "touch NO_FILE.tsv"
+        if (file_id != "") {
+            outfile = "${file_id}.tsv"
+            cmd__run = "ln --physical ${marker_file} ${outfile}"
+        } else {
+            outfile = "NO_FILE"
+            cmd__run = "touch ${outfile}"
+        }
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "serialize_known_markers: ${process_info}"
+        ${cmd__run}
+        """
+}
+
+
 process plot_known_markers {
     // Plots markers from previous studies as dotplots
     // ------------------------------------------------------------------------
@@ -163,7 +199,7 @@ process plot_known_markers {
     input:
         val(outdir_prev)
         path(file__anndata)
-        each marker_file
+        each file(marker_file)
 
     output:
         val(outdir, emit: outdir)
@@ -177,13 +213,13 @@ process plot_known_markers {
         // from the file__anndata job.
         // outfile = "${file__anndata}".minus(".h5ad")
         //     .split("-").drop(1).join("-")
-        outfile = "${marker_file.file_id}"
+        outfile = "${marker_file.name}".minus(".tsv")
         // Only run this script if there is a value
         cmd__run = ""
-        if (marker_file.file_id != "") {
+        if (outfile != "NO_FILE") {
             cmd__run = "0055-plot_known_markers.py"
             cmd__run = "${cmd__run} --h5_anndata ${file__anndata}"
-            cmd__run = "${cmd__run} --markers_database ${marker_file.file}"
+            cmd__run = "${cmd__run} --markers_database ${marker_file}"
             cmd__run = "${cmd__run} --output_file ${outfile}"
         }
         process_info = "${runid} (runid)"
@@ -778,7 +814,7 @@ workflow wf__cluster {
         umap_min_dist
         umap_spread
     main:
-        // Cluster the results, varying the resolution.
+        // Cluster the results, varying the resolution ------------------------
         cluster(
             outdir,
             anndata,
@@ -789,17 +825,21 @@ workflow wf__cluster {
             cluster__methods,
             cluster__resolutions
         )
-        // Boxplot of phenotype across clusters
+        // Boxplot of phenotype across clusters -------------------------------
         plot_phenotype_across_clusters(
             cluster.out.outdir,
             cluster.out.anndata,
             cluster__boxplot_variables
         )
-        // Dotplot of marker genes across clusters
+        // Dotplot of marker genes across clusters ----------------------------
+        // Serialize marker genes
+        serialize_known_markers(
+            cluster__known_markers
+        )
         plot_known_markers(
             cluster.out.outdir,
             cluster.out.anndata,
-            cluster__known_markers
+            serialize_known_markers.out.marker_file
         )
         // Validate the resolution
         // Do not use cluster_validate_resolution_sklearn process.
