@@ -40,6 +40,15 @@ def main():
     )
 
     parser.add_argument(
+        '--max_n_markers',
+        action='store',
+        dest='max_n_markers',
+        default=100,
+        type=int,
+        help='Max number of markers to plot (default: %(default)s).'
+    )
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
@@ -86,21 +95,23 @@ def main():
             ascending=[True, True]
         )
     elif 'power' in df.columns:
-        df = df[['cell_type', 'hgnc_symbol', 'power']].copy()
+        df = df[['cell_type', 'hgnc_symbol', 'power']]
         df = df.sort_values(
             by=['cell_type', 'power'],
-            ascending=[True, False]).copy()
+            ascending=[True, False]
+        )
     else:
         df = df[['cell_type', 'hgnc_symbol']]
 
     cell_type = np.unique(df['cell_type'])
     for i in cell_type:
         marker_genes = df.loc[df['cell_type'] == i]['hgnc_symbol']
-        # Note we trim markers to top 100
-        marker_genes = marker_genes[0:100]
-        marker_genes_found = adata.var['gene_symbols'][
-            adata.var['gene_symbols'].isin(marker_genes)
+        marker_genes_found = marker_genes[
+            marker_genes.isin(adata.var['gene_symbols'])
         ]
+        # Trim markers to options.max_n_markers
+        if marker_genes_found.size > options.max_n_markers:
+             marker_genes_found = marker_genes_found[0:options.max_n_markers]
         # Clean up cell id names
         i_out = re.sub(r'\W+', '', i)  # Strip all non alphanumeric characters
         print(i, i_out)
