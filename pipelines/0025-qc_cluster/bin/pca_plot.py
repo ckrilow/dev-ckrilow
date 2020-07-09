@@ -22,16 +22,12 @@ COLORS_LARGE_PALLETE = [
     '#CE778D', '#7F6874', '#E09D37', '#FACB12', '#2B6823', '#A0CC47',
     '#77783C', '#EF4E22', '#AF1F26'
 ]
-VERBOSE = True
 
 def save_pc_fig(
     adata,
-    dict__umap_dim_and_params,
     out_file_base,
     color_var,
-    colors_quantitative=True,
-    colors_large_palette=COLORS_LARGE_PALLETE,
-    drop_legend=-1
+    colors_quantitative=True
 ):
     """
     Create and save a figure containing the cells plotted in the space of \
@@ -46,7 +42,7 @@ def save_pc_fig(
         palette=color_palette,
         components=pc_pairs_to_plot,
         alpha=0.4,
-        save='-{}-{}-pca.png'.format(
+        save='-{}-{}.png'.format(
             out_file_base,
             color_var,
         )
@@ -74,7 +70,7 @@ def save_pc_genes_fig(
         adata=adata_temp,
         include_lowest=False,
         components = pcs_to_plot,
-        save='-{}-n_pcs={}-pc_loadings.png'.format(
+        save='-{}-n_pcs={}.png'.format(
             out_file_base,
             num_PCs,
         )
@@ -144,11 +140,7 @@ def main():
 
 
     # Read in the data
-    if VERBOSE:
-        print('Loading data')
     adata = sc.read_h5ad(filename=options.h5)
-    if VERBOSE:
-        print('Finished loading data')
     # Get the out file base.
     out_file_base = options.of
     if out_file_base == '':
@@ -156,6 +148,8 @@ def main():
             os.path.basename(options.h5.rstrip('h5ad').rstrip('.'))
         )
 
+    
+    num_PCs = int(options.num_pcs)
     
     # Parse the color variables.
     colors_quantitative = []
@@ -181,14 +175,10 @@ def main():
             color_var=color_var,
             colors_quantitative=False
         )
-    num_PCs = int(options.num_pcs)
     save_pc_genes_fig(
         adata=adata,
         out_file_base=out_file_base,
         num_PCs=num_PCs
         )
-    # for i in range(1, num_PCs):
-    #     print(i)
-
 if __name__ == '__main__':
     main()
