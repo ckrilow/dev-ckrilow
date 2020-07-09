@@ -11,6 +11,11 @@ import re
 import scanpy as sc
 import pandas as pd
 import numpy as np
+import warnings
+
+# If tk.Tk issues
+# import matplotlib
+# matplotlib.use('Agg')
 
 
 def main():
@@ -66,6 +71,8 @@ def main():
     # sc.settings.max_memory = 500  # in Gb
     sc.set_figure_params(dpi_save=300)
 
+    max_n_markers = options.max_n_markers
+
     # Get the out file base.
     out_file_base = options.of
     if out_file_base == '':
@@ -105,16 +112,19 @@ def main():
 
     cell_type = np.unique(df['cell_type'])
     for i in cell_type:
-        marker_genes = df.loc[df['cell_type'] == i]['hgnc_symbol']
+        marker_genes = df.loc[df['cell_type'] == i]['hgnc_symbol'].values
         marker_genes_found = marker_genes[
-            marker_genes.isin(adata.var['gene_symbols'])
+            np.isin(marker_genes, adata.var['gene_symbols'])
         ]
-        # Trim markers to options.max_n_markers
-        if marker_genes_found.size > options.max_n_markers:
-             marker_genes_found = marker_genes_found[0:options.max_n_markers]
         # Clean up cell id names
         i_out = re.sub(r'\W+', '', i)  # Strip all non alphanumeric characters
         print(i, i_out)
+        # Trim markers to options.max_n_markers
+        if len(marker_genes_found) > max_n_markers:
+            marker_genes_found = marker_genes_found[0:max_n_markers]
+        elif len(marker_genes_found) == 0:
+            warnings.warn("No marker genes for cluster {}".format(i_out))
+            continue
         # Dotplots
         # Generate dendrogram using the marker genes...this will be used in the
         # below dotplots.
