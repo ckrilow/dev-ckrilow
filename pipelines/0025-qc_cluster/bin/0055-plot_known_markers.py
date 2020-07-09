@@ -74,7 +74,7 @@ def main():
         adata.X = adata.layers['log1p_cp10k']
     elif data_scale == 'counts':
         adata.X = adata.layers['counts']
-        #adata = adata.raw.to_adata() # This is not counts.
+        # adata = adata.raw.to_adata() # This is not counts.
 
     # Read in the marker database file
     df = pd.read_table(options.markers_database_tsv)
@@ -85,27 +85,29 @@ def main():
             by=['cell_type', 'p_value_adj'],
             ascending=[True, True]
         )
+    elif 'power' in df.columns:
+        df = df[['cell_type', 'hgnc_symbol', 'power']].copy()
+        df = df.sort_values(
+            by=['cell_type', 'power'],
+            ascending=[True, False]).copy()
     else:
         df = df[['cell_type', 'hgnc_symbol']]
 
     cell_type = np.unique(df['cell_type'])
     for i in cell_type:
         marker_genes = df.loc[df['cell_type'] == i]['hgnc_symbol']
+        # Note we trim markers to top 100
+        marker_genes = marker_genes[0:100]
         marker_genes_found = adata.var['gene_symbols'][
             adata.var['gene_symbols'].isin(marker_genes)
         ]
-        # If there are loads of markers, just take the top 100
-        if marker_genes_found.size > 100:
-            marker_genes_found = marker_genes_found[0:100]
-
         # Clean up cell id names
         i_out = re.sub(r'\W+', '', i)  # Strip all non alphanumeric characters
         print(i, i_out)
-
         # Dotplots
-        # Generate dendrogram using the marker genes... this will be used in the
+        # Generate dendrogram using the marker genes...this will be used in the
         # below dotplots.
-        # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error.
+        # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error
         run_dendrogram = True
         if run_dendrogram:
             sc.tl.dendrogram(
