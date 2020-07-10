@@ -27,6 +27,7 @@ def save_pc_fig(
     adata,
     out_file_base,
     color_var,
+    num_PCs,
     colors_quantitative=True
 ):
     """
@@ -34,7 +35,9 @@ def save_pc_fig(
     two principal components.
     """
     # Plot the cells in the principal component space
-    pc_pairs_to_plot = ["{},{}".format(i,i+1) for i in range(1,options.num_PCs,2)]
+    pc_pairs_to_plot = ["{},{}".format(i,i+1) for i in range(1,num_PCs+1,2)]
+    
+    color_palette = 'viridis'
 
     sc.pl.pca(
         adata=adata,
@@ -53,8 +56,8 @@ def save_pc_fig(
 def save_pc_genes_fig(
     adata,
     out_file_base,
+    num_PCs,
     drop_legend=-1,
-    num_PCs
 ):
     """
     Create and save a figure containing the top genes that contribute to a \
@@ -64,7 +67,7 @@ def save_pc_genes_fig(
     # Plot the top genes contributing to each principal component
     adata_temp = adata.copy()
     adata_temp.var_names = adata_temp.var.gene_symbols
-    pcs_to_plot = ','.join(map(str,list(range(1,num_PCs))))
+    pcs_to_plot = ','.join(map(str,list(range(1,num_PCs+1))))
 
     sc.pl.pca_loadings(
         adata=adata_temp,
@@ -166,14 +169,16 @@ def main():
             adata=adata,
             out_file_base=out_file_base,
             color_var=color_var,
-            colors_quantitative=True
+            colors_quantitative=True,
+            num_PCs=num_PCs
         )
     for color_var in colors_categorical:
         save_pc_fig(
             adata=adata,
             out_file_base=out_file_base,
             color_var=color_var,
-            colors_quantitative=False
+            colors_quantitative=False,
+            num_PCs=num_PCs
         )
     save_pc_genes_fig(
         adata=adata,
