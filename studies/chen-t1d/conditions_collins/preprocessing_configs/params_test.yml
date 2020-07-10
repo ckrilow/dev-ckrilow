@@ -8,5 +8,4 @@
         description: 'Learning rate. If lower learning rate, may need to
             increase the number of epochs.'
         value:
-            - 0.001
             - 0.0001
