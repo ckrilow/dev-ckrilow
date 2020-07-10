@@ -11,6 +11,11 @@ import re
 import scanpy as sc
 import pandas as pd
 import numpy as np
+import warnings
+
+# If tk.Tk issues
+# import matplotlib
+# matplotlib.use('Agg')
 
 
 def main():
@@ -40,6 +45,15 @@ def main():
     )
 
     parser.add_argument(
+        '--max_n_markers',
+        action='store',
+        dest='max_n_markers',
+        default=100,
+        type=int,
+        help='Max number of markers to plot (default: %(default)s).'
+    )
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
@@ -56,6 +70,8 @@ def main():
     # sc.settings.n_jobs = options.ncpu  # number CPUs
     # sc.settings.max_memory = 500  # in Gb
     sc.set_figure_params(dpi_save=300)
+
+    max_n_markers = options.max_n_markers
 
     # Get the out file base.
     out_file_base = options.of
@@ -74,7 +90,7 @@ def main():
         adata.X = adata.layers['log1p_cp10k']
     elif data_scale == 'counts':
         adata.X = adata.layers['counts']
-        #adata = adata.raw.to_adata() # This is not counts.
+        # adata = adata.raw.to_adata() # This is not counts.
 
     # Read in the marker database file
     df = pd.read_table(options.markers_database_tsv)
@@ -85,27 +101,34 @@ def main():
             by=['cell_type', 'p_value_adj'],
             ascending=[True, True]
         )
+    elif 'power' in df.columns:
+        df = df[['cell_type', 'hgnc_symbol', 'power']]
+        df = df.sort_values(
+            by=['cell_type', 'power'],
+            ascending=[True, False]
+        )
     else:
         df = df[['cell_type', 'hgnc_symbol']]
 
     cell_type = np.unique(df['cell_type'])
     for i in cell_type:
-        marker_genes = df.loc[df['cell_type'] == i]['hgnc_symbol']
-        marker_genes_found = adata.var['gene_symbols'][
-            adata.var['gene_symbols'].isin(marker_genes)
+        marker_genes = df.loc[df['cell_type'] == i]['hgnc_symbol'].values
+        marker_genes_found = marker_genes[
+            np.isin(marker_genes, adata.var['gene_symbols'])
         ]
-        # If there are loads of markers, just take the top 100
-        if marker_genes_found.size > 100:
-            marker_genes_found = marker_genes_found[0:100]
-
         # Clean up cell id names
         i_out = re.sub(r'\W+', '', i)  # Strip all non alphanumeric characters
         print(i, i_out)
-
+        # Trim markers to options.max_n_markers
+        if len(marker_genes_found) > max_n_markers:
+            marker_genes_found = marker_genes_found[0:max_n_markers]
+        elif len(marker_genes_found) == 0:
+            warnings.warn("No marker genes for cluster {}".format(i_out))
+            continue
         # Dotplots
-        # Generate dendrogram using the marker genes... this will be used in the
+        # Generate dendrogram using the marker genes...this will be used in the
         # below dotplots.
-        # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error.
+        # NOTE: With latest version of pandas, sc.tl.dendrogram throws an error
         run_dendrogram = True
         if run_dendrogram:
             sc.tl.dendrogram(
