@@ -94,6 +94,7 @@ cluster:
         value:
             - 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,b_cell__activation,b_cell__differentiation,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal,crypt__axis_score,t_cell__coinhibition_signature,t_cell__costimulation_signature,t_cell__cytotoxicity_signature,t_cell__cd8_cytotoxic,t_cell__cell_cycling,t_cell__central_memory,t_cell__immunoregulation,t_cell__resident_memory,villus__bottom_enterocytes,villus__top_enterocytes,hallmark_apoptosis,hallmark_hypoxia,mense_hypoxia_up,hallmark_inflammatory_response,inflammation_signature__smilliecs_31348891,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
     known_markers:
+        run_process: true
         description: 'Files with markers that will be used to generate
             dotplots. Each marker file should be the full path and have the
             following columns: cell_type, hgnc_symbol. The following columns
@@ -108,6 +109,10 @@ cluster:
               file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon-immune/JamesKR-32066951/database.tsv'
             - file_id: 'KincheJ_30270042'
               file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon-mesenchyme/KincheJ-30270042/database.tsv'
+            - file_id: 'ElmentaiteR_20200206937110'
+              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/terminal_ileum-epithelial/ElmentaiteR-2020.02.06.937110/database.tsv'
+            - file_id: 'gutcensus_TeichmannGroup_202007'
+              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/gut_census/TeichmannGroup-2020_07/database.tsv'
             - file_id: 'AndersonGroupVeli_201906'
               file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/terminal_ileum/AndersonGroup-Veli_2019_06/database.tsv'
             - file_id: 'WangY_31753849'

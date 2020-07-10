@@ -89,7 +89,8 @@ params.cluster = [
     number_neighbors: [value: [15, 20]],
     methods: [value: ["leiden"]],
     resolutions: [value: [1.0, 3.0]],
-    variables_boxplot: [value: ["total_reads,pct_counts_mito_gene"]]
+    variables_boxplot: [value: ["total_reads,pct_counts_mito_gene"]],
+    known_markers: [run_process: false]
 ]
 // Default parameters for cluster resolution validation.
 params.cluster_validate_resolution = [
