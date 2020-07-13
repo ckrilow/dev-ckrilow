@@ -304,6 +304,14 @@ workflow {
             normalize_and_pca.out.param_details,
             params.reduced_dims.n_dims.value
         )
+        // Plot the PCs and gene's contributing to each PC
+        plot_pcs(
+            subset_pcs.out.outdir,
+            subset_pcs.out.anndata,
+            params.reduced_dims.n_dims.value,
+            params.umap.colors_quantitative.value,
+            params.umap.colors_categorical.value
+            )
         // "Correct" PCs using Harmony
         if (params.harmony.run_process) {
             harmony(
@@ -495,13 +503,7 @@ workflow {
                 params.umap.umap_min_dist.value,
                 params.umap.umap_spread.value
             )
-            plot_pcs(
-                cluster_subset_pcs__outdir,
-                cluster_subset_pcs__anndata,
-                params.reduced_dims.n_dims.value,
-                params.umap.colors_quantitative.value,
-                params.umap.colors_categorical.value
-            )
+
         }
         if (params.harmony.run_process) {
             wf__cluster_harmony(
