@@ -1,9 +1,21 @@
-  cellbender_rb:
+cellbender_rb:
     description: 'Parameters for cellbender remove background.'
+    total_ndroplets_subtract_factor:
+        description: 'When estimating the total number of droplets to include
+            for analysis, subtract this number of cells from the estimate.
+            If exact number per sample is provided in file_paths_10x.tsv via
+            the ndroplets_include_cellbender column, then estimates are not
+            performed and this parameter does nothing.
+            NOTE: setting this parameter will likely vary according
+            tissue / dataset - evaluate the UMI count plots across the full
+            dataset before setting.'
+        value:
+            - 65000
     epochs:
         description: 'Number of epochs for traning.'
         value:
             - 5
+            - 6
     learning_rate:
         description: 'Learning rate. If lower learning rate, may need to
             increase the number of epochs.'
