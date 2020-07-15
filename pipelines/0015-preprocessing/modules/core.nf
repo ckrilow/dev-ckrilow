@@ -42,6 +42,15 @@ process cellbender__rb__get_input_cells {
     // total_droplets_included.txt rather than the file itself
     output:
         val(outdir, emit: outdir)
+        tuple(
+            val(experiment_id),
+            path(file_10x_barcodes),
+            path(file_10x_features),
+            path(file_10x_matrix),
+            val(ncells_expected),
+            val(ndroplets_include_cellbender),
+            emit: experiment_data
+        )
         path(
             "${outfile}-expected_cells.txt",
             emit: expected_cells
@@ -135,11 +144,20 @@ process cellbender__remove_background {
         path("${outfile}_filtered.h5", emit: h5_filtered)
         path("${outfile}_cell_barcodes.csv", emit: barcodes)
         path("${outfile}.log", emit: log)
+        path("${outfile}_filtered_10x_mtx/barcodes.tsv.gz", emit: tenx_barcodes)
+        path("${outfile}_filtered_10x_mtx/features.tsv.gz", emit: tenx_features)
+        path("${outfile}_filtered_10x_mtx/matrix.mtx.gz", emit: tenx_matrix)
+        tuple(
+            val(experiment_id),
+            val(ncells_expected),
+            val("${outdir}/${outfile}_filtered_10x_mtx"),
+            val(epochs),
+            val(learning_rate),
+            emit: filtered_10x
+        )
         path("plots/*.png") optional true
         path("plots/*.pdf") optional true
 
-    // TODO: convert out h5 file to barcodes.tsv.gz, features.tsv.gz and
-    //           matrix.mtx.gz
     //       USER may need to play with the traing fraction and learning rate
     script:
         runid = random_hex(16)
@@ -172,8 +190,61 @@ process cellbender__remove_background {
             --empty-drop-training-fraction 0.5 \
             --learning-rate ${learning_rate}
         [ -f ${outfile} ] && mv ${outfile} ${outfile}.h5
+        convert-cellbender_10xmtx.py \
+            -h5 ${outfile}_filtered.h5 \
+            -g background_removed \
+            -od ${outfile}_filtered_10x_mtx
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
+        """
+}
+
+process cellbender__gather_qc_input {
+    // Prepare cell bender output for qc_cluster pipeline. For each epoch and
+    // learning rate, gather 10x matrix files into format for qc_cluster
+    // ------------------------------------------------------------------------
+    scratch false        // use tmp directory
+    echo echo_mode       // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        tuple(
+            val(epoch_lr_key),
+            val(experiment_ids),
+            val(tenx_mtx_paths),
+            val(ncells_expected)
+        )
+
+    output:
+        val(outdir, emit: outdir)
+        path(outfile, emit: formatted_input)
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}/qc_cluster_input_files"
+        outfile = "${epoch_lr_key}.tsv"
+        experiment_ids = experiment_ids.join(",")
+        tenx_mtx_paths = tenx_mtx_paths.join(",")
+        ncells_expected = ncells_expected.join(",")
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "cellbender__gather_qc_input: ${process_info}"
+        echo "Epoch and Learning rate key: ${epoch_lr_key}"
+        echo "Experiment ids: ${experiment_ids}"
+        echo "Matrix paths: ${tenx_mtx_paths}"
+        echo "Number of cells expected: ${ncells_expected}"
+        035-prepare_qc_cluster_input.py \
+            -id ${experiment_ids} \
+            -dir ${tenx_mtx_paths} \
+            -n ${ncells_expected} \
+            -of ${outfile}
         """
 }
