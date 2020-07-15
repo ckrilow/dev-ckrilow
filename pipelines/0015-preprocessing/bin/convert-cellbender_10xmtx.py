@@ -12,6 +12,7 @@ import scipy
 import scipy.io
 import gzip
 import pandas as pd
+import numpy as np
 import scanpy as sc
 
 
@@ -52,6 +53,15 @@ def cellbender_to_tenxmatrix(
     compression_opts = 'gzip'
     if LooseVersion(pd.__version__) > '1.0.0':
         compression_opts = dict(method='gzip', compresslevel=9)
+
+    # First filter out any cells that have 0 total counts
+    zero_count_cells = adata.obs_names[np.where(adata.X.sum(axis=1) == 0)[0]]
+    if verbose:
+        print("Filtering {}/{} cells with 0 counts.".format(
+            len(zero_count_cells),
+            adata.n_obs
+        ))
+    adata = adata[adata.obs_names.difference(zero_count_cells, sort=False)]
 
     # Save the barcodes.
     out_f = os.path.join(
