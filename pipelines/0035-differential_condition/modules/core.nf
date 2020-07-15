@@ -1,7 +1,5 @@
 #!/usr/bin/env nextflow
 
-// NOTE: label 'big_mem' may be useful at some point
-
 
 def random_hex(n) {
     Long.toUnsignedString(new Random().nextLong(), n).toUpperCase()
@@ -13,87 +11,39 @@ if (binding.hasVariable("echo_mode") == false) {
 }
 
 
-process cellbender__rb__get_input_cells {
-    // Calculates thresholds for input cells of cellbender__remove_background
+process get_cell_label_list {
+    // Get all of the cell labels in an anndata file
     // ------------------------------------------------------------------------
     scratch false        // use tmp directory
     echo echo_mode       // echo output from script
 
-    publishDir  path: "${outdir}",
-                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
-                mode: "${task.publish_mode}",
-                overwrite: "true"
-
     input:
-        val(outdir_prev)
-        tuple(
-            val(experiment_id),
-            path(file_10x_barcodes),
-            path(file_10x_features),
-            path(file_10x_matrix),
-            val(ncells_expected)
-        )
-        val(lower_bound_cell_estimate)
-        val(lower_bound_total_droplets_included)
+        path(anndata)
+        val(anndata_cell_label)
 
-    // TODO: see if possible to return value in expected_cells.txt and
-    // total_droplets_included.txt rather than the file itself
     output:
-        val(outdir, emit: outdir)
-        path(
-            "${outfile}-expected_cells.txt",
-            emit: expected_cells
-        )
-        path(
-            "${outfile}-total_droplets_included.txt",
-            emit: total_droplets_include
-        )
-        path("${outfile}-cell_estimate_cutoff.tsv.gz")
-        path("${outfile}-total_droplets_cutoff.tsv.gz")
-        path("plots/*.png") optional true
-        path("plots/*.pdf") optional true
+        path("cell_labels.csv", emit: cell_labels)
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}/${experiment_id}"
-        outfile = "cellbender-umi_count_estimates"
-        outfile = "${outfile}-lower_bound_cell_estimate__${lower_bound_cell_estimate}"
-        outfile = "${outfile}-lower_bound_total_droplets_included__${lower_bound_total_droplets_included}"
-        cmd__expected_ncells = ""
-        if ("${ncells_expected}" != "NA") {
-            cmd__expected_ncells = "--expected_ncells ${ncells_expected}"
-        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "cellbender__remove_background__get_input_cells: ${process_info}"
-        rm -fr plots
-        mkdir txd_input
-        ln --physical ${file_10x_barcodes} txd_input/barcodes.tsv.gz
-        ln --physical ${file_10x_features} txd_input/features.tsv.gz
-        ln --physical ${file_10x_matrix} txd_input/matrix.mtx.gz
-        015-get_estimates_from_umi_counts.py \
-            --tenxdata_path txd_input \
-            --output_file ${outfile} \
-            --lower_bound_cell_estimate ${lower_bound_cell_estimate} \
-            --lower_bound_total_droplets_included \
-                ${lower_bound_total_droplets_included} \
-            ${cmd__expected_ncells}
-        mkdir plots
-        mv *pdf plots/ 2>/dev/null || true
-        mv *png plots/ 2>/dev/null || true
+        echo "get_cell_label_list: ${process_info}"
+        013-get_cell_label_list.py \
+            --h5_anndata ${anndata} \
+            --cell_label ${anndata_cell_label}
         """
 }
 
 
-process cellbender__remove_background {
-    // Remove ambient RNA
+process run_diffxpy {
+    // Run diffxpy
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
     //maxForks 2         // hard to control memory usage. limit to 3 concurrent
-    label 'gpu'          // use GPU
     scratch false        // use tmp directory
     echo echo_mode       // echo output from script
 
@@ -139,14 +89,9 @@ process cellbender__remove_background {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "cellbender__remove_background: ${process_info}"
-        rm -fr plots
-        mkdir txd_input
-        ln --physical ${file_10x_barcodes} txd_input/barcodes.tsv.gz
-        ln --physical ${file_10x_features} txd_input/features.tsv.gz
-        ln --physical ${file_10x_matrix} txd_input/matrix.mtx.gz
-        cellbender remove-background \
+        015-run_diffxpy.py
             --input txd_input \
-            --output ${outfile} \
+            --condition_column disease_status \
             --cuda \
             --expected-cells \$(cat ${expected_cells}) \
             --total-droplets-included \$(cat ${total_droplets_include}) \

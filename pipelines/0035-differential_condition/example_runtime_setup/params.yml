@@ -1,13 +1,11 @@
-cellbender_rb:
-    description: 'Parameters for cellbender remove background.'
-    epochs:
-        description: 'Number of epochs for traning.'
-        value:
-            - 200
-            - 1000
-    learning_rate:
-        description: 'Learning rate. If lower learning rate, may need to
-            increase the number of epochs.'
-        value:
-            - 0.001
-            - 0.0001
+anndata_cell_label:
+    description: 'Anndata cell label column in obs slot.'
+    value: 'cluster'
+differential_condition:
+    description: 'Differential condition (e.g., disease status).'
+    value:
+        - 'cd_status'
+covariates:
+    description: 'Differential condition (e.g., disease status).'
+    value:
+        - 'normalization_factor'
