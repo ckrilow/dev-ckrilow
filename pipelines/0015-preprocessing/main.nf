@@ -9,6 +9,7 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 include {
     cellbender__rb__get_input_cells;
     cellbender__remove_background;
+    cellbender__gather_qc_input;
 } from "./modules/core.nf"
 
 
@@ -110,11 +111,38 @@ workflow {
         // Correct counts matrix to remove ambient RNA
         cellbender__remove_background(
             cellbender__rb__get_input_cells.out.outdir,
-            channel__file_paths_10x,
+            cellbender__rb__get_input_cells.out.experiment_data,
             cellbender__rb__get_input_cells.out.expected_cells,
             cellbender__rb__get_input_cells.out.total_droplets_include,
             params.cellbender_rb.epochs.value,
             params.cellbender_rb.learning_rate.value
+        )
+        gather_qc_input = cellbender__remove_background.out.filtered_10x.groupTuple(by: 2)
+            .reduce([:]) { map, tuple ->
+                def map_key = "epoch_" + tuple[3][0] + "_lr_" + tuple[4][0]
+                def key_list = map[map_key]
+                if (!key_list) {
+                    key_list = [[tuple[0][0], tuple[2], tuple[1][0]]]
+                } else {
+                    key_list.add([tuple[0][0], tuple[2], tuple[1][0]])
+                }
+                map[map_key] = key_list
+                return(map)
+            }
+            .flatMap()
+            .map {  entry ->
+                combined_data = [entry.key, [], [], []]
+                entry.value.each {
+                    combined_data[1].add(it[0])
+                    combined_data[2].add(it[1])
+                    combined_data[3].add(it[2])
+                }
+                return(combined_data)
+            }
+
+        cellbender__gather_qc_input(
+            params.output_dir,
+            gather_qc_input
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
