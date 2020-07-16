@@ -8,7 +8,7 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 // Modules to include.
 include {
     get_cell_label_list;
-    //run_diffxpy;
+    run_diffxpy;
 } from "./modules/core.nf"
 
 
@@ -79,12 +79,17 @@ workflow {
         // For each cell type run differential expression
         cell_labels = get_cell_label_list.out.cell_labels
             .splitCsv(header: false, sep: ',')
-        // run_diffxpy(
-        //     params.output_dir,
-        //     params.file_anndata,
-        //     params.differential_condition.value
-        //     cell_labels
-        // )
+        run_diffxpy(
+            params.output_dir,
+            params.file_anndata,
+            params.differential_expression.condition.value,
+            params.differential_expression.covariates.value,
+            params.anndata_cell_label.value,
+            '15',
+            params.differential_expression.diffxpy_method.value
+        )
+        // TODO: for each condition... for each covariate ... for each method
+        // merge the output across all clusters 
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
     //       depending on the input data call. Therefore, we use publishDir

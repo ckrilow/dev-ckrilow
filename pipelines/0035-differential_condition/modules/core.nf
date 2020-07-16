@@ -54,55 +54,38 @@ process run_diffxpy {
 
     input:
         val(outdir_prev)
-        tuple(
-            val(experiment_id),
-            path(file_10x_barcodes),
-            path(file_10x_features),
-            path(file_10x_matrix),
-            val(ncells_expected)
-        )
-        path(expected_cells)
-        path(total_droplets_include)
-        each epochs
-        each learning_rate
+        path(anndata)
+        val(condition_column)
+        val(covariate_columns)
+        val(cell_label_column)
+        val(cell_label_analyse)
+        val(method)
 
     output:
         val(outdir, emit: outdir)
-        path("${outfile}.h5", emit: h5)
-        path("${outfile}_filtered.h5", emit: h5_filtered)
-        path("${outfile}_cell_barcodes.csv", emit: barcodes)
-        path("${outfile}.log", emit: log)
+        path("${outfile}-de_results.tsv.gz", emit: results)
+        path("${outfile}-de_results_obj.joblib.gz", emit: results_obj)
         path("plots/*.png") optional true
         path("plots/*.pdf") optional true
 
-    // TODO: convert out h5 file to barcodes.tsv.gz, features.tsv.gz and
-    //           matrix.mtx.gz
-    //       USER may need to play with the traing fraction and learning rate
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}" // /${experiment_id}"
-        lr_string = "${learning_rate}".replaceAll("\\.", "pt")
-        outfile = "cellbender-epochs_${epochs}"
-        outfile = "${outfile}-learningrate_${lr_string}"
+        outdir = "${outdir_prev}"
+        outfile = "test"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
-        echo "cellbender__remove_background: ${process_info}"
+        echo "run_diffxpy: ${process_info}"
+        rm -fr plots
         015-run_diffxpy.py
-            --input txd_input \
-            --condition_column disease_status \
-            --cuda \
-            --expected-cells \$(cat ${expected_cells}) \
-            --total-droplets-included \$(cat ${total_droplets_include}) \
-            --model full \
-            --z-dim 200 \
-            --z-layers 1000 \
-            --low-count-threshold 10 \
-            --epochs ${epochs} \
-            --empty-drop-training-fraction 0.5 \
-            --learning-rate ${learning_rate}
-        [ -f ${outfile} ] && mv ${outfile} ${outfile}.h5
+            --h5_anndata ${anndata} \
+            --condition_column ${condition_column} \
+            --covariate_columns ${covariate_columns} \
+            --cell_label_column ${cell_label_column} \
+            --cell_label_analyse ${cell_label_analyse} \
+            --method ${method} \
+            --output_file ${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true

@@ -7,7 +7,9 @@ __version__ = '0.0.1'
 
 import argparse
 import warnings
+from distutils.version import LooseVersion
 import numpy as np
+import pandas as pd
 import scanpy as sc
 import diffxpy.api as de
 import joblib  # for numpy matrix, joblib faster than pickle
@@ -64,10 +66,26 @@ def main():
     )
 
     parser.add_argument(
+        '-m', '--method',
+        action='store',
+        dest='method',
+        default='wald',
+        help='Differential expression method to use. (default: %(default)s)'
+    )
+
+    # parser.add_argument(
+    #     '-f', '--filter_low_genes',
+    #     action='store',
+    #     dest='filter_low_genes',
+    #     default='wald',
+    #     help='Filter for lowly expressed genes. (default: %(default)s)'
+    # )
+
+    parser.add_argument(
         '-of', '--output_file',
         action='store',
         dest='of',
-        default='',
+        default='diffxpy',
         help='Basename of output file.\
             (default: %(default)s)'
     )
@@ -80,6 +98,11 @@ def main():
     cell_label_column = options.cell_label_column
     cell_label_analyse = options.cell_label_analyse
     out_file_base = options.of
+
+    # Get compression opts for pandas
+    compression_opts = 'gzip'
+    if LooseVersion(pd.__version__) > '1.0.0':
+        compression_opts = dict(method='gzip', compresslevel=9)
 
     # Diffxpy automatically assigns covariates to categorical. List to stash
     # continuous variables.
@@ -123,16 +146,22 @@ def main():
         adata = adata[adata.obs[cell_label_column].isin(cell_label_analyse)]
     # clusters = np.sort(adata.obs[cell_label_column].unique())
 
-    # Check to make sure that within each cluster,
-    n_cells_condition_cluster = adata.obs.groupby(
-        [condition_column, cell_label_column]
-    ).size().unstack()
-    if n_cells_condition_cluster.values.min() == 0:
-        raise Exception('For one cell_label_column there are 0 conditions.')
+    # Check to make sure that within each cluster, there are >1 condition
+    # values.
+    if adata.obs[condition_column].dtype.name == 'category':
+        n_cells_condition_cluster = adata.obs.groupby(
+            [condition_column, cell_label_column]
+        ).size().unstack()
+        if n_cells_condition_cluster.values.min() == 0:
+            raise Exception(
+                'For one cell_label_column there are 0 conditions.'
+            )
     if len(np.unique(adata.obs['condition']) <= 1):
         raise Exception('There is only 1 condition.')
 
     print('Continuous varibles: {}'.format(','.join(continuous_variables)))
+
+    # TODO: filter lowly expressed genes for this cluster?
 
     # Run diffxpy
     #
@@ -160,19 +189,64 @@ def main():
     # which do not correspond to one-hot encoded discrete factors.
     # This makes sense for number of genes, time, pseudotime or space
     # for example.
-    test_results = de.test.wald(
-        data=adata,
-        formula_loc=formula,
-        factor_loc_totest=coef_names,
-        as_numeric=continuous_variables
+    if options.method == 'wald':
+        test_results = de.test.wald(
+            data=adata,
+            formula_loc=formula,
+            factor_loc_totest=coef_names,
+            as_numeric=continuous_variables
+        )
+    else:
+        raise Exception('Invalid method.')
+
+    # Make a table of the results
+    df_results = test_results.summary()
+    df_results['condition'] = condition_column
+    df_results['covariates'] = ','.join(covariate_columns)
+    df_results['cell_label_analysed'] = ','.join(cell_label_analyse)
+    df_results = df_results.sort_values(
+        by=['pval', 'log2fc', 'mean'],
+        ascending=[True, False, False]
+    )
+    df_results.to_csv(
+        '{}-de_results.tsv.gz'.format(out_file_base),
+        sep='\t',
+        compression=compression_opts,
+        index=False,
+        header=False
     )
 
-    # Now save the results
-    out_f = '{}-de_model.joblib.gz'.format(out_file_base)
+    # Now save the results object
+    out_f = '{}-de_results_obj.joblib.gz'.format(out_file_base)
     joblib.dump(
         test_results,
         out_f,
         compress=('gzip', 3)
+    )
+
+    # Make plots
+    _ = test_results.plot_ma(
+        corrected_pval=False,
+        show=False,
+        log2_fc_threshold=10,
+        min_mean=0.0001,
+        alpha=0.05,
+        size=20,
+        save='{}'.format(out_file_base),
+        suffix='-plot_ma.png',
+        return_axs=False
+    )
+    test_results.plot_volcano(
+        corrected_pval=False,
+        show=False,
+        log10_p_threshold=-30,
+        log2_fc_threshold=10,
+        alpha=0.05,
+        min_fc=1,
+        size=20,
+        save='{}'.format(out_file_base),
+        suffix='-plot_volcano.png',
+        return_axs=False
     )
 
     # NOTE: the below code partitions the data within diffxpy ... we don't
