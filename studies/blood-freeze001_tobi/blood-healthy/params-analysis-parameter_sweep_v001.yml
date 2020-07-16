@@ -31,12 +31,11 @@ reduced_dims:
             - ''
     n_dims:
         description: 'Number of dimensions to use for calculating PCs,
-            harmony corrected PCs, and clusters. For mito > 80 filter optimum
-            is 29. For mito > 29, optimum is 24.'
+            harmony corrected PCs, and clusters.'
         value:
-            - 24
+            - 30
 harmony:
-    run_process: false
+    run_process: true
     description: 'Parameters for harmony.'
     variables_and_thetas:
         description: 'Tuples of metadata columns and corresponding thetas.'
@@ -55,7 +54,7 @@ bbknn:
         value:
             - 'experiment_id'
 lisi:
-    run_process: false
+    run_process: true
     description: 'Parameters for Local Inverse Simpsons Index (LISI).'
     variables:
         description: 'Metadata variables to compute LISI over.'
@@ -78,45 +77,29 @@ cluster:
         description: 'Clustering resolution.'
         value:
             - 0.05
+            - 0.15
             - 0.25
+            - 0.35
             - 0.5
             - 1.0
             - 1.5
-            - 1.75
             - 2.0
-            - 2.25
-            - 2.5
             - 3.0
             - 5.0
             - 10.0
     variables_boxplot:
         decription: 'Generate boxplots of these variables for each cluster.'
         value:
-            - 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,b_cell__activation,b_cell__differentiation,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal,crypt__axis_score,t_cell__coinhibition_signature,t_cell__costimulation_signature,t_cell__cytotoxicity_signature,t_cell__cd8_cytotoxic,t_cell__cell_cycling,t_cell__central_memory,t_cell__immunoregulation,t_cell__resident_memory,villus__bottom_enterocytes,villus__top_enterocytes,hallmark_apoptosis,hallmark_hypoxia,mense_hypoxia_up,hallmark_inflammatory_response,inflammation_signature__smilliecs_31348891,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
+            - 'total_reads,pct_counts_mito_gene'
     known_markers:
-        run_process: true
         description: 'Files with markers that will be used to generate
             dotplots. Each marker file should be the full path and have the
             following columns: cell_type, hgnc_symbol. The following columns
             are optional: p_value_adj. Use "" for a single entry in the
             file_id and file value to indicate no plots.'
         value:
-            - file_id: 'SmillieCS_31348891'
-              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon/SmillieCS-31348891/database.tsv'
-            - file_id: 'ParikhK_30814735'
-              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon/ParikhK-30814735/database.tsv'
             - file_id: 'JamesKR_32066951'
               file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon-immune/JamesKR-32066951/database.tsv'
-            - file_id: 'KincheJ_30270042'
-              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon-mesenchyme/KincheJ-30270042/database.tsv'
-            - file_id: 'ElmentaiteR_20200206937110'
-              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/terminal_ileum-epithelial/ElmentaiteR-2020.02.06.937110/database.tsv'
-            - file_id: 'gutcensus_TeichmannGroup_202007'
-              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/gut_census/TeichmannGroup-2020_07/database.tsv'
-            - file_id: 'AndersonGroupVeli_201906'
-              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/terminal_ileum/AndersonGroup-Veli_2019_06/database.tsv'
-            - file_id: 'WangY_31753849'
-              file: '/lustre/scratch119/humgen/projects/sc-eqtl-ibd/data/marker_gene_db-raw_data/database/celltypes/colon-ileum-rectum/WangY-31753849/database.tsv'
 cluster_validate_resolution:
     description: 'Parameters for cluster resolution validation.'
     sparsity:
@@ -138,15 +121,15 @@ cluster_marker:
         value:
             - 'wilcoxon'
 umap:
-    run_process: true
+    run_process: false
     description: 'Parameters for umap.'
     colors_quantitative:
         description: 'Comma separated string of quantitative variables that
-            will be used to color points. Used for PCA plots also.'
-        value: 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,b_cell__activation,b_cell__differentiation,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal,crypt__axis_score,t_cell__coinhibition_signature,t_cell__costimulation_signature,t_cell__cytotoxicity_signature,t_cell__cd8_cytotoxic,t_cell__cell_cycling,t_cell__central_memory,t_cell__immunoregulation,t_cell__resident_memory,villus__bottom_enterocytes,villus__top_enterocytes,hallmark_apoptosis,hallmark_hypoxia,mense_hypoxia_up,hallmark_inflammatory_response,inflammation_signature__smilliecs_31348891,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
+            will be used to color points.'
+        value: 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
     colors_categorical:
         description: 'Comma separated string of categorical variables that
-            will be used to color points. Used for PCA plots also.'
+            will be used to color points.'
         value: 'experiment_id,sex,disease_status,scrublet__predicted_multiplet,bead_version,phase'
     n_neighbors:
         description: 'Number of neighbors for sc.pp.neighbors call.

@@ -469,6 +469,68 @@ process subset_pcs {
         """
 }
 
+process plot_pcs {
+    // Takes annData object with PCs and returns plots
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo echo_mode          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        each n_pcs
+        val(colors_quantitative)
+        val(colors_categorical)
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        // outfile = "${file__anndata}".minus(".h5ad").split("-").drop(1).join("-")
+        outfile = "pca"
+        cmd__colors_quant = ""
+        if (colors_quantitative != "") {
+            cmd__colors_quant = "--colors_quantitative ${colors_quantitative}"
+        }
+        cmd__colors_cat = ""
+        if (colors_categorical != "") {
+            cmd__colors_cat = "--colors_categorical ${colors_categorical}"
+        }
+        // drop_legend_n = "-1"
+        // if (cmd__colors_cat.contains("experiment_id")) {
+        //     drop_legend_n = "8"
+        // }
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "pca_plot: ${process_info}"
+        rm -fr plots
+        pca_plot.py \
+            --h5_anndata ${file__anndata} \
+            --num_pcs ${n_pcs} \
+            ${cmd__colors_quant} \
+            ${cmd__colors_cat} \
+            --output_file ${runid}-${outfile} 
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
 
 process harmony {
     // Takes PCs (rows = cell barcodes) and metadata (rows = cell barcodes),

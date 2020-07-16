@@ -1,11 +1,18 @@
 anndata_cell_label:
     description: 'Anndata cell label column in obs slot.'
     value: 'cluster'
-differential_condition:
-    description: 'Differential condition (e.g., disease status).'
-    value:
-        - 'cd_status'
-covariates:
-    description: 'Differential condition (e.g., disease status).'
-    value:
-        - 'normalization_factor'
+differential_expression:
+    condition:
+        description: 'Differential condition (e.g., disease status).'
+        value:
+            - 'cd_status'
+    covariates:
+        description: 'Comma separated string of covariates. Enter different
+            covariates for each dash to evaluate multiple covariates
+            seperately.'
+        value:
+            - 'normalization_factor'
+    diffxpy_method:
+        description: 'Diffxpy method to use'
+        value:
+            - 'wald'
