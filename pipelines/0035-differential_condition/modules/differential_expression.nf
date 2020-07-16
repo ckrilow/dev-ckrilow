@@ -44,6 +44,7 @@ process run_diffxpy {
     //tag { output_dir }
     //cache false        // cache results from run
     //maxForks 2         // hard to control memory usage. limit to 3 concurrent
+    label 'gpu'          // use GPU
     scratch false        // use tmp directory
     echo echo_mode       // echo output from script
 
@@ -55,11 +56,11 @@ process run_diffxpy {
     input:
         val(outdir_prev)
         path(anndata)
-        val(condition_column)
-        val(covariate_columns)
         val(cell_label_column)
-        val(cell_label_analyse)
-        val(method)
+        each cell_label_analyse
+        each condition_column
+        each covariate_columns
+        each method
 
     output:
         val(outdir, emit: outdir)
@@ -78,7 +79,7 @@ process run_diffxpy {
         """
         echo "run_diffxpy: ${process_info}"
         rm -fr plots
-        015-run_diffxpy.py
+        015-run_diffxpy.py \
             --h5_anndata ${anndata} \
             --condition_column ${condition_column} \
             --covariate_columns ${covariate_columns} \
@@ -90,4 +91,47 @@ process run_diffxpy {
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
         """
+}
+
+
+workflow wf__differential_expression {
+    take:
+        outdir
+        anndata
+        anndata_cell_label
+        condition
+        covariates
+        diffxpy_method
+    main:
+        // Get a list of all of the cell types
+        get_cell_label_list(
+            anndata,
+            anndata_cell_label
+        )
+        // For each cell type compute differential expression for that cell
+        // type
+        cell_labels = get_cell_label_list.out.cell_labels
+            .splitCsv(header: false, sep: ',')
+            // .map{row -> tuple(
+            //     row[0]
+            // )}
+        cell_labels.view()
+        // Run diffxpy with all combinations of conditions (e.g., sex,
+        // disease status), covariates (e.g., size_factors, age),
+        // methods (e.g., wald)
+        run_diffxpy(
+            outdir,
+            anndata,
+            anndata_cell_label,
+            // '1',  // just run on first cluster for development
+            cell_labels,  // run for all clusters for run time
+            condition,
+            covariates,
+            diffxpy_method
+        )
+        // TODO
+        // For each condition... merge results across covariates, methods, and
+        // celltypes
+    emit:
+        cell_labels = get_cell_label_list.out.cell_labels
 }

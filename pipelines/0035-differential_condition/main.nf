@@ -7,17 +7,16 @@ VERSION = "0.0.1" // Do not edit, controlled by bumpversion.
 
 // Modules to include.
 include {
-    get_cell_label_list;
-    run_diffxpy;
-} from "./modules/core.nf"
+    wf__differential_expression;
+} from "./modules/differential_expression.nf"
 
 
 // Set default parameters.
 params.output_dir           = "nf-differential_condition"
 params.help                 = false
-// Default parameters for cellbender remove_background
+// TODO: Default parameters for differential expression
 params.anndata_cell_label = [value: 'cluster']
-params.differential_condition = [value: ['cd_status']]
+
 
 
 // Define the help messsage.
@@ -71,25 +70,14 @@ if (params.help){
 // Run the workflow.
 workflow {
     main:
-        // Get a list of all of the cell types
-        get_cell_label_list(
-            params.file_anndata,
-            params.anndata_cell_label.value
-        )
-        // For each cell type run differential expression
-        cell_labels = get_cell_label_list.out.cell_labels
-            .splitCsv(header: false, sep: ',')
-        run_diffxpy(
+        wf__differential_expression(
             params.output_dir,
             params.file_anndata,
+            params.anndata_cell_label.value,
             params.differential_expression.condition.value,
             params.differential_expression.covariates.value,
-            params.anndata_cell_label.value,
-            '15',
             params.differential_expression.diffxpy_method.value
         )
-        // TODO: for each condition... for each covariate ... for each method
-        // merge the output across all clusters 
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
     //       depending on the input data call. Therefore, we use publishDir
