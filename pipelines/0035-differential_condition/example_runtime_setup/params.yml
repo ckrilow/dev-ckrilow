@@ -5,7 +5,7 @@ differential_expression:
     condition:
         description: 'Differential condition (e.g., disease status).'
         value:
-            - 'sex'
+            - 'condition'
     covariates:
         description: 'Comma separated string of covariates. Enter different
             covariates for each dash to evaluate multiple covariates
