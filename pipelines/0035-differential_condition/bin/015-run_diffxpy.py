@@ -283,7 +283,7 @@ def main():
         sep='\t',
         compression=compression_opts,
         index=False,
-        header=False
+        header=True
     )
 
     # Now save the results object
