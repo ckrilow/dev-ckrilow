@@ -64,15 +64,27 @@ process run_diffxpy {
 
     output:
         val(outdir, emit: outdir)
-        path("${outfile}-de_results.tsv.gz", emit: results)
-        path("${outfile}-de_results_obj.joblib.gz", emit: results_obj)
+        tuple(
+            val(runid), //need random hex to control grouping
+            val(condition_column),
+            val(cell_label_analyse),
+            val(covariate_columns),
+            val(method),
+            path("${outfile}-de_results.tsv.gz"),
+            path("${outfile}-de_results_obj.joblib.gz"),
+            emit: results
+        )
         path("plots/*.png") optional true
         path("plots/*.pdf") optional true
 
     script:
         runid = random_hex(16)
-        outdir = "${outdir_prev}"
-        outfile = "test"
+        cell_label_analyse = cell_label_analyse[0] // comes in array-format. Get first element.
+        outdir = "${outdir_prev}/${condition_column}/"
+        outdir = "${outdir}cell_label=${cell_label_analyse}"
+        outdir = "${outdir}_covariates=${covariate_columns}"
+        outdir = "${outdir}_method=${method}"
+        outfile = "${cell_label_analyse}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -90,6 +102,47 @@ process run_diffxpy {
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
+        """
+}
+
+process merge_dataframes {
+    // Merge resulting dataframes from diffxpy
+    // ------------------------------------------------------------------------
+    scratch false        // use tmp directory
+    echo echo_mode       // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        tuple(
+            val(condition),
+            val(result_keys),
+            val(result_paths)
+        )
+
+    output:
+        val(outdir, emit: outdir)
+        path("${outfile}.tsv.gz", emit: merged_results)
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        outfile = "${condition}_merged_results"
+        result_keys = result_keys.join(",")
+        result_paths = result_paths.join(",")
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "merge_dataframes: ${process_info}"
+        017-merge_diffxpy.py \
+            --dataframe_keys ${result_keys} \
+            --dataframe_paths ${result_paths} \
+            --output_file ${outfile}
         """
 }
 
@@ -129,9 +182,37 @@ workflow wf__differential_expression {
             covariates,
             diffxpy_method
         )
-        // TODO
-        // For each condition... merge results across covariates, methods, and
-        // celltypes
+
+        condition_results = run_diffxpy.out.results.groupTuple(by: 0)
+            .reduce([:]) { map, tuple ->
+                def dataframe_key = "cell_label=" + tuple[2][0]
+                dataframe_key += "_covariates=" + tuple[3][0].replaceAll(",","-")
+                dataframe_key += "_method=" + tuple[4][0]
+
+                def map_key = tuple[1][0] // structure map by condition
+                def key_list = map[map_key]
+                if (!key_list) {
+                    key_list = [[dataframe_key, tuple[5][0]]]
+                } else {
+                    key_list.add([dataframe_key, tuple[5][0]])
+                }
+                map[map_key] = key_list
+                return(map)
+            }
+            .flatMap()
+            .map {  entry ->
+                combined_data = [entry.key, [], []]
+                entry.value.each {
+                    combined_data[1].add(it[0])
+                    combined_data[2].add(it[1])
+                }
+                return(combined_data)
+            }
+        merge_dataframes(
+            outdir,
+            condition_results
+        )
+
     emit:
         cell_labels = get_cell_label_list.out.cell_labels
 }
