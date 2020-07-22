@@ -1,0 +1,4 @@
+experiment_id	treatment	cell_line
+cvb4	cvb4	HPAP059
+cytokine	cytokine	HPAP059
+mock	control	HPAP059

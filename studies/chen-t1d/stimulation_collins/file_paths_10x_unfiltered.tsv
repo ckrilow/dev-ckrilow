@@ -1,0 +1,4 @@
+experiment_id	data_path_10x_format	short_experiment_id	ncells_expected
+cvb4	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP059-CVB4/processed/raw_feature_bc_matrix	cvb4	6166
+cytokine	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP059-Cytokine/processed/raw_feature_bc_matrix	cytokine	6403
+mock	/cluster/ifs/projects/collins/external/ShuibingChenLab/single_cells/data/scRNAseq/HPAP059-mock/processed/raw_feature_bc_matrix	mock	6526
