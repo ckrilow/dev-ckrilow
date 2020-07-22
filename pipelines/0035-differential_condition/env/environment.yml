@@ -5,13 +5,13 @@ channels:
   - r
   - defaults
 dependencies:
-  - pyyaml=5.3.1
   - pandas=1.0.5
   - scipy=1.5.0
   - scanpy=1.5.1
   - plotnine=0.7.0
-  - kneed=0.6.0
-  - tensorflow-gpu=2.2.0
   - scikit-learn=0.23.1
   - joblib=0.15.1
-  - diffxpy=0.7.4
+  - tensorflow-gpu=2.2.0
+  - pip
+  - pip:
+      - diffxpy==0.7.4

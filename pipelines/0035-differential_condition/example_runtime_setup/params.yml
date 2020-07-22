@@ -1,13 +1,19 @@
-cellbender_rb:
-    description: 'Parameters for cellbender remove background.'
-    epochs:
-        description: 'Number of epochs for traning.'
+anndata_cell_label:
+    description: 'Anndata cell label column in obs slot.'
+    value: 'cluster'
+differential_expression:
+    condition:
+        description: 'Differential condition (e.g., disease status).'
         value:
-            - 200
-            - 1000
-    learning_rate:
-        description: 'Learning rate. If lower learning rate, may need to
-            increase the number of epochs.'
+            - 'sex'
+    covariates:
+        description: 'Comma separated string of covariates. Enter different
+            covariates for each dash to evaluate multiple covariates
+            seperately.'
         value:
-            - 0.001
-            - 0.0001
+            - 'normalization_factor'
+            - 'normalization_factor,age'
+    diffxpy_method:
+        description: 'Diffxpy method to use'
+        value:
+            - 'wald'
