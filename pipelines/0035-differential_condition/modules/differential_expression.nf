@@ -44,7 +44,7 @@ process run_diffxpy {
     //tag { output_dir }
     //cache false        // cache results from run
     //maxForks 2         // hard to control memory usage. limit to 3 concurrent
-    label 'gpu'          // use GPU
+    //label 'gpu'          // use GPU
     scratch false        // use tmp directory
     echo echo_mode       // echo output from script
 
