@@ -75,7 +75,8 @@ workflow {
             params.file_anndata,
             params.anndata_cell_label.value,
             params.differential_expression.models.value,
-            params.differential_expression.diffxpy_method.value
+            params.differential_expression.diffxpy_method.value,
+            params.differential_expression.mast_method.value
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure
