@@ -7,12 +7,109 @@ __version__ = '0.0.1'
 
 import argparse
 import warnings
+import random
 from distutils.version import LooseVersion
+import os
 import numpy as np
 import pandas as pd
 import scanpy as sc
-import diffxpy.api as de
+import tensorflow as tf  # import before batchglm/diffxpy
 import joblib  # for numpy matrix, joblib faster than pickle
+
+
+# avoid tk.Tk issues
+import matplotlib
+matplotlib.use('Agg')
+
+
+# Set seed for reproducibility
+seed_value = 0
+# 0. Set `PYTHONHASHSEED` environment variable at a fixed value
+os.environ['PYTHONHASHSEED'] = str(seed_value)
+# 1. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 2. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
+# 3. Set the `tensorflow` pseudo-random generator at a fixed value
+if LooseVersion(tf.__version__) < '2.0.0':
+    tf.random.set_random_seed(seed_value)
+else:
+    tf.random.set_seed(seed_value)
+
+
+# Set up diffxpy backend
+backend_diffxpy = 'numpy'
+
+
+# Set GPU memory limits if running GPU
+if LooseVersion(tf.__version__) <= '2.0.0':
+    # with tf.Session() as sess:
+    #     devices = sess.list_devices()
+    # gpu = False
+    # for dev in devices:
+    #     if 'GPU' in dev.name:
+    #         gpu = True
+    #         break
+    gpu = tf.test.is_gpu_available()
+    if gpu:
+        # If we can find gpu then use that as the diffxpy backend
+        backend_diffxpy = 'tf1'
+
+        # This enables tensorflow for diffxpy
+        # More here:
+        # https://diffxpy.readthedocs.io/en/latest/parallelization.html
+        os.environ.setdefault('TF_NUM_THREADS', '1')
+        os.environ.setdefault('TF_LOOP_PARALLEL_ITERATIONS', '1')
+
+        # For TF v1
+        # config = tf.ConfigProto()
+        # config.gpu_options.allow_growth = True
+        # session = tf.Session(config=config)
+    else:
+        warnings.warn('No GPUs detected.')
+else:
+    gpus = tf.config.list_physical_devices('GPU')
+    print(gpus)
+    if gpus:
+        # If we can find gpu then use that as the diffxpy backend
+        backend_diffxpy = 'tf2'
+
+        # This enables tensorflow for diffxpy
+        # More here:
+        # https://diffxpy.readthedocs.io/en/latest/parallelization.html
+        os.environ.setdefault('TF_NUM_THREADS', '1')
+        os.environ.setdefault('TF_LOOP_PARALLEL_ITERATIONS', '1')
+
+        # For TF v2
+        try:
+            # Method 1:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+
+            # Method 2:
+            # Restrict TensorFlow to only allocate 1GB of memory on the first
+            # GPU
+            # tf.config.experimental.set_virtual_device_configuration(
+            #     gpus[0],
+            #     [tf.config.experimental.VirtualDeviceConfiguration(
+            #         memory_limit=options.memory_limit*1024
+            #     )])
+            # logical_gpus = tf.config.list_logical_devices('GPU')
+            # print(
+            #     len(gpus),
+            #     "Physical GPUs,",
+            #     len(logical_gpus),
+            #     "Logical GPUs"
+            # )
+        except RuntimeError as e:
+            # Virtual devices must be set before GPUs have been initialized
+            print(e)
+    else:
+        warnings.warn('No GPUs detected.')
+
+
+import diffxpy.api as de  # import after tensorflow
 
 
 def main():
@@ -42,7 +139,7 @@ def main():
     parser.add_argument(
         '-cov', '--covariate_columns',
         action='store',
-        dest='cov',
+        dest='covariate_columns',
         default='normalization_factor',
         help='Comma seperated list of covariates (columns in adata.obs). \
             (default: %(default)s)'
@@ -94,7 +191,7 @@ def main():
 
     # Get the parameters
     condition_column = options.condition_column
-    covariate_columns = options.covariate_columns
+    covariate_columns_string = options.covariate_columns
     cell_label_column = options.cell_label_column
     cell_label_analyse = options.cell_label_analyse
     out_file_base = options.of
@@ -135,10 +232,20 @@ def main():
     # adata.obs['size_factors'] = adata.obs['total_counts']/10000
 
     # Figure out continuous covariates.
-    covariate_columns = covariate_columns.split(',')
-    for i in covariate_columns:
-        if adata.obs[i].dtype.name != 'category':
-            continuous_variables.append(i)
+    # Also if covariate is also the condition, drop.
+    covariate_columns = []
+    for i in covariate_columns_string.split(','):
+        if i == condition_column:
+            warnings.warn(
+                'Condition ({}) is also covariate. {}.'.format(
+                    i,
+                    'Dropping condition from the covariates list.'
+                )
+            )
+        else:
+            covariate_columns.append(i)
+            if adata.obs[i].dtype.name != 'category':
+                continuous_variables.append(i)
 
     # Select the subset of cells we want for analysis
     if cell_label_analyse != 'all':
@@ -156,12 +263,14 @@ def main():
             raise Exception(
                 'For one cell_label_column there are 0 conditions.'
             )
-    if len(np.unique(adata.obs['condition']) <= 1):
-        raise Exception('There is only 1 condition.')
+        if len(np.unique(adata.obs['condition'].cat.codes)) <= 1:
+            raise Exception('There is only 1 condition.')
 
     print('Continuous varibles: {}'.format(','.join(continuous_variables)))
 
     # TODO: filter lowly expressed genes for this cluster?
+
+    # TODO: check for nan in covariates and conditions?
 
     # Run diffxpy
     #
@@ -189,20 +298,41 @@ def main():
     # which do not correspond to one-hot encoded discrete factors.
     # This makes sense for number of genes, time, pseudotime or space
     # for example.
+    print('Suggested backend:\t{}'.format(backend_diffxpy))
+    warnings.warn('Backend hardset to numpy due to bug in diffxpy.')
+    print('Using backend:\t{}'.format('numpy'))
     if options.method == 'wald':
         test_results = de.test.wald(
             data=adata,
             formula_loc=formula,
             factor_loc_totest=coef_names,
-            as_numeric=continuous_variables
+            as_numeric=continuous_variables,
+            backend='numpy',  # numpy, tf1, or tf2
+            noise_model='nb',
+            # batch_size=100,  # the memory load of the fitting procedure
+            quick_scale=False
         )
+    # elif options.method == 'lrt':
+    #     test_results = de.test.lrt(
+    #         data=adata,
+    #         full_formula_loc=formula,
+    #         reduced_formula_loc=formula.replace('+ condition', ''),
+    #         # factor_loc_totest=coef_names,
+    #         as_numeric=continuous_variables,
+    #         backend=backend_diffxpy,  # numpy, tf1, or tf2
+    #         noise_model='nb',
+    #         # batch_size=100,  # the memory load of the fitting procedure
+    #         quick_scale=False
+    #     )
     else:
         raise Exception('Invalid method.')
 
     # Make a table of the results
     df_results = test_results.summary()
+    df_results['de_method'] = options.method
     df_results['condition'] = condition_column
     df_results['covariates'] = ','.join(covariate_columns)
+    df_results['cell_label_column'] = cell_label_column
     df_results['cell_label_analysed'] = ','.join(cell_label_analyse)
     df_results = df_results.sort_values(
         by=['pval', 'log2fc', 'mean'],
@@ -213,7 +343,7 @@ def main():
         sep='\t',
         compression=compression_opts,
         index=False,
-        header=False
+        header=True
     )
 
     # Now save the results object

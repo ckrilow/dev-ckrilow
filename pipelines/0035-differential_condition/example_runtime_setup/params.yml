@@ -5,13 +5,14 @@ differential_expression:
     condition:
         description: 'Differential condition (e.g., disease status).'
         value:
-            - 'cd_status'
+            - 'sex'
     covariates:
         description: 'Comma separated string of covariates. Enter different
             covariates for each dash to evaluate multiple covariates
             seperately.'
         value:
             - 'normalization_factor'
+            - 'normalization_factor,age'
     diffxpy_method:
         description: 'Diffxpy method to use'
         value:
