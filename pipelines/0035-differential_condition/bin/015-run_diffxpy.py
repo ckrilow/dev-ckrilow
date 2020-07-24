@@ -17,6 +17,11 @@ import tensorflow as tf  # import before batchglm/diffxpy
 import joblib  # for numpy matrix, joblib faster than pickle
 
 
+# avoid tk.Tk issues
+import matplotlib
+matplotlib.use('Agg')
+
+
 # Set seed for reproducibility
 seed_value = 0
 # 0. Set `PYTHONHASHSEED` environment variable at a fixed value
@@ -315,9 +320,9 @@ def main():
     #         # factor_loc_totest=coef_names,
     #         as_numeric=continuous_variables,
     #         backend=backend_diffxpy,  # numpy, tf1, or tf2
-    #         noise_model='nb'
+    #         noise_model='nb',
     #         # batch_size=100,  # the memory load of the fitting procedure
-    #         #quick_scale=False
+    #         quick_scale=False
     #     )
     else:
         raise Exception('Invalid method.')
@@ -327,6 +332,7 @@ def main():
     df_results['de_method'] = options.method
     df_results['condition'] = condition_column
     df_results['covariates'] = ','.join(covariate_columns)
+    df_results['cell_label_column'] = cell_label_column
     df_results['cell_label_analysed'] = ','.join(cell_label_analyse)
     df_results = df_results.sort_values(
         by=['pval', 'log2fc', 'mean'],
