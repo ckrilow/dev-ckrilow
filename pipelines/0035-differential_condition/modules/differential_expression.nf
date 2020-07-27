@@ -86,7 +86,7 @@ process run_diffxpy {
         outdir = "${outdir}cell_label=${cell_label_analyse}"
         outdir = "${outdir}_covariates=${covariate_columns}"
         outdir = "${outdir}_method=${method}"
-        outfile = "${cell_label_analyse}"
+        outfile = "cell_label__${cell_label_analyse}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
