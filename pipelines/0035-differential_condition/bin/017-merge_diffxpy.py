@@ -18,6 +18,7 @@ def merge_diffxpy_dataframes(
 ):
     # Start with first dataframe and get dimensions from df.
     df_merged = pd.read_csv(dataframe_paths[0], sep="\t", header=0)
+    df_merged['df_key'] = dataframe_keys[0]
 
     if verbose:
         print(
@@ -36,6 +37,7 @@ def merge_diffxpy_dataframes(
             print("Merging dataframe with the key: '{}'".format(key))
 
         df = pd.read_csv(path, sep="\t", header=0)  # Expect a header
+        df['df_key'] = key
 
         len_before_merge = len(df_merged)
         df_merged = df_merged.merge(
@@ -63,7 +65,7 @@ def merge_diffxpy_dataframes(
         sep='\t',
         compression=compression_opts,
         index=False,
-        header=False
+        header=True
     )
 
 
