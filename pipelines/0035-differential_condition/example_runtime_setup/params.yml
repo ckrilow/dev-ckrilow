@@ -11,8 +11,8 @@ differential_expression:
             covariates for each dash to evaluate multiple covariates
             seperately.'
         value:
-            - 'normalization_factor'
-            - 'normalization_factor,age'
+            - ''
+            - 'age'
     diffxpy_method:
         description: 'Diffxpy method to use'
         value:
