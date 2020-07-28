@@ -17,15 +17,16 @@ params.help                 = false
 // TODO: Default parameters for differential expression
 params.anndata_cell_label = [value: 'cluster']
 
-params.differential_expression.diffxpy_method = [
-    run_process: true,
-    value: ["wald"]
-]
-
-params.differential_expression.mast_method = [
-    run_process: true,
-    value: ["bayesglm"]
-]
+// Default parameters not working -- overwriting params set in params.yml
+//params.differential_expression.diffxpy_method = [
+//    run_process: true,
+//    value: ["wald"]
+//]
+//
+//params.differential_expression.mast_method = [
+//    run_process: true,
+//    value: ["bayesglm"]
+//]
 
 // Define the help messsage.
 def help_message() {
