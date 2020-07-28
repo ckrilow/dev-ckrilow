@@ -244,8 +244,8 @@ workflow wf__differential_expression {
         anndata
         anndata_cell_label
         model
-        diffxpy_method
-        mast_method
+        diffxpy_method_config
+        mast_method_config
     main:
         // Get a list of all of the cell types
         get_cell_label_list(
@@ -262,33 +262,43 @@ workflow wf__differential_expression {
         // Run diffxpy with all combinations of conditions (e.g., sex,
         // disease status), covariates (e.g., size_factors, age),
         // methods (e.g., wald)
-        run_diffxpy(
-            outdir,
-            anndata,
-            anndata_cell_label,
-            // '1',  // just run on first cluster for development
-            cell_labels,  // run for all clusters for run time
-            model,
-            diffxpy_method
-        )
+        if (diffxpy_method_config.run_process) {
+            run_diffxpy(
+                outdir,
+                anndata,
+                anndata_cell_label,
+                // '1',  // just run on first cluster for development
+                cell_labels,  // run for all clusters for run time
+                model,
+                diffxpy_method_config.value
+            )
+        }
 
         // Run MAST with all combinations of conditions (e.g., sex,
         // disease status), covariates (e.g., size_factors, age),
         // methods (e.g., wald)
-        run_mast(
-            outdir,
-            anndata,
-            anndata_cell_label,
-            // '1',  // just run on first cluster for development
-            cell_labels,  // run for all clusters for run time
-            condition,
-            covariates,
-            mast_method
-        )
+        if (mast_method_config.run_process) {
+            run_mast(
+                outdir,
+                anndata,
+                anndata_cell_label,
+                // '1',  // just run on first cluster for development
+                cell_labels,  // run for all clusters for run time
+                condition,
+                covariates,
+                mast_method_config.value
+            )
+        }
 
         // Priming for enrichR
-        de_results = run_diffxpy.out.results.groupTuple(by: 0)
-            .concat(run_mast.out.results.groupTuple(by: 0))
+        if (diffxpy_method_config.run_process & mast_method_config.run_process) {
+            de_results = run_diffxpy.out.results.groupTuple(by: 0)
+                .concat(run_mast.out.results.groupTuple(by: 0))
+        } else if (diffxpy_method_config.run_process) {
+            de_results = run_diffxpy.out.results.groupTuple(by: 0)
+        } else if (mast_method_config.run_process) {
+            de_results = run_mast.out.results.groupTuple(by: 0)
+        }
 
         de_results_merged = de_results
             .reduce([:]) { map, tuple ->
