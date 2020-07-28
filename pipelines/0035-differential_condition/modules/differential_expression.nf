@@ -87,6 +87,10 @@ process run_diffxpy {
         outdir = "${outdir}_covariates=${covariate_columns}"
         outdir = "${outdir}_method=${method}"
         outfile = "cell_label__${cell_label_analyse}"
+        cmd__covar = ""
+        if (covariate_columns != "") {
+            cmd__covar = "--covariate_columns ${covariate_columns}"
+        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -96,11 +100,11 @@ process run_diffxpy {
         015-run_diffxpy.py \
             --h5_anndata ${anndata} \
             --condition_column ${condition_column} \
-            --covariate_columns ${covariate_columns} \
             --cell_label_column ${cell_label_column} \
             --cell_label_analyse ${cell_label_analyse} \
             --method ${method} \
-            --output_file ${outfile}
+            --output_file ${outfile} \
+            ${cmd__covar}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true

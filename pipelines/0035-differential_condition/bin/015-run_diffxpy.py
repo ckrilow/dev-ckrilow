@@ -144,7 +144,7 @@ def main():
         '-cov', '--covariate_columns',
         action='store',
         dest='covariate_columns',
-        default='normalization_factor',
+        default='',
         help='Comma seperated list of covariates (columns in adata.obs). \
             If this list includes normalization_factor then this covariate \
             is modeled as the size_factor. If normalization_factor is not \
