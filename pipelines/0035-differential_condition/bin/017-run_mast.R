@@ -1,9 +1,4 @@
 #!/usr/bin/env Rscript
-# disable strings as factors, but re-enable upon exit
-## Need to set the global allowance higher for the amount of data
-old <- options(stringsAsFactors = FALSE, future.globals.maxSize= 5368709120)
-on.exit(options(old), add = TRUE)
-
 
 plot_settings <- function(plt,
                           base_size,
@@ -165,11 +160,19 @@ run_MAST <- function(mtx_file_dir,
   
   if (verbose) {
     print(sprintf("Selected the value '%s' as the reference condition.", reference_condition))
+    print("Fitting the model...")
   }
   
-  zlm_fit <- MAST::zlm(formula, sca, method = de_method, silent=FALSE)
+  zlm_fit <- MAST::zlm(formula, sca, method = de_method, silent=FALSE, parallel = TRUE)
+  
+  if (verbose) {
+    print("Done fitting the model.")
+  }
   
   test_var <- paste(c(condition_col, setdiff(levels(condition_data), reference_condition)), collapse = "")
+  if (verbose) {
+    print(sprintf("Performing Log-Ratio Test for the variable %s...", test_var))
+  }
   results <- summary(zlm_fit, doLRT=test_var)
   results_dt <- results$datatable
   
@@ -182,6 +185,8 @@ run_MAST <- function(mtx_file_dir,
   fcHurdle$de_software <- "MAST"
   fcHurdle$de_method <- de_method
   fcHurdle$condition <- condition_col
+  fcHurdle$reference_condition <- reference_condition
+  fcHurdle$test_condition <- setdiff(levels(condition_data), reference_condition)
   fcHurdle$covariates <- covariates_list_str
   fcHurdle$cell_label_column <- cell_label_column
   fcHurdle$cell_label_analysed <- cell_label_analysed
@@ -193,7 +198,7 @@ run_MAST <- function(mtx_file_dir,
   counts_barcodes <- read.csv(sprintf("%s/counts/barcodes.tsv.gz", mtx_file_dir), sep ="\t", header=F)$V1
   rownames(counts_matrix) <- rownames(counts_features)
   colnames(counts_matrix) <- rownames(counts_barcodes)
-  fcHurdle$meanExpr <- Matrix::rowMeans(counts_matrix[fcHurdle$primerid]@assays@data$et)
+  fcHurdle$meanExpr <- Matrix::rowMeans(counts_matrix[fcHurdle$primerid,])
   
   ## Order by FDR
   fcHurdle <- fcHurdle[order(fcHurdle$fdr, decreasing=F)]
@@ -229,5 +234,12 @@ run_MAST <- function(mtx_file_dir,
 # like python if __name__ == '__main__'
 if (sys.nframe() == 0) {
   args <- commandArgs(trailingOnly = TRUE)
+  
+  # disable strings as factors, but re-enable upon exit
+  ## Need to set the global allowance higher for the amount of data
+  ## Expect cores at end 
+  old <- options(stringsAsFactors = FALSE, future.globals.maxSize= 5368709120, mc.cores=as.numeric(args[8]))
+  on.exit(options(old), add = TRUE)
+  
   run_MAST(args[1], args[2], args[3], args[4], args[5], args[6], args[7])
 }

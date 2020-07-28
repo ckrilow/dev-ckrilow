@@ -253,17 +253,13 @@ def main():
         raise Exception('There is only 1 condition.')
 
     # Run the conversion function.
-    for layer in ['counts', 'log1p_cp10k'] {
-        if verbose:
-            print('Writing matrix for {} layer...'.format(layer))
-            
+    for layer in ['counts', 'log1p_cp10k']:
         adata.X = adata.layers[layer]
         _ = prepare_h5ad_MAST(
             adata,
             metadata_to_keep,
             out_dir='{}/{}'.format(options.od, layer)
         )
-    }
 
 
 if __name__ == '__main__':

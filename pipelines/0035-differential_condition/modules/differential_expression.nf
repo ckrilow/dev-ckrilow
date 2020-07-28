@@ -176,21 +176,22 @@ process run_mast {
         """
         echo "run_mast: ${process_info}"
         rm -fr plots
-        023-prepare_mast_input.py \
+        017-prepare_mast_input.py \
             --h5ad_file ${anndata} \
             --condition_column ${condition_column} \
             --covariates ${covariate_columns} \
             --cell_label_column ${cell_label_column} \
             --cell_label_analyse ${cell_label_analyse} \
             --output_dir mast_input
-        025-run_mast.R \
+        017-run_mast.R \
             mast_input \
             ${cell_label_column} \
             ${cell_label_analyse} \
             ${condition_column} \
             ${covariate_columns} \
             ${method} \
-            ${outfile}
+            ${outfile} \
+            ${task.cpus}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
