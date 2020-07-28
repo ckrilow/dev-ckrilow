@@ -32,33 +32,22 @@ plot_settings <- function(plt,
 }
 
 plot_volcano_plot <- function(df,
-                              fc_column,
-                              p_val_column,
-                              x_axis_threshold,
-                              y_axis_threshold,
-                              title) {
-  # df$significant <- apply(df, 1, function(x) {
-  #   return(abs(as.numeric(x[x_axis])) >= x_axis_threshold & abs(as.numeric(x[y_axis])) >= y_axis_threshold)
-  # })
-  # 
-  # df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
+                              fc_col,
+                              p_val_col,
+                              fc_threshold = 1.8,
+                              p_val_threshold = 0.05) {
   
-  # plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=x_axis, y=y_axis, color="significant")) +
-  #   ggplot2::geom_point() +
-  #   ggplot2::scale_x_continuous(trans='log10') +
-  #   ggplot2::scale_y_continuous(trans='log10') +
-  #   # ggplot2::geom_hline(yintercept = y_axis_threshold, linetype="dashed", color="red") +
-  #   # ggplot2::geom_vline(xintercept = x_axis_threshold, linetype="dashed", color="red") +
-  #   # ggplot2::geom_vline(xintercept = -x_axis_threshold, linetype="dashed", color="red") +
-  #   ggplot2::labs(x="Log(FC)", y="Log(p-value)", color="Significance") +
-  #   ggplot2::scale_color_manual(values=c("Red", "Black"))
+  df$significant <- apply(df, 1, function(x) {
+     return(abs(as.numeric(x[[fc_col]])) >= log2(fc_threshold) & abs(as.numeric(x[[p_val_col]])) <= p_val_threshold)
+  })
+  df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
   
-  df$log10p <- -log10(df[[p_val_column]])
-  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=fc_column, y="log10p")) +
-    ggplot2::geom_point() +
-    ggplot2::scale_x_continuous(trans='log10') +
+  df$neg_log10 <- -log10(df[[p_val_col]])
+  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=fc_col, y="neg_log10", color="significant")) +
+    ggplot2::geom_point(size=.5) +
     ggplot2::labs(x="log2(FC)", y="-log10(p-value)") +
-    ggplot2::theme_bw()
+    ggplot2::theme_bw() +
+    ggplot2::scale_color_manual(values=c("#CF9400", "Black"))
   return(plot)
 }
 
@@ -66,27 +55,20 @@ plot_volcano_plot <- function(df,
 plot_ma_plot <- function(df,
                          mean_expr_col,
                          fc_col,
-                         x_axis_threshold,
-                         y_axis_threshold,
-                         title) {
-  # df$significant <- apply(df, 1, function(x) {
-  #   return(abs(as.numeric(x[x_axis])) >= x_axis_threshold & abs(as.numeric(x[y_axis])) >= y_axis_threshold)
-  # })
-  # 
-  # df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
+                         mean_expr_threshold = 0.0001,
+                         fc_threshold = 1.8) {
   
-  # plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=mean_expr_column, y=p_val_col, color="significant")) +
-  #   ggplot2::geom_point() +
-  #   ggplot2::geom_hline(yintercept = y_axis_threshold, linetype="dashed", color="red") +
-  #   ggplot2::geom_vline(xintercept = x_axis_threshold, linetype="dashed", color="red") +
-  #   ggplot2::geom_vline(xintercept = -x_axis_threshold, linetype="dashed", color="red") +
-  #   ggplot2::labs(x=x_axis_title, y=y_axis_title, title=title, color="Significance") +
-  #   ggplot2::scale_color_manual(values=c("Red", "Black"))
+  df$significant <- apply(df, 1, function(x) {
+    return(abs(as.numeric(x[[mean_expr_col]])) >= mean_expr_threshold & abs(as.numeric(x[[fc_col]])) >= log2(fc_threshold))
+  })
+  df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
   
-  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=mean_expr_column, y=fc_col)) +
-    ggplot2::geom_point() +
+  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=mean_expr_col, y=fc_col, color="significant")) +
+    ggplot2::geom_point(size=.5) +
     ggplot2::scale_x_continuous(trans='log10') +
-    ggplot2::labs(x="log10(Mean Expression)", y="log2(FC)") 
+    ggplot2::theme_bw() +
+    ggplot2::labs(x="Mean Expression", y="log2(FC)") +
+    ggplot2::scale_color_manual(values=c("#CF9400", "Black"))
   return(plot)
 }
 
@@ -198,24 +180,15 @@ run_MAST <- function(mtx_file_dir,
   counts_barcodes <- read.csv(sprintf("%s/counts/barcodes.tsv.gz", mtx_file_dir), sep ="\t", header=F)$V1
   rownames(counts_matrix) <- rownames(counts_features)
   colnames(counts_matrix) <- rownames(counts_barcodes)
-  fcHurdle$meanExpr <- Matrix::rowMeans(counts_matrix[fcHurdle$primerid,])
+  fcHurdle$mean <- Matrix::rowMeans(counts_matrix[fcHurdle$primerid,])
   
   ## Order by FDR
   fcHurdle <- fcHurdle[order(fcHurdle$fdr, decreasing=F)]
   
-  vol_plot <- plot_volcano_plot(fcHurdle,
-                                'coef',
-                                'Pr(>Chisq)',
-                                0,
-                                0,
-                                "Dud")
-  vol_plot <- plot_settings(vol_plot,  46, 20, 30, 30)
-  png(file = sprintf("%s-plot_volcano.png", output_file_base),
-      height = cm(10.5),
-      width = cm(13.5)
-  )
-  print(vol_plot)
-  dev.off()
+  ## Rename specific columns to match diffxpy
+  names(fcHurdle)[names(fcHurdle) == "primerid"] <- "gene"
+  names(fcHurdle)[names(fcHurdle) == "Pr(>Chisq)"] <- "pval"
+  names(fcHurdle)[names(fcHurdle) == "coef"] <- "log2fc"
   
   gz_file <- gzfile(sprintf("%s-de_results.tsv.gz", output_file_base), "w", compression = 9)
   write.table(x= fcHurdle,
@@ -225,6 +198,26 @@ run_MAST <- function(mtx_file_dir,
               row.names=F,
               quote=F)
   close(gz_file)
+  
+  vol_plot <- plot_volcano_plot(fcHurdle,
+                                'log2fc',
+                                'pval',
+                                1.8,
+                                0.05)
+  # vol_plot <- plot_settings(vol_plot,  46, 20, 30, 30)
+  png(file = sprintf("%s-plot_volcano.png", output_file_base))
+  print(vol_plot)
+  dev.off()
+  
+  ma_plot <- plot_ma_plot(fcHurdle,
+                          'mean',
+                          'log2fc',
+                          0.0001,
+                          1.8)
+  # ma_plot <- plot_settings(ma_plot,  46, 20, 30, 30)
+  png(file = sprintf("%s-plot_ma.png", output_file_base))
+  print(ma_plot)
+  dev.off()
   
   if (verbose) {
     print("Done.")
