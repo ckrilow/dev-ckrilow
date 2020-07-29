@@ -137,13 +137,29 @@ def main():
         action='store',
         dest='condition_column',
         required=True,
-        help='Condition column. Should be a binary trait.'
+        help='Condition column. Continuous variables are allowed, but this \
+            has not been extensively tested.'
     )
 
+    # parser.add_argument(
+    #     '-cov', '--covariate_columns',
+    #     action='store',
+    #     dest='covariate_columns',
+    #     default='',
+    #     help='Comma seperated list of covariates (columns in adata.obs). \
+    #         If this list includes normalization_factor then this covariate \
+    #         is modeled as the size_factor. If normalization_factor is not \
+    #         included then size factors are calculated as in \
+    #         scater::librarySizeFactors. \
+    #         Note: all continuous covariates are mean centered and \
+    #         standardized. \
+    #         (default: %(default)s)'
+    # )
+
     parser.add_argument(
-        '-cov', '--covariate_columns',
+        '-cov_cont', '--covariate_columns_continuous',
         action='store',
-        dest='covariate_columns',
+        dest='covariate_columns_continuous',
         default='',
         help='Comma seperated list of covariates (columns in adata.obs). \
             If this list includes normalization_factor then this covariate \
@@ -152,6 +168,15 @@ def main():
             scater::librarySizeFactors. \
             Note: all continuous covariates are mean centered and \
             standardized. \
+            (default: %(default)s)'
+    )
+
+    parser.add_argument(
+        '-cov_discrete', '--covariate_columns_discrete',
+        action='store',
+        dest='covariate_columns_discrete',
+        default='',
+        help='Comma seperated list of covariates (columns in adata.obs). \
             (default: %(default)s)'
     )
 
@@ -201,7 +226,7 @@ def main():
 
     # Get the parameters
     condition_column = options.condition_column
-    covariate_columns_string = options.covariate_columns
+    # covariate_columns_string = options.covariate_columns
     cell_label_column = options.cell_label_column
     cell_label_analyse = options.cell_label_analyse
     out_file_base = options.of
@@ -234,23 +259,40 @@ def main():
     # Figure out continuous covariates.
     # Also if covariate is also the condition, drop.
     covariate_columns = []
-    if covariate_columns_string != '':
-        for i in covariate_columns_string.split(','):
-            if i == condition_column:
-                msg = 'Condition ({}) is also covariate. {}.'.format(
-                    i
-                )
-                raise Exception(msg)
-                # warnings.warn(
-                #     '{} {}.'.format(
-                #         msg,
-                #         'Dropping condition from the covariates list.'
-                #     )
-                # )
-            else:
-                covariate_columns.append(i)
-                if adata.obs[i].dtype.name != 'category':
-                    continuous_variables.append(i)
+    # NOTE: below code is for if there is only one input covariate stream
+    # if covariate_columns_string != '':
+    #     for i in covariate_columns_string.split(','):
+    #         if i == condition_column:
+    #             msg = 'Condition ({}) is also covariate. {}.'.format(
+    #                 i
+    #             )
+    #             raise Exception(msg)
+    #             # warnings.warn(
+    #             #     '{} {}.'.format(
+    #             #         msg,
+    #             #         'Dropping condition from the covariates list.'
+    #             #     )
+    #             # )
+    #         else:
+    #             covariate_columns.append(i)
+    #             if adata.obs[i].dtype.name != 'category':
+    #                 continuous_variables.append(i)
+    # Add in continuous covariates
+    if options.covariate_columns_continuous != '':
+        for i in options.covariate_columns_continuous.split(','):
+            # If pandas thinks a continuous variable is categorical, we have
+            # a problem. Raise error.
+            if adata.obs[i].dtype.name == 'category':
+                raise Exception('Continuous variable appears to be category')
+            covariate_columns.append(i)
+            continuous_variables.append(i)
+    # Add in discrete covariates
+    if options.covariate_columns_discrete != '':
+        for i in options.covariate_columns_discrete.split(','):
+            # If a discrete columns int or float, cast to category.
+            if adata.obs[i].dtype.name != 'category':
+                adata.obs[i] = adata.obs[i].astype('category')
+            covariate_columns.append(i)
 
     # Select the subset of cells we want for analysis
     if cell_label_analyse != 'all':
@@ -340,6 +382,11 @@ def main():
 
     # TODO: check for nan in covariates and conditions?
 
+    # Describe the input covariates
+    if len(covariate_columns) > 0:
+        print('Covariate description:\t{}'.format(','.join(covariate_columns)))
+        print(adata.obs[covariate_columns].describe(include='all'))
+
     # Run diffxpy
     #
     # Tutorial for conditions:
@@ -403,7 +450,7 @@ def main():
     df_results = df_results.rename(columns={'coef_mle': 'coef'})
     df_results['de_method'] = 'diffxpy-{}'.format(options.method)
     df_results['condition'] = condition_column
-    df_results['condition_coef'] = ','.join(coef_names)
+    df_results['coef_condition'] = ','.join(coef_names)
     df_results['covariates'] = ','.join(covariate_columns)
     df_results['cell_label_column'] = cell_label_column
     df_results['cell_label_analysed'] = ','.join(cell_label_analyse)

@@ -82,7 +82,25 @@ process run_diffxpy {
     script:
         runid = random_hex(16)
         condition_column = model.variable
-        covariate_columns = model.covariates
+        // Sort out covariates
+        covariate_columns_discrete = model.covariate_discrete
+        covariate_columns_continuous = model.covariate_continuous
+        covariate_columns = ""  // list of all covariates used in model
+        cmd__covar = ""
+        if (covariate_columns_discrete != "") {  // add disc cov call
+            cmd__covar = "${cmd__covar} --covariate_columns_discrete ${covariate_columns_discrete}"
+            covariate_columns = "${covariate_columns_discrete},"
+        }
+        if (covariate_columns_continuous != "") {  // add contin cov call
+            cmd__covar = "${cmd__covar} --covariate_columns_continuous ${covariate_columns_continuous}"
+            covariate_columns = "${covariate_columns_continuous},"
+        }
+        if(covariate_columns.endsWith(",")) {
+            covariate_columns = covariate_columns.substring(
+                0,
+                covariate_columns.length() - 1
+            )
+        }
         // cell_label_analyse comes in array-format.
         cell_label_analyse = cell_label_analyse[0] // Get first element.
         outdir = "${outdir_prev}/${condition_column}/"
@@ -90,10 +108,6 @@ process run_diffxpy {
         outdir = "${outdir}_covariates=${covariate_columns}"
         outdir = "${outdir}_method=${method}"
         outfile = "cell_label__${cell_label_analyse}"
-        cmd__covar = ""
-        if (covariate_columns != "") {
-            cmd__covar = "--covariate_columns ${covariate_columns}"
-        }
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
