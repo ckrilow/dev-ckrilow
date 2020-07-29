@@ -40,12 +40,13 @@ def merge_diffxpy_dataframes(
         df['df_key'] = key
 
         len_before_merge = len(df_merged)
-        df_merged = df_merged.merge(
-            df,
-            how="outer",
-            left_index=False,
-            right_index=False
-        )
+        # df_merged = df_merged.merge(
+        #     df,
+        #     how="outer",
+        #     left_index=False,
+        #     right_index=False
+        # )
+        df_merged = pd.concat([df_merged, df], axis=0, ignore_index=True)
 
         if len_before_merge == len(df_merged) and verbose:
             print(
