@@ -315,9 +315,11 @@ def main():
             raise Exception('There is only 1 condition.')
 
     # Check to make sure that for ecah covariate, there are >1 value.
-    for i in covariate_columns:
-        unique_vals = np.unique(adata.obs[i])
-        print(unique_vals)
+    # NOTE: need a copy for loop because changing covariate_columns within
+    # the loop.
+    for i in covariate_columns.copy():
+        unique_vals = adata.obs[i].unique().astype('str')
+        # print('{}\t{}'.format(i, ''.join(unique_vals)))
         if len(unique_vals) <= 1:
             warnings.warn(
                 'Removing covariate with only one value:\t{} {}'.format(
@@ -404,7 +406,12 @@ def main():
     # NOTE:
     # One may get a constrained design matrix is not full rank when for
     # the categorcial variable combinations, one facet is all ones.
-    # TODO: test this out
+    discrete_vars = [
+        i for i in covariate_columns if i not in continuous_variables
+    ]
+    if len(discrete_vars) > 1:
+        n_cells_condition = adata.obs.groupby(discrete_vars).size().unstack()
+        print(n_cells_condition)
 
     # Run diffxpy
     #
