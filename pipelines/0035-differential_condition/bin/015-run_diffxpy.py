@@ -302,8 +302,7 @@ def main():
         ].copy()  # NOTE: need copy here so it is not a view
     # clusters = np.sort(adata.obs[cell_label_column].unique())
 
-    # Check to make sure that within each cluster, there are >1 condition
-    # values.
+    # Check to make sure that within each cluster, there are >1 values.
     if adata.obs[condition_column].dtype.name == 'category':
         n_cells_condition_cluster = adata.obs.groupby(
             [condition_column, cell_label_column]
@@ -314,6 +313,21 @@ def main():
             )
         if len(np.unique(adata.obs['condition'].cat.codes)) <= 1:
             raise Exception('There is only 1 condition.')
+
+    # Check to make sure that for ecah covariate, there are >1 value.
+    for i in covariate_columns:
+        unique_vals = np.unique(adata.obs[i])
+        print(unique_vals)
+        if len(unique_vals) <= 1:
+            warnings.warn(
+                'Removing covariate with only one value:\t{} {}'.format(
+                    i,
+                    unique_vals
+                )
+            )
+            covariate_columns.remove(i)
+            if adata.obs[i].dtype.name != 'category':
+                continuous_variables.remove(i)
 
     # Get the size factors for analysis
     if 'normalization_factor' not in covariate_columns:
@@ -364,6 +378,8 @@ def main():
         continuous_variables.remove('normalization_factor')
         covariate_columns.remove('normalization_factor')
 
+    # TODO: Check for nan in covariates and conditions?
+
     # Center and standardize continuous variables
     if len(continuous_variables) > 0:
         adata.obs[continuous_variables] = scaler_continuous.fit_transform(
@@ -380,12 +396,15 @@ def main():
     # pull up the regression line. These, however, can always be filtered out
     # afterwards.
 
-    # TODO: check for nan in covariates and conditions?
-
     # Describe the input covariates
     if len(covariate_columns) > 0:
         print('Covariate description:\t{}'.format(','.join(covariate_columns)))
         print(adata.obs[covariate_columns].describe(include='all'))
+
+    # NOTE:
+    # One may get a constrained design matrix is not full rank when for
+    # the categorcial variable combinations, one facet is all ones.
+    # TODO: test this out
 
     # Run diffxpy
     #
@@ -451,6 +470,10 @@ def main():
     df_results['de_method'] = 'diffxpy-{}'.format(options.method)
     df_results['condition'] = condition_column
     df_results['coef_condition'] = ','.join(coef_names)
+    df_results['covariates_passed'] = ','.join([
+        options.covariate_columns_discrete,
+        options.covariate_columns_continuous
+    ])
     df_results['covariates'] = ','.join(covariate_columns)
     df_results['cell_label_column'] = cell_label_column
     df_results['cell_label_analysed'] = ','.join(cell_label_analyse)
