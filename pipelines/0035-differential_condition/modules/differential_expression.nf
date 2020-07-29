@@ -59,8 +59,9 @@ process run_diffxpy {
         path(anndata)
         val(cell_label_column)
         each cell_label_analyse
-        each condition_column
-        each covariate_columns
+        each model
+        // each condition_column
+        // each covariate_columns
         each method
 
     output:
@@ -80,6 +81,26 @@ process run_diffxpy {
 
     script:
         runid = random_hex(16)
+        condition_column = model.variable
+        // Sort out covariates
+        covariate_columns_discrete = model.covariate_discrete
+        covariate_columns_continuous = model.covariate_continuous
+        covariate_columns = ""  // list of all covariates used in model
+        cmd__covar = ""
+        if (covariate_columns_discrete != "") {  // add disc cov call
+            cmd__covar = "${cmd__covar} --covariate_columns_discrete ${covariate_columns_discrete}"
+            covariate_columns = "${covariate_columns_discrete},"
+        }
+        if (covariate_columns_continuous != "") {  // add contin cov call
+            cmd__covar = "${cmd__covar} --covariate_columns_continuous ${covariate_columns_continuous}"
+            covariate_columns = "${covariate_columns_continuous},"
+        }
+        if(covariate_columns.endsWith(",")) {
+            covariate_columns = covariate_columns.substring(
+                0,
+                covariate_columns.length() - 1
+            )
+        }
         // cell_label_analyse comes in array-format.
         cell_label_analyse = cell_label_analyse[0] // Get first element.
         outdir = "${outdir_prev}/${condition_column}/"
@@ -96,11 +117,11 @@ process run_diffxpy {
         015-run_diffxpy.py \
             --h5_anndata ${anndata} \
             --condition_column ${condition_column} \
-            --covariate_columns ${covariate_columns} \
             --cell_label_column ${cell_label_column} \
             --cell_label_analyse ${cell_label_analyse} \
             --method ${method} \
-            --output_file ${outfile}
+            --output_file ${outfile} \
+            ${cmd__covar}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
@@ -155,8 +176,7 @@ workflow wf__differential_expression {
         outdir
         anndata
         anndata_cell_label
-        condition
-        covariates
+        model
         diffxpy_method
     main:
         // Get a list of all of the cell types
@@ -180,8 +200,7 @@ workflow wf__differential_expression {
             anndata_cell_label,
             // '1',  // just run on first cluster for development
             cell_labels,  // run for all clusters for run time
-            condition,
-            covariates,
+            model,
             diffxpy_method
         )
 

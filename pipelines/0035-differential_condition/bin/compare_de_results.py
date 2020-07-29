@@ -9,11 +9,12 @@ import argparse
 import numpy as np
 import pandas as pd
 import plotnine as plt9
-# import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# matplotlib.use('Agg')
+# avoid tk.Tk issues
+import matplotlib
+matplotlib.use('Agg')
 # matplotlib.style.use('ggplot')
 
 
@@ -60,7 +61,7 @@ def main():
         dest='df',
         required=True,
         help='Results dataframe. Required columns: \
-            gene, pval, log2fc, cell_label_analysed.'
+            gene, pval, mean, coef, cell_label_analysed.'
     )
 
     parser.add_argument(
@@ -120,6 +121,9 @@ def main():
 
     # Add a key based on columns to compare (e.g., differential expression
     # method, condition, covariates)
+    # If nan in cols to compare, set to none
+    for i in cols_compare:
+        df[cols_compare] = df[cols_compare].fillna('none')
     facet_column = 'facet_key'
     df[facet_column] = df[cols_compare].apply(
         lambda row: '\n'.join(row.values.astype(str)),
@@ -132,7 +136,7 @@ def main():
     filt = df['pval'] == 0.0
     small_value[filt] = np.nanmin(df['pval'][np.invert(filt)])  # ** 1.5
     df['pval_neglog10'] = np.log10(df['pval'] + small_value) * -1
-    df['pval_signedneglog10'] = df['pval_neglog10'] * np.sign(df['log2fc'])
+    df['pval_signedneglog10'] = df['pval_neglog10'] * np.sign(df['coef'])
 
     # For each combination of columns...
     # 1. Plot p-value distribution

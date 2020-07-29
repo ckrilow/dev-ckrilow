@@ -13,6 +13,7 @@ import os
 import numpy as np
 import pandas as pd
 import scanpy as sc
+from sklearn.preprocessing import StandardScaler
 import tensorflow as tf  # import before batchglm/diffxpy
 import joblib  # for numpy matrix, joblib faster than pickle
 
@@ -39,6 +40,9 @@ else:
 
 # Set up diffxpy backend
 backend_diffxpy = 'numpy'
+
+# Set up scaler for continuous_variables
+scaler_continuous = StandardScaler(with_mean=True, with_std=True)
 
 
 # Set GPU memory limits if running GPU
@@ -133,14 +137,45 @@ def main():
         action='store',
         dest='condition_column',
         required=True,
-        help='Condition column. Should be a binary trait.'
+        help='Condition column. Continuous variables are allowed, but this \
+            has not been extensively tested.'
+    )
+
+    # parser.add_argument(
+    #     '-cov', '--covariate_columns',
+    #     action='store',
+    #     dest='covariate_columns',
+    #     default='',
+    #     help='Comma seperated list of covariates (columns in adata.obs). \
+    #         If this list includes normalization_factor then this covariate \
+    #         is modeled as the size_factor. If normalization_factor is not \
+    #         included then size factors are calculated as in \
+    #         scater::librarySizeFactors. \
+    #         Note: all continuous covariates are mean centered and \
+    #         standardized. \
+    #         (default: %(default)s)'
+    # )
+
+    parser.add_argument(
+        '-cov_cont', '--covariate_columns_continuous',
+        action='store',
+        dest='covariate_columns_continuous',
+        default='',
+        help='Comma seperated list of covariates (columns in adata.obs). \
+            If this list includes normalization_factor then this covariate \
+            is modeled as the size_factor. If normalization_factor is not \
+            included then size factors are calculated as in \
+            scater::librarySizeFactors. \
+            Note: all continuous covariates are mean centered and \
+            standardized. \
+            (default: %(default)s)'
     )
 
     parser.add_argument(
-        '-cov', '--covariate_columns',
+        '-cov_discrete', '--covariate_columns_discrete',
         action='store',
-        dest='covariate_columns',
-        default='normalization_factor',
+        dest='covariate_columns_discrete',
+        default='',
         help='Comma seperated list of covariates (columns in adata.obs). \
             (default: %(default)s)'
     )
@@ -191,7 +226,7 @@ def main():
 
     # Get the parameters
     condition_column = options.condition_column
-    covariate_columns_string = options.covariate_columns
+    # covariate_columns_string = options.covariate_columns
     cell_label_column = options.cell_label_column
     cell_label_analyse = options.cell_label_analyse
     out_file_base = options.of
@@ -221,40 +256,53 @@ def main():
     # if len(np.unique(adata.obs['condition']) != 2):
     #     raise Exception('There are not exactly 2 conditions.')
 
-    # Calculate size factor covariate manually.
-    # NOTE: This is commented out and instead we use the 'normalization_factor'
-    #       slot in the anndata.
-    #
-    # When running diffxpy regress size_factors. For more details check:
-    # https://nbviewer.jupyter.org/github/theislab/diffxpy_tutorials/blob/master
-    # /diffxpy_tutorials/test/introduction_differential_testing.ipynb
-    # "Inclusion of continuous effects"
-    # adata.obs['size_factors'] = adata.obs['total_counts']/10000
-
     # Figure out continuous covariates.
     # Also if covariate is also the condition, drop.
     covariate_columns = []
-    for i in covariate_columns_string.split(','):
-        if i == condition_column:
-            warnings.warn(
-                'Condition ({}) is also covariate. {}.'.format(
-                    i,
-                    'Dropping condition from the covariates list.'
-                )
-            )
-        else:
+    # NOTE: below code is for if there is only one input covariate stream
+    # if covariate_columns_string != '':
+    #     for i in covariate_columns_string.split(','):
+    #         if i == condition_column:
+    #             msg = 'Condition ({}) is also covariate. {}.'.format(
+    #                 i
+    #             )
+    #             raise Exception(msg)
+    #             # warnings.warn(
+    #             #     '{} {}.'.format(
+    #             #         msg,
+    #             #         'Dropping condition from the covariates list.'
+    #             #     )
+    #             # )
+    #         else:
+    #             covariate_columns.append(i)
+    #             if adata.obs[i].dtype.name != 'category':
+    #                 continuous_variables.append(i)
+    # Add in continuous covariates
+    if options.covariate_columns_continuous != '':
+        for i in options.covariate_columns_continuous.split(','):
+            # If pandas thinks a continuous variable is categorical, we have
+            # a problem. Raise error.
+            if adata.obs[i].dtype.name == 'category':
+                raise Exception('Continuous variable appears to be category')
             covariate_columns.append(i)
+            continuous_variables.append(i)
+    # Add in discrete covariates
+    if options.covariate_columns_discrete != '':
+        for i in options.covariate_columns_discrete.split(','):
+            # If a discrete columns int or float, cast to category.
             if adata.obs[i].dtype.name != 'category':
-                continuous_variables.append(i)
+                adata.obs[i] = adata.obs[i].astype('category')
+            covariate_columns.append(i)
 
     # Select the subset of cells we want for analysis
     if cell_label_analyse != 'all':
         cell_label_analyse = cell_label_analyse.split(',')
-        adata = adata[adata.obs[cell_label_column].isin(cell_label_analyse)]
+        adata = adata[
+            adata.obs[cell_label_column].isin(cell_label_analyse)
+        ].copy()  # NOTE: need copy here so it is not a view
     # clusters = np.sort(adata.obs[cell_label_column].unique())
 
-    # Check to make sure that within each cluster, there are >1 condition
-    # values.
+    # Check to make sure that within each cluster, there are >1 values.
     if adata.obs[condition_column].dtype.name == 'category':
         n_cells_condition_cluster = adata.obs.groupby(
             [condition_column, cell_label_column]
@@ -266,11 +314,104 @@ def main():
         if len(np.unique(adata.obs['condition'].cat.codes)) <= 1:
             raise Exception('There is only 1 condition.')
 
-    print('Continuous varibles: {}'.format(','.join(continuous_variables)))
+    # Check to make sure that for ecah covariate, there are >1 value.
+    # NOTE: need a copy for loop because changing covariate_columns within
+    # the loop.
+    for i in covariate_columns.copy():
+        unique_vals = adata.obs[i].unique().astype('str')
+        # print('{}\t{}'.format(i, ''.join(unique_vals)))
+        if len(unique_vals) <= 1:
+            warnings.warn(
+                'Removing covariate with only one value:\t{} {}'.format(
+                    i,
+                    unique_vals
+                )
+            )
+            covariate_columns.remove(i)
+            if adata.obs[i].dtype.name != 'category':
+                continuous_variables.remove(i)
+
+    # Get the size factors for analysis
+    if 'normalization_factor' not in covariate_columns:
+        # Calculate size factor covariate manually.
+        #
+        # When running diffxpy regress size_factors. For more details check:
+        # https://nbviewer.jupyter.org/github/theislab/diffxpy_tutorials/blob/master
+        # /diffxpy_tutorials/test/introduction_differential_testing.ipynb
+        # "Inclusion of continuous effects"
+        #
+        # Option 1:
+        # scater::library_size_factors
+        adata.obs['diffxpy_size_factor'] = adata.obs[
+            'total_counts'
+        ] / adata.obs['total_counts'].mean()
+        #
+        # Option 2: ... same as above
+        # https://github.com/theislab/diffxpy/issues/149
+        # size_factors = np.asarray(adata.X.mean(axis=1))
+        # size_factors = size_factors / size_factors.mean()
+        # adata.obs['diffxpy_size_factor'] = size_factors
+        # Option 3: Modified median of ratios method from Deseq2 from
+        # # NOTE: this is not recommended since many of the final size factors
+        # # will be 0.
+        # # scater::medianSizeFactors
+        # # See details here:
+        # # https://rdrr.io/bioc/scater/man/medianSizeFactors.html
+        # # https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html
+        # adata.X = adata.X.todense()
+        # # Step 1: creates a pseudo-reference sample (geometric mean)
+        # # For each gene a pseudo-reference sample is created that is equal to
+        # # [original deseq] the geometric mean across all samples.
+        # # pseudo_reference = sp.stats.gmean(adata.X, axis=0)
+        # # [scater modification] the arithmetic mean.
+        # pseudo_reference = adata.X.mean(axis=0)
+        # # Step 2: calculates ratio of each sample to the reference
+        # ratio_sample_reference = pd.DataFrame(adata.X / pseudo_reference)
+        # # Step 3: calculate the normalization factor for each sample
+        # # (size factor)
+        # # if np.any(np.all(np.isnan(ratio_sample_reference), axis=1)):
+        # #     raise Exception('Error in size factor calculation')
+        # size_factor = ratio_sample_reference.median(axis=1)
+        # # Step 4: calculate the normalized count values using the
+        # # normalization factor
+        # # normalized_counts = adata.X / size_factor
+    else:
+        adata.obs['diffxpy_size_factor'] = adata.obs['normalization_factor']
+        continuous_variables.remove('normalization_factor')
+        covariate_columns.remove('normalization_factor')
+
+    # TODO: Check for nan in covariates and conditions?
+
+    # Center and standardize continuous variables
+    if len(continuous_variables) > 0:
+        adata.obs[continuous_variables] = scaler_continuous.fit_transform(
+            adata.obs[continuous_variables]
+        )
+        print(adata.obs[continuous_variables].mean(axis=0))
+        print(adata.obs[continuous_variables].std(axis=0))
+        print('Continuous varibles:\t{}'.format(
+            ','.join(continuous_variables))
+        )
 
     # TODO: filter lowly expressed genes for this cluster?
+    # Lowly expressed genes tend to result in false postives because outliers
+    # pull up the regression line. These, however, can always be filtered out
+    # afterwards.
 
-    # TODO: check for nan in covariates and conditions?
+    # Describe the input covariates
+    if len(covariate_columns) > 0:
+        print('Covariate description:\t{}'.format(','.join(covariate_columns)))
+        print(adata.obs[covariate_columns].describe(include='all'))
+
+    # NOTE:
+    # One may get a constrained design matrix is not full rank when for
+    # the categorcial variable combinations, one facet is all ones.
+    discrete_vars = [
+        i for i in covariate_columns if i not in continuous_variables
+    ]
+    if len(discrete_vars) > 1:
+        n_cells_condition = adata.obs.groupby(discrete_vars).size().unstack()
+        print(n_cells_condition)
 
     # Run diffxpy
     #
@@ -281,6 +422,7 @@ def main():
     formula = '~ 1 + condition'
     for cov in covariate_columns:
         formula = '{} + {}'.format(formula, cov)
+    print('Formula:\t{}'.format(formula))
     # Get the coefficient names.
     # Example if coefficient = M or F then...
     # coef_to_test=['condition[T.M]']
@@ -307,10 +449,11 @@ def main():
             formula_loc=formula,
             factor_loc_totest=coef_names,
             as_numeric=continuous_variables,
+            size_factors='diffxpy_size_factor',
             backend='numpy',  # numpy, tf1, or tf2
             noise_model='nb',
             # batch_size=100,  # the memory load of the fitting procedure
-            quick_scale=False
+            quick_scale=False,
         )
     # elif options.method == 'lrt':
     #     test_results = de.test.lrt(
@@ -319,6 +462,7 @@ def main():
     #         reduced_formula_loc=formula.replace('+ condition', ''),
     #         # factor_loc_totest=coef_names,
     #         as_numeric=continuous_variables,
+    #         size_factors='diffxpy_size_factor',
     #         backend=backend_diffxpy,  # numpy, tf1, or tf2
     #         noise_model='nb',
     #         # batch_size=100,  # the memory load of the fitting procedure
@@ -329,8 +473,14 @@ def main():
 
     # Make a table of the results
     df_results = test_results.summary()
-    df_results['de_method'] = options.method
+    df_results = df_results.rename(columns={'coef_mle': 'coef'})
+    df_results['de_method'] = 'diffxpy-{}'.format(options.method)
     df_results['condition'] = condition_column
+    df_results['coef_condition'] = ','.join(coef_names)
+    df_results['covariates_passed'] = ','.join([
+        options.covariate_columns_discrete,
+        options.covariate_columns_continuous
+    ])
     df_results['covariates'] = ','.join(covariate_columns)
     df_results['cell_label_column'] = cell_label_column
     df_results['cell_label_analysed'] = ','.join(cell_label_analyse)
@@ -400,35 +550,6 @@ def main():
     # part = de.test.partition(data=adata, parts="cluster")
     # test_part = part.wald(formula_loc="~ 1 + condition",
     #                       factor_loc_totest="condition")
-
-    # BEGIN: developmental code
-    # for i in clusters:
-    #     df = test_part.tests[test_part.partitions.index(i)].summary()
-    #     df.to_csv('{}-cluster_de_wald.tsv'.format(i), sep='\t', index=False)
-    #
-    # size_factors = adata.obs['total_counts']/10000
-    # adata.obs['size_factors'] = size_factors
-    # clusters = clusters[35:37]
-    # for i in clusters:
-    #
-    #     adata1 = adata[adata.obs['cluster'] == i]
-    #     part = de.test.partition(data=adata1, parts="cluster")
-    #     test_part = part.wald(formula_loc="~ 1 + condition + size_factors",
-    #                           factor_loc_totest="condition",
-    #                           as_numeric=["size_factors"])
-    #
-    #     df = test_part.tests[test_part.partitions.index(i)].summary()
-    #     df.to_csv('{}-cluster_de_wald.tsv'.format(i), sep='\t', index=False)
-    #
-    # size_factors = adata.obs['total_counts']/10000
-    # adata.obs['size_factors'] = size_factors
-    # part = de.test.partition(data=adata, parts="cluster")
-    # test_part = part.wald(formula_loc="~ 1 + condition + size_factors",
-    #                       factor_loc_totest="condition",
-    #                       as_numeric=["size_factors"])
-    # for i in clusters:
-    #     df = test_part.tests[test_part.partitions.index(i)].summary()
-    #     df.to_csv('{}-cluster_de_wald.tsv'.format(i), sep='\t', index=False)
 
 
 if __name__ == '__main__':
