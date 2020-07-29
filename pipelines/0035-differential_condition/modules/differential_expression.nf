@@ -59,8 +59,9 @@ process run_diffxpy {
         path(anndata)
         val(cell_label_column)
         each cell_label_analyse
-        each condition_column
-        each covariate_columns
+        each model
+        // each condition_column
+        // each covariate_columns
         each method
 
     output:
@@ -80,6 +81,8 @@ process run_diffxpy {
 
     script:
         runid = random_hex(16)
+        condition_column = model.variable
+        covariate_columns = model.covariates
         // cell_label_analyse comes in array-format.
         cell_label_analyse = cell_label_analyse[0] // Get first element.
         outdir = "${outdir_prev}/${condition_column}/"
@@ -159,8 +162,7 @@ workflow wf__differential_expression {
         outdir
         anndata
         anndata_cell_label
-        condition
-        covariates
+        model
         diffxpy_method
     main:
         // Get a list of all of the cell types
@@ -184,8 +186,7 @@ workflow wf__differential_expression {
             anndata_cell_label,
             // '1',  // just run on first cluster for development
             cell_labels,  // run for all clusters for run time
-            condition,
-            covariates,
+            model,
             diffxpy_method
         )
 

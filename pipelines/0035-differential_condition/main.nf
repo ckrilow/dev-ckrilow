@@ -74,8 +74,7 @@ workflow {
             params.output_dir,
             params.file_anndata,
             params.anndata_cell_label.value,
-            params.differential_expression.condition.value,
-            params.differential_expression.covariates.value,
+            params.differential_expression.models.value,
             params.differential_expression.diffxpy_method.value
         )
     // NOTE: One could do publishing in the workflow like so, however

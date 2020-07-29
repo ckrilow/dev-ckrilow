@@ -2,18 +2,24 @@ anndata_cell_label:
     description: 'Anndata cell label column in obs slot.'
     value: 'cluster'
 differential_expression:
-    condition:
-        description: 'Differential condition (e.g., disease status).'
-        value:
-            - 'sex'
-    covariates:
-        description: 'Comma separated string of covariates. Enter different
-            covariates for each dash to evaluate multiple covariates
-            seperately.'
-        value:
-            - ''
-            - 'age'
     diffxpy_method:
-        description: 'Diffxpy method to use'
+        run_process: true
+        description: 'Diffxpy method(s) to use.'
         value:
             - 'wald'
+    models:
+        description: 'List of differential conditions (e.g., disease status)
+            along with covariates. Covariates should be a comma separated
+            string of covariates. Enter different covariates for each dash
+            to evaluate the effect multiple covariates seperately. Size factors
+            are automatically calculated and do not need to  be included. For
+            no covariates use - "".'
+        value:
+            - variable: 'sex'
+              covariates: ''
+            - variable: 'sex'
+              covariates: 'age'
+            - variable: 'age'
+              covariates: ''
+            - variable: 'age'
+              covariates: 'sex'
