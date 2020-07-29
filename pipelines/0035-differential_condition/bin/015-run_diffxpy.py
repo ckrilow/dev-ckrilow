@@ -400,7 +400,8 @@ def main():
 
     # Make a table of the results
     df_results = test_results.summary()
-    df_results['de_method'] = options.method
+    df_results = df_results.rename(columns={'coef_mle': 'coef'})
+    df_results['de_method'] = 'diffxpy-{}'.format(options.method)
     df_results['condition'] = condition_column
     df_results['condition_coef'] = ','.join(coef_names)
     df_results['covariates'] = ','.join(covariate_columns)
@@ -472,35 +473,6 @@ def main():
     # part = de.test.partition(data=adata, parts="cluster")
     # test_part = part.wald(formula_loc="~ 1 + condition",
     #                       factor_loc_totest="condition")
-
-    # BEGIN: developmental code
-    # for i in clusters:
-    #     df = test_part.tests[test_part.partitions.index(i)].summary()
-    #     df.to_csv('{}-cluster_de_wald.tsv'.format(i), sep='\t', index=False)
-    #
-    # size_factors = adata.obs['total_counts']/10000
-    # adata.obs['size_factors'] = size_factors
-    # clusters = clusters[35:37]
-    # for i in clusters:
-    #
-    #     adata1 = adata[adata.obs['cluster'] == i]
-    #     part = de.test.partition(data=adata1, parts="cluster")
-    #     test_part = part.wald(formula_loc="~ 1 + condition + size_factors",
-    #                           factor_loc_totest="condition",
-    #                           as_numeric=["size_factors"])
-    #
-    #     df = test_part.tests[test_part.partitions.index(i)].summary()
-    #     df.to_csv('{}-cluster_de_wald.tsv'.format(i), sep='\t', index=False)
-    #
-    # size_factors = adata.obs['total_counts']/10000
-    # adata.obs['size_factors'] = size_factors
-    # part = de.test.partition(data=adata, parts="cluster")
-    # test_part = part.wald(formula_loc="~ 1 + condition + size_factors",
-    #                       factor_loc_totest="condition",
-    #                       as_numeric=["size_factors"])
-    # for i in clusters:
-    #     df = test_part.tests[test_part.partitions.index(i)].summary()
-    #     df.to_csv('{}-cluster_de_wald.tsv'.format(i), sep='\t', index=False)
 
 
 if __name__ == '__main__':
