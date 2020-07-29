@@ -219,7 +219,11 @@ process merge_dataframes {
 
     output:
         val(outdir, emit: outdir)
-        path("${outfile}-de_results.tsv.gz", emit: merged_results)
+        tuple(
+            val(condition),
+            path("${outfile}-de_results.tsv.gz"),
+            emit: merged_results
+        )
 
     script:
         runid = random_hex(16)
@@ -236,6 +240,50 @@ process merge_dataframes {
             --dataframe_keys ${result_keys} \
             --dataframe_paths ${result_paths} \
             --output_file ${outfile}
+        """
+}
+
+process plot_de_results {
+    // Generate plots from the merged data frames to evaluate
+    // ------------------------------------------------------------------------
+    scratch false        // use tmp directory
+    echo echo_mode       // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        tuple(
+            val(condition),
+            path(merged_df)
+        )
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png") optional true
+        path("plots/*.pdf") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = outdir_prev
+        outfile = "${condition}-merged"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_de_results: ${process_info}"
+        rm -fr plots
+        compare_de_results.py \
+            --dataframe ${merged_df} \
+            --columns_to_compare de_method,covariates \
+            --mean_expression_filter 0.1 \
+            --output_file ${outfile}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
         """
 }
 
@@ -332,6 +380,11 @@ workflow wf__differential_expression {
         merge_dataframes(
             outdir,
             de_results_merged
+        )
+
+        plot_de_results(
+            outdir,
+            merge_dataframes.out.merged_results
         )
 
     emit:
