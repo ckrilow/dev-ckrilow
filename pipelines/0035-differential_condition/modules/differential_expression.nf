@@ -93,7 +93,7 @@ process run_diffxpy {
         }
         if (covariate_columns_continuous != "") {  // add contin cov call
             cmd__covar = "${cmd__covar} --covariate_columns_continuous ${covariate_columns_continuous}"
-            covariate_columns = "${covariate_columns_continuous},"
+            covariate_columns = "${covariate_columns}${covariate_columns_continuous}"
         }
         if(covariate_columns.endsWith(",")) {
             covariate_columns = covariate_columns.substring(
@@ -144,8 +144,9 @@ process run_mast {
         path(anndata)
         val(cell_label_column)
         each cell_label_analyse
-        each condition_column
-        each covariate_columns
+        each model
+        // each condition_column
+        // each covariate_columns
         each method
 
     output:
@@ -164,12 +165,30 @@ process run_mast {
 
     script:
         runid = random_hex(16)
-        cell_label_analyse = cell_label_analyse[0] // comes in array-format. Get first element.
-        outdir = "${outdir_prev}/${condition_column}/mast/"
+        condition_column = model.variable
+        // Sort out covariates
+        covariate_columns_discrete = model.covariate_discrete
+        covariate_columns_continuous = model.covariate_continuous
+        covariate_columns = ""  // list of all covariates used in model
+        if (covariate_columns_discrete != "") {  // add disc cov call
+            covariate_columns = "${covariate_columns_discrete},"
+        }
+        if (covariate_columns_continuous != "") {  // add contin cov call
+            covariate_columns = "${covariate_columns}${covariate_columns_continuous}"
+        }
+        if(covariate_columns.endsWith(",")) {
+            covariate_columns = covariate_columns.substring(
+                0,
+                covariate_columns.length() - 1
+            )
+        }
+        // cell_label_analyse comes in array-format.
+        cell_label_analyse = cell_label_analyse[0] // Get first element.
+        outdir = "${outdir_prev}/${condition_column}/diffxpy/"
         outdir = "${outdir}cell_label=${cell_label_analyse}"
         outdir = "${outdir}_covariates=${covariate_columns}"
         outdir = "${outdir}_method=${method}"
-        outfile = "${cell_label_analyse}"
+        outfile = "cell_label__${cell_label_analyse}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -188,7 +207,8 @@ process run_mast {
             ${cell_label_column} \
             ${cell_label_analyse} \
             ${condition_column} \
-            ${covariate_columns} \
+            ${covariate_columns_discrete} \
+            ${covariate_columns_continuous} \
             ${method} \
             ${outfile} \
             ${task.cpus}
@@ -333,8 +353,7 @@ workflow wf__differential_expression {
                 anndata_cell_label,
                 // '1',  // just run on first cluster for development
                 cell_labels,  // run for all clusters for run time
-                condition,
-                covariates,
+                model,
                 mast_method_config.value
             )
         }

@@ -106,29 +106,6 @@ def prepare_h5ad_MAST(
         header=True
     )
 
-    # Additionally, write out continuous or categorical type to convert later
-    ## Following logic in 015-run_diffxpy, if not categorical, continuous
-    out_f = os.path.join(
-        out_dir,
-        'covariate_type.tsv.gz'
-    )
-    if verbose:
-        print('Writing {}'.format(out_f))
-
-    variable_type = pd.DataFrame(columns=['variable', 'type'])
-    for col in cols_to_retain:
-        if adata.obs[col].dtype.name == 'category':
-            variable_type = variable_type.append({'variable': col, 'type': 'categorical'}, ignore_index=True)
-        else:
-            variable_type = variable_type.append({'variable': col, 'type': 'continuous'}, ignore_index=True)
-    variable_type.to_csv(
-        out_f,
-        sep='\t',
-        compression=compression_opts,
-        index=False,
-        header=True
-    )
-
     # Now write feature metadata as TSV
     # out_f = os.path.join(
     #     out_dir,

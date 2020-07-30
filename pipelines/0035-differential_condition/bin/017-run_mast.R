@@ -77,7 +77,8 @@ run_MAST <- function(mtx_file_dir,
                      cell_label_column,
                      cell_label_analysed,
                      condition_col,
-                     covariates_list_str,
+                     disc_covariates_list_str,
+                     cont_covariates_list_str,
                      de_method = "bayesglm",
                      output_file_base,
                      verbose=TRUE) {
@@ -99,23 +100,21 @@ run_MAST <- function(mtx_file_dir,
   metadata <- read.csv(sprintf("%s/log1p_cp10k/cell_metadata.tsv.gz", mtx_file_dir), sep ="\t", header=T, row.names=1)
   metadata <- metadata[barcodes, , drop=F]
   
-  # Format metadata as correct type -- R should already do this, but double check
-  metadata_type <- read.csv(sprintf("%s/log1p_cp10k/covariate_type.tsv.gz", mtx_file_dir), sep ="\t", header=T)
-  for (i in seq(1, nrow(metadata_type))) {
-    var <- metadata_type[i,'variable']
-    type <- metadata_type[i,'type']
-    
-    if (type == 'categorical' && !is.character(metadata[[var]])) {
-      if (verbose) {
-        print(sprintf("The categorical variable '%s' is not categorical. Attempting to force categorical.", var))
-      }
-      metadata[var] <- as.character(metadata[[var]])
-    } else if (type == 'continuous' && is.character(metadata[[var]])) { ## only check if it's character
-      if (verbose) {
-        print(sprintf("The continuous variable '%s' is not numeric. Attempting to force numeric.", var))
-      }
-      metadata[var] <- as.numeric(metadata[[var]])
-    }
+  # Force variable casting
+  discrete_covs <- strsplit(x=disc_covariates_list_str, split=",", fixed=TRUE)[[1]]
+  if (verbose) {
+    print("Casting all discrete variables as characters to make categorical...")
+  }
+  for (var in discrete_covs) {
+    metadata[var] <- as.character(metadata[[var]])
+  }
+  
+  continuous_covs <- strsplit(x=cont_covariates_list_str, split=",", fixed=TRUE)[[1]]
+  if (verbose) {
+    print("Casting all continuous variables as numerics to make continuous...")
+  }
+  for (var in continuous_covs) {
+    metadata[var] <- as.numeric(metadata[[var]])
   }
   
   # Set dimnames
@@ -125,7 +124,7 @@ run_MAST <- function(mtx_file_dir,
   sca <- MAST::FromMatrix(exprsArray=logtpm_matrix, cData = metadata, fData=features)
   
   ## Get formula
-  covariates <- strsplit(x=covariates_list_str, split=",", fixed=TRUE)[[1]]
+  covariates <- c(discrete_covs, continuous_covs)
   formula_str <- sprintf("~ %s + %s", condition_col, paste(covariates, collapse = " + "))
   formula <- formula(formula_str)
   
@@ -164,12 +163,12 @@ run_MAST <- function(mtx_file_dir,
   
   fcHurdle[,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
   fcHurdle <- merge(fcHurdle, as.data.frame(mcols(sca)), by='primerid')
-  fcHurdle$de_software <- "MAST"
-  fcHurdle$de_method <- de_method
+  fcHurdle$de_method <- sprintf('mast-%s', de_method)
   fcHurdle$condition <- condition_col
   fcHurdle$reference_condition <- reference_condition
-  fcHurdle$test_condition <- setdiff(levels(condition_data), reference_condition)
-  fcHurdle$covariates <- covariates_list_str
+  fcHurdle$coef_condition <- setdiff(levels(condition_data), reference_condition)
+  fcHurdle$covariates_passed <- paste(covariates, collapse = ",")
+  fcHurdle$covariates <- paste(covariates, collapse = ",")
   fcHurdle$cell_label_column <- cell_label_column
   fcHurdle$cell_label_analysed <- cell_label_analysed
   
@@ -188,7 +187,7 @@ run_MAST <- function(mtx_file_dir,
   ## Rename specific columns to match diffxpy
   names(fcHurdle)[names(fcHurdle) == "primerid"] <- "gene"
   names(fcHurdle)[names(fcHurdle) == "Pr(>Chisq)"] <- "pval"
-  names(fcHurdle)[names(fcHurdle) == "coef"] <- "log2fc"
+  fcHurdle$log2fc <- fcHurdle$coef
   
   gz_file <- gzfile(sprintf("%s-de_results.tsv.gz", output_file_base), "w", compression = 9)
   write.table(x= fcHurdle,
@@ -231,8 +230,8 @@ if (sys.nframe() == 0) {
   # disable strings as factors, but re-enable upon exit
   ## Need to set the global allowance higher for the amount of data
   ## Expect cores at end 
-  old <- options(stringsAsFactors = FALSE, future.globals.maxSize= 5368709120, mc.cores=as.numeric(args[8]))
+  old <- options(stringsAsFactors = FALSE, future.globals.maxSize= 5368709120, mc.cores=as.numeric(args[9]))
   on.exit(options(old), add = TRUE)
   
-  run_MAST(args[1], args[2], args[3], args[4], args[5], args[6], args[7])
+  run_MAST(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
 }
