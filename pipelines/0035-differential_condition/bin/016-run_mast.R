@@ -1,5 +1,11 @@
 #!/usr/bin/env Rscript
 
+# Load libraries
+library(MAST)
+library(Matrix)
+library(ggplot2)
+
+
 plot_settings <- function(plt,
                           base_size,
                           plot_marg_top,
@@ -36,12 +42,12 @@ plot_volcano_plot <- function(df,
                               p_val_col,
                               fc_threshold = 1.8,
                               p_val_threshold = 0.05) {
-  
+
   df$significant <- apply(df, 1, function(x) {
      return(abs(as.numeric(x[[fc_col]])) >= log2(fc_threshold) & abs(as.numeric(x[[p_val_col]])) <= p_val_threshold)
   })
   df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
-  
+
   df$neg_log10 <- -log10(df[[p_val_col]])
   plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=fc_col, y="neg_log10", color="significant")) +
     ggplot2::geom_point(size=.5) +
@@ -57,12 +63,12 @@ plot_ma_plot <- function(df,
                          fc_col,
                          mean_expr_threshold = 0.0001,
                          fc_threshold = 1.8) {
-  
+
   df$significant <- apply(df, 1, function(x) {
     return(abs(as.numeric(x[[mean_expr_col]])) >= mean_expr_threshold & abs(as.numeric(x[[fc_col]])) >= log2(fc_threshold))
   })
   df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
-  
+
   plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=mean_expr_col, y=fc_col, color="significant")) +
     ggplot2::geom_point(size=.5) +
     ggplot2::scale_x_continuous(trans='log10') +
@@ -82,24 +88,19 @@ run_MAST <- function(mtx_file_dir,
                      de_method = "bayesglm",
                      output_file_base,
                      verbose=TRUE) {
-  
-  ## Load libraries
-  library(MAST)
-  library(Matrix)
-  library(ggplot2)
-  
+
   if (verbose) {
     print("Reading in the data...")
   }
-  
+
   logtpm_matrix <- Matrix::readMM(sprintf("%s/log1p_cp10k/matrix.mtx.gz", mtx_file_dir))
   logtpm_matrix <- as(logtpm_matrix, "matrix")
-  
+
   features <- read.csv(sprintf("%s/log1p_cp10k/features.tsv.gz", mtx_file_dir), sep ="\t", header=F, col.names = c("gene_id", "gene_symbol", "type"), row.names = 1)
   barcodes <- read.csv(sprintf("%s/log1p_cp10k/barcodes.tsv.gz", mtx_file_dir), sep ="\t", header=F)$V1
   metadata <- read.csv(sprintf("%s/log1p_cp10k/cell_metadata.tsv.gz", mtx_file_dir), sep ="\t", header=T, row.names=1)
   metadata <- metadata[barcodes, , drop=F]
-  
+
   # Force variable casting
   discrete_covs <- strsplit(x=disc_covariates_list_str, split=",", fixed=TRUE)[[1]]
   if (verbose) {
@@ -108,7 +109,7 @@ run_MAST <- function(mtx_file_dir,
   for (var in discrete_covs) {
     metadata[var] <- as.character(metadata[[var]])
   }
-  
+
   continuous_covs <- strsplit(x=cont_covariates_list_str, split=",", fixed=TRUE)[[1]]
   if (verbose) {
     print("Casting all continuous variables as numerics to make continuous...")
@@ -116,51 +117,51 @@ run_MAST <- function(mtx_file_dir,
   for (var in continuous_covs) {
     metadata[var] <- as.numeric(metadata[[var]])
   }
-  
+
   # Set dimnames
   rownames(logtpm_matrix) <- rownames(features)
   colnames(logtpm_matrix) <- rownames(metadata)
-  
+
   sca <- MAST::FromMatrix(exprsArray=logtpm_matrix, cData = metadata, fData=features)
-  
+
   ## Get formula
   covariates <- c(discrete_covs, continuous_covs)
   formula_str <- sprintf("~ %s + %s", condition_col, paste(covariates, collapse = " + "))
   formula <- formula(formula_str)
-  
+
   if (verbose) {
     print(sprintf("Calculating differential expression using the formula: %s", formula_str))
     print(sprintf("Calculating differential expression using the method: %s", de_method))
     print(sprintf("Randomly selecting value in the `%s` column to use as base condition in fitting the model.", condition_col))
   }
-  
+
   condition_data <- factor(colData(sca)[[condition_col]])
   reference_condition <- levels(condition_data)[1]
   condition_data <- relevel(condition_data, reference_condition)
   colData(sca)[condition_col] <- condition_data
-  
+
   if (verbose) {
     print(sprintf("Selected the value '%s' as the reference condition.", reference_condition))
     print("Fitting the model...")
   }
-  
+
   zlm_fit <- MAST::zlm(formula, sca, method = de_method, silent=FALSE, parallel = TRUE)
-  
+
   if (verbose) {
     print("Done fitting the model.")
   }
-  
+
   test_var <- paste(c(condition_col, setdiff(levels(condition_data), reference_condition)), collapse = "")
   if (verbose) {
     print(sprintf("Performing Log-Ratio Test for the variable %s...", test_var))
   }
   results <- summary(zlm_fit, doLRT=test_var)
   results_dt <- results$datatable
-  
+
   # Structure results into interpretable format
   fcHurdle <- merge(results_dt[contrast==test_var & component=='H',.(primerid, `Pr(>Chisq)`)], #hurdle P values
                     results_dt[contrast==test_var & component=='logFC', .(primerid, coef, ci.hi, ci.lo)], by='primerid') #logFC coefficients
-  
+
   fcHurdle[,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
   fcHurdle <- merge(fcHurdle, as.data.frame(mcols(sca)), by='primerid')
   fcHurdle$de_method <- sprintf('mast-%s', de_method)
@@ -171,7 +172,7 @@ run_MAST <- function(mtx_file_dir,
   fcHurdle$covariates <- paste(covariates, collapse = ",")
   fcHurdle$cell_label_column <- cell_label_column
   fcHurdle$cell_label_analysed <- cell_label_analysed
-  
+
   ## Add mean expression from counts data
   counts_matrix <- Matrix::readMM(sprintf("%s/counts/matrix.mtx.gz", mtx_file_dir))
   counts_matrix <- as(counts_matrix, "matrix")
@@ -180,15 +181,15 @@ run_MAST <- function(mtx_file_dir,
   rownames(counts_matrix) <- rownames(counts_features)
   colnames(counts_matrix) <- rownames(counts_barcodes)
   fcHurdle$mean <- Matrix::rowMeans(counts_matrix[fcHurdle$primerid,])
-  
+
   ## Order by FDR
   fcHurdle <- fcHurdle[order(fcHurdle$fdr, decreasing=F)]
-  
+
   ## Rename specific columns to match diffxpy
   names(fcHurdle)[names(fcHurdle) == "primerid"] <- "gene"
   names(fcHurdle)[names(fcHurdle) == "Pr(>Chisq)"] <- "pval"
   fcHurdle$log2fc <- fcHurdle$coef
-  
+
   gz_file <- gzfile(sprintf("%s-de_results.tsv.gz", output_file_base), "w", compression = 9)
   write.table(x= fcHurdle,
               file = gz_file,
@@ -197,7 +198,7 @@ run_MAST <- function(mtx_file_dir,
               row.names=F,
               quote=F)
   close(gz_file)
-  
+
   vol_plot <- plot_volcano_plot(fcHurdle,
                                 'log2fc',
                                 'pval',
@@ -207,7 +208,7 @@ run_MAST <- function(mtx_file_dir,
   png(file = sprintf("%s-plot_volcano.png", output_file_base))
   print(vol_plot)
   dev.off()
-  
+
   ma_plot <- plot_ma_plot(fcHurdle,
                           'mean',
                           'log2fc',
@@ -217,7 +218,7 @@ run_MAST <- function(mtx_file_dir,
   png(file = sprintf("%s-plot_ma.png", output_file_base))
   print(ma_plot)
   dev.off()
-  
+
   if (verbose) {
     print("Done.")
   }
@@ -226,12 +227,12 @@ run_MAST <- function(mtx_file_dir,
 # like python if __name__ == '__main__'
 if (sys.nframe() == 0) {
   args <- commandArgs(trailingOnly = TRUE)
-  
+
   # disable strings as factors, but re-enable upon exit
   ## Need to set the global allowance higher for the amount of data
-  ## Expect cores at end 
+  ## Expect cores at end
   old <- options(stringsAsFactors = FALSE, future.globals.maxSize= 5368709120, mc.cores=as.numeric(args[9]))
   on.exit(options(old), add = TRUE)
-  
+
   run_MAST(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
 }

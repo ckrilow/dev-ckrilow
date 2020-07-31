@@ -39,11 +39,12 @@ def plot_unity(xdata, ydata, **kwargs):
         linewidth=1.0
     )
 
+
 def calculate_expected_pval(df):
-    n = len(df) # retrive the total number of statistical tests made
-    increment = 1.0/np.float64(n) # calculate increment by which sorted
-                                  # p vals should increase under the null
-    current_expected = np.float64(1.0) # starting value for 'expected' pvals
+    n = len(df)  # retrive the total number of statistical tests made
+    increment = 1.0/np.float64(n)  # calculate increment by which sorted
+                                   # p vals should increase under the null
+    current_expected = np.float64(1.0)  # starting value for 'expected' pvals
     expected = []
     # retrive list of p values in descending order (least significant first)
     df = df.sort_values(by='pval', ascending=False)
@@ -57,33 +58,48 @@ def calculate_expected_pval(df):
 def plot_qq(
     df,
     color_var,
-    facet_var = None
+    facet_var=None
 ):
     """
     Inspired by https://www.cureffi.org/2012/08/15/qq-plots-with-matplotlib/
     """
-    # retrive pmin, the most significant (i.e. min) p value (for defining the axes)
+    # retrive pmin, the most significant (i.e. min) p value (for defining
+    # the axes)
     axis_max = max(df['pval_neglog10'])
 
     if facet_var is None:
-        pvals = df.groupby(by=color_var).apply(calculate_expected_pval).reset_index(level=color_var, drop=True)
+        pvals = df.groupby(by=color_var).apply(
+            calculate_expected_pval
+        ).reset_index(level=color_var, drop=True)
     else:
-        pvals = df.groupby(by=[color_var, facet_var]).apply(calculate_expected_pval).reset_index(level=[color_var, facet_var], drop=True)
+        pvals = df.groupby(by=[color_var, facet_var]).apply(
+            calculate_expected_pval
+        ).reset_index(level=[color_var, facet_var], drop=True)
 
-    # now plot these two arrays against each other using matplotlib
+    # now plot these two arrays against each other
+    n_colors = pvals[color_var].nunique()
     qqplot = plt9.ggplot(pvals, plt9.aes(
         x='expected_pval_neglog10',
         y='pval_neglog10',
         color=color_var
     ))
-    qqplot = qqplot + plt9.geom_point(size=.5)
-    qqplot = qqplot + plt9.geom_abline(slope=1, intercept=0, color="blue")
+    qqplot = qqplot + plt9.geom_point(size=0.1, alpha=0.25)
+    qqplot = qqplot + plt9.geom_abline(
+        slope=1,
+        intercept=0,
+        color='black',
+        linetype='dashed'
+    )
     qqplot = qqplot + plt9.theme_bw()
-    qqplot = qqplot + plt9.scale_colour_brewer(type='qual', palette='Dark2')
+    if n_colors < 9:
+        qqplot = qqplot + plt9.scale_colour_brewer(
+            palette='Dark2',
+            type='qual'
+        )
     qqplot = qqplot + plt9.labs(
-        x='Expected',
-        y='Observed',
-        title='QQ Plot: Observed vs. Expected distribution of p values (-log10)'
+        x='Expected (-log10 p-value)',
+        y='Observed (-log10 p-value)'
+        # title=''
     )
     qqplot = qqplot + plt9.lims(
         x=(0, axis_max),
@@ -164,7 +180,7 @@ def main():
     #     'covariates'
     # ]
 
-    df = pd.read_csv(file, sep='\t')
+    df = pd.read_csv(file, sep='\t', low_memory=False)
 
     # Filter out tests based on mean expression
     if mean_expression_filter != 0.0:

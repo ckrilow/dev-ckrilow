@@ -7,6 +7,11 @@ differential_expression:
         description: 'Diffxpy method(s) to use.'
         value:
             - 'wald'
+    mast_method:
+        run_process: false
+        description: 'MAST method to use.'
+        value:
+            - 'bayesglm'
     models:
         description: 'List of differential conditions (e.g., disease status)
             along with covariates. Covariates should be a comma separated
