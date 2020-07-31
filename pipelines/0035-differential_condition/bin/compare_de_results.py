@@ -39,12 +39,67 @@ def plot_unity(xdata, ydata, **kwargs):
         linewidth=1.0
     )
 
+def calculate_expected_pval(df):
+    n = len(df) # retrive the total number of statistical tests made
+    increment = 1.0/np.float64(n) # calculate increment by which sorted
+                                  # p vals should increase under the null
+    current_expected = np.float64(1.0) # starting value for 'expected' pvals
+    expected = []
+    # retrive list of p values in descending order (least significant first)
+    df = df.sort_values(by='pval', ascending=False)
+    for index, row in df.iterrows():
+        expected.append(-np.log10(current_expected))
+        current_expected -= increment
+    df['expected_pval_neglog10'] = expected
+    return(df)
 
-def plot_qq():
+
+def plot_qq(
+    df,
+    color_var,
+    facet_var = None
+):
     """
     Inspired by https://www.cureffi.org/2012/08/15/qq-plots-with-matplotlib/
     """
-    pass
+    # retrive pmin, the most significant (i.e. min) p value (for defining the axes)
+    axis_max = max(df['pval_neglog10'])
+
+    if facet_var is None:
+        pvals = df.groupby(by=color_var).apply(calculate_expected_pval).reset_index(level=color_var, drop=True)
+    else:
+        pvals = df.groupby(by=[color_var, facet_var]).apply(calculate_expected_pval).reset_index(level=[color_var, facet_var], drop=True)
+
+    # now plot these two arrays against each other using matplotlib
+    qqplot = plt9.ggplot(pvals, plt9.aes(
+        x='expected_pval_neglog10',
+        y='pval_neglog10',
+        color=color_var
+    ))
+    qqplot = qqplot + plt9.geom_point(size=.5)
+    qqplot = qqplot + plt9.geom_abline(slope=1, intercept=0, color="blue")
+    qqplot = qqplot + plt9.theme_bw()
+    qqplot = qqplot + plt9.scale_colour_brewer(type='qual', palette='Dark2')
+    qqplot = qqplot + plt9.labs(
+        x='Expected',
+        y='Observed',
+        title='QQ Plot: Observed vs. Expected distribution of p values (-log10)'
+    )
+    qqplot = qqplot + plt9.lims(
+        x=(0, axis_max),
+        y=(0, axis_max)
+    )
+    if facet_var is not None:
+        qqplot = qqplot + plt9.facet_wrap(
+            '~ {}'.format(facet_var),
+            ncol=5
+        )
+
+    qqplot = qqplot + plt9.theme(
+        strip_text=plt9.element_text(size=5),
+        axis_text_x=plt9.element_text(angle=-45, hjust=0)
+    )
+    return(qqplot)
 
 
 def main():
@@ -188,8 +243,47 @@ def main():
         limitsize=False
     )
 
-    # TODO: QQ plot... color by facet_column with no facet, then add facet
-    # for cell_label_analysed
+    # QQ Plots
+    # Sample specific qq-plots
+    for group_name, df_group in df.groupby('cell_label_analysed'):
+        qq_plot = plot_qq(
+            df_group,
+            facet_column,
+            None
+        )
+        qq_plot.save(
+            '{}-qq-cell_label__{}.png'.format(output_file, group_name),
+            dpi=300,
+            width=6,
+            height=4,
+            limitsize=False
+        )
+    # Single qq
+    qq_plot = plot_qq(
+        df,
+        facet_column,
+        None
+    )
+    qq_plot.save(
+        '{}-qq.png'.format(output_file),
+        dpi=300,
+        width=6,
+        height=4,
+        limitsize=False
+    )
+    # Single qq faceted by cell_label_analysed
+    qq_plot = plot_qq(
+        df,
+        facet_column,
+        'cell_label_analysed'
+    )
+    qq_plot.save(
+        '{}-qq-split_cell_label.png'.format(output_file),
+        dpi=300,
+        width=6,
+        height=4,
+        limitsize=False
+    )
 
     # Prep to make dataframe to compare p-values across models
     df['row_index'] = df[['gene', 'cell_label_analysed']].apply(
