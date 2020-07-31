@@ -195,14 +195,14 @@ process run_mast {
         """
         echo "run_mast: ${process_info}"
         rm -fr plots
-        017-prepare_mast_input.py \
+        016-prepare_mast_input.py \
             --h5ad_file ${anndata} \
             --condition_column ${condition_column} \
             --covariates ${covariate_columns} \
             --cell_label_column ${cell_label_column} \
             --cell_label_analyse ${cell_label_analyse} \
             --output_dir mast_input
-        017-run_mast.R \
+        016-run_mast.R \
             mast_input \
             ${cell_label_column} \
             ${cell_label_analyse} \
@@ -256,7 +256,7 @@ process merge_dataframes {
         process_info = "${process_info}, ${task.memory} (memory)"
         """
         echo "merge_dataframes: ${process_info}"
-        merge_de_dataframes.py \
+        019-merge_de_dataframes.py \
             --dataframe_keys ${result_keys} \
             --dataframe_paths ${result_paths} \
             --output_file ${outfile}
@@ -296,7 +296,7 @@ process plot_de_results {
         """
         echo "plot_de_results: ${process_info}"
         rm -fr plots
-        compare_de_results.py \
+        019-compare_de_results.py \
             --dataframe ${merged_df} \
             --columns_to_compare de_method,covariates \
             --mean_expression_filter 0.1 \
@@ -342,7 +342,6 @@ workflow wf__differential_expression {
                 diffxpy_method_config.value
             )
         }
-
         // Run MAST with all combinations of conditions (e.g., sex,
         // disease status), covariates (e.g., size_factors, age),
         // methods (e.g., wald)
@@ -357,8 +356,7 @@ workflow wf__differential_expression {
                 mast_method_config.value
             )
         }
-
-        // Priming for enrichR
+        // Run enrichment analysis for each model / celltype (enrichR)
         if (diffxpy_method_config.run_process & mast_method_config.run_process) {
             de_results = run_diffxpy.out.results.groupTuple(by: 0)
                 .concat(run_mast.out.results.groupTuple(by: 0))
@@ -367,7 +365,7 @@ workflow wf__differential_expression {
         } else if (mast_method_config.run_process) {
             de_results = run_mast.out.results.groupTuple(by: 0)
         }
-
+        // Combine all of the models (diffxpy, MAST, and all different covars)
         de_results_merged = de_results
             .reduce([:]) { map, tuple ->
                 def dataframe_key = "cell_label=" + tuple[2][0]
@@ -400,7 +398,7 @@ workflow wf__differential_expression {
             outdir,
             de_results_merged
         )
-
+        // Basic plots of the differential expression results across all models
         plot_de_results(
             outdir,
             merge_dataframes.out.merged_results
