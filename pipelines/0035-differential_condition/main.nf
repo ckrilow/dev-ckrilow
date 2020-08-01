@@ -17,7 +17,16 @@ params.help                 = false
 // TODO: Default parameters for differential expression
 params.anndata_cell_label = [value: 'cluster']
 
-
+// Default parameters not working -- overwriting params set in params.yml
+//params.differential_expression.diffxpy_method = [
+//    run_process: true,
+//    value: ["wald"]
+//]
+//
+//params.differential_expression.mast_method = [
+//    run_process: true,
+//    value: ["bayesglm"]
+//]
 
 // Define the help messsage.
 def help_message() {
@@ -74,9 +83,9 @@ workflow {
             params.output_dir,
             params.file_anndata,
             params.anndata_cell_label.value,
-            params.differential_expression.condition.value,
-            params.differential_expression.covariates.value,
-            params.differential_expression.diffxpy_method.value
+            params.differential_expression.models.value,
+            params.differential_expression.diffxpy_method,
+            params.differential_expression.mast_method
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure

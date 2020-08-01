@@ -16,15 +16,18 @@ def merge_diffxpy_dataframes(
     outfile,
     verbose=True
 ):
-    ## Start with first dataframe and get dimensions from df.
-    df_merged = pd.read_csv(dataframe_paths[0], sep="\t", header=0) ## Expect a header
+    # Start with first dataframe and get dimensions from df.
+    df_merged = pd.read_csv(dataframe_paths[0], sep="\t", header=0)
+    df_merged['df_key'] = dataframe_keys[0]
 
     if verbose:
-        print("Starting to merge dataframes. Based on the first dataframe "
+        print(
+            "Starting to merge dataframes. Based on the first dataframe "
             "expecting dataframes with {} columns and {} rows.".format(
-            len(df_merged.columns),
-            len(df_merged)
-        ))
+                len(df_merged.columns),
+                len(df_merged)
+            )
+        )
 
     for i in range(1, len(dataframe_keys)):
         key = dataframe_keys[i]
@@ -33,19 +36,25 @@ def merge_diffxpy_dataframes(
         if verbose:
             print("Merging dataframe with the key: '{}'".format(key))
 
-        df = pd.read_csv(path, sep="\t", header=0) ## Expect a header
+        df = pd.read_csv(path, sep="\t", header=0)  # Expect a header
+        df['df_key'] = key
 
         len_before_merge = len(df_merged)
-        df_merged = df_merged.merge(
-            df,
-            how="outer",
-            left_index=False,
-            right_index=False
-        )
+        # df_merged = df_merged.merge(
+        #     df,
+        #     how="outer",
+        #     left_index=False,
+        #     right_index=False
+        # )
+        df_merged = pd.concat([df_merged, df], axis=0, ignore_index=True)
 
         if len_before_merge == len(df_merged) and verbose:
-            print("Dataframe with the key '{}' is not unique. The length "
-                "before merge is the same as the length after merge.".format(key))
+            print(
+                "Dataframe with the key '{}' is not unique. The length "
+                "before merge is the same as the length after merge.".format(
+                    key
+                )
+            )
 
     # Get compression opts for pandas
     compression_opts = 'gzip'
@@ -57,9 +66,8 @@ def merge_diffxpy_dataframes(
         sep='\t',
         compression=compression_opts,
         index=False,
-        header=False
+        header=True
     )
-
 
 
 def main():
