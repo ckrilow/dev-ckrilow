@@ -77,11 +77,21 @@ def prepare_h5ad_MAST(
 
     # Check if read in by gene_symbol or gene_id
     if 'gene_symbols' in adata.var.columns:
-        df_features = pd.DataFrame(data=[ adata.var.index.values, adata.var.loc[:,'gene_symbols'].values, ["Gene Expression"] * adata.n_vars ]).T
+        df_features = pd.DataFrame(data=[
+            adata.var.index.values,
+            adata.var.loc[:, 'gene_symbols'].values,
+            ["Gene Expression"] * adata.n_vars
+        ]).T
     elif 'gene_ids' in adata.var.columns:
-        df_features = pd.DataFrame(data=[ adata.var.loc[:,'gene_ids'].values, adata.var.index.values, ["Gene Expression"] * adata.n_vars ]).T
+        df_features = pd.DataFrame(data=[
+            adata.var.loc[:, 'gene_ids'].values,
+            adata.var.index.values,
+            ["Gene Expression"] * adata.n_vars
+        ]).T
     else:
-        raise Exception('Could not find "gene_symbols" or "gene_ids" in adata.var')
+        raise Exception(
+            'Could not find "gene_symbols" or "gene_ids" in adata.var'
+        )
 
     df_features.to_csv(
         out_f,
@@ -179,11 +189,19 @@ def main():
     )
 
     parser.add_argument(
-        '-cov', '--covariates',
+        '-dc', '--covariate_columns_discrete',
         action='store',
-        dest='cov',
-        required=True,
-        help='Comma-separated list of covariates in cell metadata.'
+        dest='d_cov',
+        default="",
+        help='Comma-separated list of discrete covariates in cell metadata.'
+    )
+
+    parser.add_argument(
+        '-cc', '--covariate_columns_continuous',
+        action='store',
+        dest='c_cov',
+        default="",
+        help='Comma-separated list of continuous covariates in cell metadata.'
     )
 
     parser.add_argument(
@@ -217,7 +235,11 @@ def main():
     # Load the AnnData file and set matrix to be log data
     adata = sc.read_h5ad(filename=options.h5ad)
 
-    metadata_to_keep = options.cov.split(",")
+    metadata_to_keep = []
+    if options.d_cov != '':
+        metadata_to_keep.extend(options.d_cov.split(","))
+    if options.c_cov != '':
+        metadata_to_keep.extend(options.c_cov.split(","))
     metadata_to_keep.append(options.cond)
 
     # First subet cells
@@ -226,7 +248,8 @@ def main():
         adata = adata[adata.obs[options.cl_col].isin(cell_label_analyse)]
 
     # Check to see if only one condition exists
-    if adata.obs[options.cond].dtype.name == 'category' and len(np.unique(adata.obs[options.cond].cat.codes)) <= 1:
+    if adata.obs[options.cond].dtype.name == 'category' and len(
+            np.unique(adata.obs[options.cond].cat.codes)) <= 1:
         raise Exception('There is only 1 condition.')
 
     # Run the conversion function.

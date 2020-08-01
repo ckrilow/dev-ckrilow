@@ -1,40 +1,202 @@
 #!/usr/bin/env Rscript
 
-# Load libraries
-library(MAST)
-library(Matrix)
-library(ggplot2)
+options(stringsAsFactors = FALSE)
 
+##################### Read Command Line Parameters #############################
+suppressPackageStartupMessages(library(optparse))
+optionList <- list(
+  optparse::make_option(c("-i", "--mtx_dir"),
+                        type = "character",
+                        default = "matrix_dir",
+                        help = "Directory containing input files for MAST"
+  ),
+  
+  optparse::make_option(c("-l", "--cell_label_column"),
+                        type = "character",
+                        default = "cluster",
+                        help = "Column to use for cell label."
+  ),
+  
+  optparse::make_option(c("-a", "--cell_label_analysed"),
+                        type = "character",
+                        default = "",
+                        help = "Cell label."
+  ),
+  
+  optparse::make_option(c("-c", "--condition_column"),
+                        type = "character",
+                        default = "condition",
+                        help = "Column to use as condition."
+  ),
+  
+  optparse::make_option(c("-d", "--covariate_columns_discrete"),
+                        type = "character",
+                        default = "",
+                        help = "Discrete covariates to include in the model."
+  ),
+  
+  optparse::make_option(c("-z", "--covariate_columns_continuous"),
+                        type = "character",
+                        default = "",
+                        help = "Continuous covariates to include in the model."
+  ),
+  
+  optparse::make_option(c("-m", "--method"),
+                        type = "character",
+                        default = "bayesglm",
+                        help = "MAST method to use to model DE."
+  ),  
+  
+  optparse::make_option(c("-o", "--out_file"),
+                        type = "character",
+                        default = "",
+                        help = "Base output name."
+  ),
+  
+  optparse::make_option(c("-n", "--cores_available"),
+                        type = "integer",
+                        default = 1,
+                        help = "Number of cores to use."
+  ),
+  
+  optparse::make_option(c("-v", "--verbose"),
+                        action = "store_true",
+                        default = TRUE,
+                        help = ""
+  )
+)
 
-plot_settings <- function(plt,
-                          base_size,
-                          plot_marg_top,
-                          text_size_axis_labels,
-                          text_size_legend_labels) {
-  plt <- plt +
-    ggplot2::theme_bw(base_size = base_size) +
-    ggplot2::theme(
-      plot.margin = margin(
-        t = plot_marg_top, r = 45, b = 44, l = 5, unit = "pt"
-      ),
-      axis.title = ggplot2::element_text(size = text_size_axis_labels),
-      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-      legend.position = "bottom",
-      legend.direction = "horizontal",
-      legend.spacing.x = grid::unit(7, 'pt'), # spacing btween key and text
-      legend.title = ggplot2::element_blank(),
-      legend.title.align = 0,
-      legend.text = ggplot2::element_text(size = text_size_legend_labels),
-      legend.justification = "center",
-      legend.box.margin = ggplot2::margin( # no right margin, crank up left
-        t = 0, r = 1, b = 0, l = 1, "pt"
-      ),
-      legend.box.spacing = grid::unit(1, "pt"), # spacing btwn plotting area & legend box
-      legend.key.width = unit(2,"line"), # distance between point and label
-      legend.key.height = grid::unit(1, "pt") # spacing btwn lines of legend
-    ) +
-    ggplot2::guides(color = ggplot2::guide_legend(override.aes = list(size = 9)))
-  return(plt)
+parser <- optparse::OptionParser(
+  usage = "%prog",
+  option_list = optionList,
+  description = paste0(
+    "Calculates differentially expressed genes using MAST."
+  )
+)
+
+# a hack to fix a bug in optparse that won't let you use positional args
+# if you also have non-boolean optional args:
+getOptionStrings <- function(parserObj) {
+  optionStrings <- character()
+  for (item in parserObj@options) {
+    optionStrings <- append(optionStrings,
+                            c(item@short_flag, item@long_flag))
+  }
+  optionStrings
+}
+
+optStrings <- getOptionStrings(parser)
+arguments <- optparse::parse_args(parser, positional_arguments = TRUE)
+################################################################################
+
+######################## Required Packages #####################################
+suppressPackageStartupMessages(library(MAST))
+suppressPackageStartupMessages(library(Matrix))
+suppressPackageStartupMessages(library(ggplot2))
+################################################################################
+
+################################ Functions #####################################
+
+cast_covariates <- function(df,
+                            cols,
+                            cast_func,
+                            cast_func_description, 
+                            verbose) {
+  if (verbose) {
+    print(sprintf("Casting columns to be %s...", cast_func_description))
+  }
+  for (col in cols) {
+    df[col] <- cast_func(df[[col]])
+  }
+  return(df)
+}
+
+## Code is lifted from
+## https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf
+run_MAST <- function(matrix,
+                     cell_data,
+                     feature_data,
+                     condition_col,
+                     covariates,
+                     de_method = "bayesglm",
+                     verbose=TRUE) {
+  # Format data into sca object
+  sca <- MAST::FromMatrix(exprsArray = matrix,
+                          cData = cell_data,
+                          fData = feature_data)
+  
+  ## Get formula
+  formula_str <- sprintf("~ %s", condition_col)
+  if (length(covariates) != 0) {
+    formula_str <- sprintf("%s + %s", 
+                           formula_str, 
+                           paste(covariates, collapse = " + "))
+  }
+  formula <- formula(formula_str)
+  
+  if (verbose) {
+    print(sprintf("Calculating differential expression using the formula: %s",
+                  formula_str))
+    print(sprintf("Calculating differential expression using the method: %s",
+                  de_method))
+    print(sprintf(paste("Randomly selecting value in the `%s` column to",
+                        "use as base condition in fitting the model."),
+                  condition_col))
+  }
+  
+  # Select a condition to use as the 'reference' condition. Can pass this 
+  # in through parameters later. 
+  condition_data <- factor(SummarizedExperiment::colData(sca)[[condition_col]])
+  reference_condition <- levels(condition_data)[1]
+  condition_data <- relevel(condition_data, reference_condition)
+  SummarizedExperiment::colData(sca)[condition_col] <- condition_data
+  
+  if (verbose) {
+    print(sprintf("Selected the value '%s' as the reference condition.", 
+                  reference_condition))
+    print("Fitting the model...")
+  }
+  
+  zlm_fit <- MAST::zlm(formula, 
+                       sca, 
+                       method = de_method, 
+                       silent = FALSE, 
+                       parallel = TRUE)
+  if (verbose) {
+    print("Done fitting the model.")
+  }
+  
+  test_var <- paste(c(condition_col, 
+                      setdiff(levels(condition_data), reference_condition)), 
+                    collapse = "")
+  if (verbose) {
+    print(sprintf("Performing Log-Ratio Test for the variable %s...", 
+                  test_var))
+  }
+  results <- summary(zlm_fit, doLRT = test_var)
+  results_dt <- results$datatable
+  
+  # Structure results into interpretable format
+  fcHurdle <- merge(results_dt[contrast == test_var & component =='H',
+                               .(primerid, `Pr(>Chisq)`)], #hurdle P values
+                    results_dt[contrast == test_var & component =='logFC',
+                               .(primerid, coef, ci.hi, ci.lo)],
+                    by='primerid') #logFC coefficients
+  fcHurdle[,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
+  fcHurdle <- merge(fcHurdle, as.data.frame(mcols(sca)), by='primerid')
+  
+  # Add important metadata
+  fcHurdle$de_method <- sprintf('mast-%s', de_method)
+  fcHurdle$condition <- condition_col
+  fcHurdle$reference_condition <- reference_condition
+  fcHurdle$coef_condition <- setdiff(levels(condition_data), 
+                                     reference_condition)
+  fcHurdle$covariates_passed <- paste(covariates, collapse = ",")
+  fcHurdle$covariates <- paste(covariates, collapse = ",")
+  
+  ## Order by FDR
+  fcHurdle <- fcHurdle[order(fcHurdle$fdr, decreasing = F)]
+  return(fcHurdle)
 }
 
 plot_volcano_plot <- function(df,
@@ -42,18 +204,28 @@ plot_volcano_plot <- function(df,
                               p_val_col,
                               fc_threshold = 1.8,
                               p_val_threshold = 0.05) {
-
+  fc_threshold <- log2(fc_threshold)
+  df <- df[!(is.na(df[[fc_col]]))  & !(is.na(df[[p_val_col]])),]
   df$significant <- apply(df, 1, function(x) {
-     return(abs(as.numeric(x[[fc_col]])) >= log2(fc_threshold) & abs(as.numeric(x[[p_val_col]])) <= p_val_threshold)
+    return(abs(as.numeric(x[[fc_col]])) >= fc_threshold & 
+             abs(as.numeric(x[[p_val_col]])) <= p_val_threshold)
   })
-  df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
-
+  df$significant <- factor(df$significant,
+                           levels = c(TRUE, FALSE),
+                           labels = c("True", "False"))
+  
   df$neg_log10 <- -log10(df[[p_val_col]])
-  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=fc_col, y="neg_log10", color="significant")) +
-    ggplot2::geom_point(size=.5) +
-    ggplot2::labs(x="log2(FC)", y="-log10(p-value)") +
+  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = fc_col, 
+                                                  y = "neg_log10", 
+                                                  color = "significant")) +
+    ggplot2::geom_point(size = .5) +
+    ggplot2::labs(x = "log2(FC)", 
+                  y = "-log10(p-value)",
+                  color = sprintf("Log2(FC)>=%s and\nFDR<=%s", 
+                                  round(fc_threshold, digits = 2), 
+                                  p_val_threshold)) +
     ggplot2::theme_bw() +
-    ggplot2::scale_color_manual(values=c("#CF9400", "Black"))
+    ggplot2::scale_color_manual(values = c("#CF9400", "Black"))
   return(plot)
 }
 
@@ -63,176 +235,154 @@ plot_ma_plot <- function(df,
                          fc_col,
                          mean_expr_threshold = 0.0001,
                          fc_threshold = 1.8) {
-
+  fc_threshold <- log2(fc_threshold)
+  df <- df[!(is.na(df[[mean_expr_col]]))  & !(is.na(df[[fc_col]])),]
   df$significant <- apply(df, 1, function(x) {
-    return(abs(as.numeric(x[[mean_expr_col]])) >= mean_expr_threshold & abs(as.numeric(x[[fc_col]])) >= log2(fc_threshold))
+    return(abs(as.numeric(x[[mean_expr_col]])) >= mean_expr_threshold & 
+             abs(as.numeric(x[[fc_col]])) >= fc_threshold)
   })
-  df$significant <- factor(df$significant, levels=c(TRUE, FALSE), labels=c("Significant", "Insignificant"))
-
-  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=mean_expr_col, y=fc_col, color="significant")) +
+  df$significant <- factor(df$significant, 
+                           levels = c(TRUE, FALSE), 
+                           labels = c("True", "False"))
+  
+  plot <- ggplot2::ggplot(df, ggplot2::aes_string(x=mean_expr_col, 
+                                                  y=fc_col, 
+                                                  color="significant")) +
     ggplot2::geom_point(size=.5) +
     ggplot2::scale_x_continuous(trans='log10') +
     ggplot2::theme_bw() +
-    ggplot2::labs(x="Mean Expression", y="log2(FC)") +
+    ggplot2::labs(x="Mean Expression", 
+                  y="log2(FC)", 
+                  color=sprintf("Mean Expr>=%s and\nLog2(FC)>=%s", 
+                                mean_expr_threshold, 
+                                round(fc_threshold, digits=2))) +
     ggplot2::scale_color_manual(values=c("#CF9400", "Black"))
   return(plot)
 }
 
-## Code is lifted from https://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf
-run_MAST <- function(mtx_file_dir,
-                     cell_label_column,
-                     cell_label_analysed,
-                     condition_col,
-                     disc_covariates_list_str,
-                     cont_covariates_list_str,
-                     de_method = "bayesglm",
-                     output_file_base,
-                     verbose=TRUE) {
+################################################################################
 
-  if (verbose) {
-    print("Reading in the data...")
-  }
+######################## Read Data & Manipulate ################################
+verbose <- arguments$options$verbose
+output_file_base <- arguments$options$out_file
 
-  logtpm_matrix <- Matrix::readMM(sprintf("%s/log1p_cp10k/matrix.mtx.gz", mtx_file_dir))
-  logtpm_matrix <- as(logtpm_matrix, "matrix")
+# Re-set options to allow multicore
+old <- options(stringsAsFactors = FALSE, 
+               mc.cores=arguments$options$cores_available)
+on.exit(options(old), add = TRUE)
 
-  features <- read.csv(sprintf("%s/log1p_cp10k/features.tsv.gz", mtx_file_dir), sep ="\t", header=F, col.names = c("gene_id", "gene_symbol", "type"), row.names = 1)
-  barcodes <- read.csv(sprintf("%s/log1p_cp10k/barcodes.tsv.gz", mtx_file_dir), sep ="\t", header=F)$V1
-  metadata <- read.csv(sprintf("%s/log1p_cp10k/cell_metadata.tsv.gz", mtx_file_dir), sep ="\t", header=T, row.names=1)
-  metadata <- metadata[barcodes, , drop=F]
+# Read data in, cast to correct data types
+if (verbose) {
+  print("Reading in the data...")
+}
+mtx_file_dir = arguments$options$mtx_dir
+logtpm_matrix <- as(Matrix::readMM(sprintf("%s/log1p_cp10k/matrix.mtx.gz",
+                                           mtx_file_dir)), 
+                    "matrix")
+logtpm_features <- read.csv(sprintf("%s/log1p_cp10k/features.tsv.gz", 
+                                    mtx_file_dir), 
+                            sep ="\t", 
+                            header=F, 
+                            col.names = c("gene_id", "gene_symbol", "type"), 
+                            row.names = 1)
+logtpm_barcodes <- read.csv(sprintf("%s/log1p_cp10k/barcodes.tsv.gz", 
+                                    mtx_file_dir),
+                            sep ="\t",
+                            header=F)$V1
+logtpm_metadata <- read.csv(sprintf("%s/log1p_cp10k/cell_metadata.tsv.gz", 
+                                    mtx_file_dir),
+                            sep ="\t",
+                            header=T,
+                            row.names=1)
+logtpm_metadata <- logtpm_metadata[logtpm_barcodes, , drop=F]
+rownames(logtpm_matrix) <- rownames(logtpm_features)
+colnames(logtpm_matrix) <- rownames(logtpm_metadata)
 
-  # Force variable casting
-  discrete_covs <- strsplit(x=disc_covariates_list_str, split=",", fixed=TRUE)[[1]]
-  if (verbose) {
-    print("Casting all discrete variables as characters to make categorical...")
-  }
-  for (var in discrete_covs) {
-    metadata[var] <- as.character(metadata[[var]])
-  }
+# Variable casting
+discrete_covs <- strsplit(x=arguments$options$covariate_columns_discrete, 
+                          split=",", 
+                          fixed=TRUE)[[1]]
+logtpm_metadata <- cast_covariates(logtpm_metadata, discrete_covs, 
+                                   as.character, 
+                                   "characters", 
+                                   verbose)
+continuous_covs <- strsplit(x=arguments$options$covariate_columns_continuous, 
+                            split=",", 
+                            fixed=TRUE)[[1]]
+logtpm_metadata <- cast_covariates(logtpm_metadata, 
+                                   continuous_covs, 
+                                   as.numeric, 
+                                   "numeric", 
+                                   verbose)
 
-  continuous_covs <- strsplit(x=cont_covariates_list_str, split=",", fixed=TRUE)[[1]]
-  if (verbose) {
-    print("Casting all continuous variables as numerics to make continuous...")
-  }
-  for (var in continuous_covs) {
-    metadata[var] <- as.numeric(metadata[[var]])
-  }
+# Run MAST
+de_results <- run_MAST(matrix = logtpm_matrix,
+                       cell_data = logtpm_metadata,
+                       feature_data = logtpm_features,
+                       condition_col = arguments$options$condition_column,
+                       covariates = c(discrete_covs, continuous_covs),
+                       de_method = arguments$options$method,
+                       verbose = verbose)
 
-  # Set dimnames
-  rownames(logtpm_matrix) <- rownames(features)
-  colnames(logtpm_matrix) <- rownames(metadata)
+# Fit dataframe to match diffxpy
+de_results$cell_label_column <- arguments$options$cell_label_column
+de_results$cell_label_analysed <- arguments$options$cell_label_analysed
+names(de_results)[names(de_results) == "primerid"] <- "gene"
+names(de_results)[names(de_results) == "Pr(>Chisq)"] <- "pval"
+de_results$log2fc <- de_results$coef
 
-  sca <- MAST::FromMatrix(exprsArray=logtpm_matrix, cData = metadata, fData=features)
+# Add mean expression from counts data
+counts_matrix <- as(Matrix::readMM(sprintf("%s/counts/matrix.mtx.gz", 
+                                           mtx_file_dir)), 
+                    "matrix")
+counts_features <- read.csv(sprintf("%s/counts/features.tsv.gz", mtx_file_dir), 
+                            sep ="\t", 
+                            header=F, 
+                            col.names = c("gene_id", "gene_symbol", "type"), 
+                            row.names = 1)
+counts_barcodes <- read.csv(sprintf("%s/counts/barcodes.tsv.gz", mtx_file_dir), 
+                            sep ="\t", 
+                            header=F)$V1
+rownames(counts_matrix) <- rownames(counts_features)
+colnames(counts_matrix) <- rownames(counts_barcodes)
+de_results$mean <- Matrix::rowMeans(counts_matrix[de_results$gene,])
 
-  ## Get formula
-  covariates <- c(discrete_covs, continuous_covs)
-  formula_str <- sprintf("~ %s + %s", condition_col, paste(covariates, collapse = " + "))
-  formula <- formula(formula_str)
+## Save result
+if (verbose) {
+  print("Wriiting DE results...")
+}
+gz_file <- gzfile(sprintf("%s-de_results.tsv.gz", output_file_base),
+                  "w", 
+                  compression = 9)
+write.table(x= de_results,
+            file = gz_file,
+            sep="\t",
+            col.names=T,
+            row.names=F,
+            quote=F)
+close(gz_file)
 
-  if (verbose) {
-    print(sprintf("Calculating differential expression using the formula: %s", formula_str))
-    print(sprintf("Calculating differential expression using the method: %s", de_method))
-    print(sprintf("Randomly selecting value in the `%s` column to use as base condition in fitting the model.", condition_col))
-  }
+## Plot results
+vol_plot <- plot_volcano_plot(de_results,
+                              'log2fc',
+                              'fdr',
+                              1.8,
+                              0.05)
+png(file = sprintf("%s-plot_volcano.png", output_file_base))
+print(vol_plot)
+dev.off()
 
-  condition_data <- factor(colData(sca)[[condition_col]])
-  reference_condition <- levels(condition_data)[1]
-  condition_data <- relevel(condition_data, reference_condition)
-  colData(sca)[condition_col] <- condition_data
+ma_plot <- plot_ma_plot(de_results,
+                        'mean',
+                        'log2fc',
+                        0.0001,
+                        1.8)
+png(file = sprintf("%s-plot_ma.png", output_file_base))
+print(ma_plot)
+dev.off()
 
-  if (verbose) {
-    print(sprintf("Selected the value '%s' as the reference condition.", reference_condition))
-    print("Fitting the model...")
-  }
-
-  zlm_fit <- MAST::zlm(formula, sca, method = de_method, silent=FALSE, parallel = TRUE)
-
-  if (verbose) {
-    print("Done fitting the model.")
-  }
-
-  test_var <- paste(c(condition_col, setdiff(levels(condition_data), reference_condition)), collapse = "")
-  if (verbose) {
-    print(sprintf("Performing Log-Ratio Test for the variable %s...", test_var))
-  }
-  results <- summary(zlm_fit, doLRT=test_var)
-  results_dt <- results$datatable
-
-  # Structure results into interpretable format
-  fcHurdle <- merge(results_dt[contrast==test_var & component=='H',.(primerid, `Pr(>Chisq)`)], #hurdle P values
-                    results_dt[contrast==test_var & component=='logFC', .(primerid, coef, ci.hi, ci.lo)], by='primerid') #logFC coefficients
-
-  fcHurdle[,fdr:=p.adjust(`Pr(>Chisq)`, 'fdr')]
-  fcHurdle <- merge(fcHurdle, as.data.frame(mcols(sca)), by='primerid')
-  fcHurdle$de_method <- sprintf('mast-%s', de_method)
-  fcHurdle$condition <- condition_col
-  fcHurdle$reference_condition <- reference_condition
-  fcHurdle$coef_condition <- setdiff(levels(condition_data), reference_condition)
-  fcHurdle$covariates_passed <- paste(covariates, collapse = ",")
-  fcHurdle$covariates <- paste(covariates, collapse = ",")
-  fcHurdle$cell_label_column <- cell_label_column
-  fcHurdle$cell_label_analysed <- cell_label_analysed
-
-  ## Add mean expression from counts data
-  counts_matrix <- Matrix::readMM(sprintf("%s/counts/matrix.mtx.gz", mtx_file_dir))
-  counts_matrix <- as(counts_matrix, "matrix")
-  counts_features <- read.csv(sprintf("%s/counts/features.tsv.gz", mtx_file_dir), sep ="\t", header=F, col.names = c("gene_id", "gene_symbol", "type"), row.names = 1)
-  counts_barcodes <- read.csv(sprintf("%s/counts/barcodes.tsv.gz", mtx_file_dir), sep ="\t", header=F)$V1
-  rownames(counts_matrix) <- rownames(counts_features)
-  colnames(counts_matrix) <- rownames(counts_barcodes)
-  fcHurdle$mean <- Matrix::rowMeans(counts_matrix[fcHurdle$primerid,])
-
-  ## Order by FDR
-  fcHurdle <- fcHurdle[order(fcHurdle$fdr, decreasing=F)]
-
-  ## Rename specific columns to match diffxpy
-  names(fcHurdle)[names(fcHurdle) == "primerid"] <- "gene"
-  names(fcHurdle)[names(fcHurdle) == "Pr(>Chisq)"] <- "pval"
-  fcHurdle$log2fc <- fcHurdle$coef
-
-  gz_file <- gzfile(sprintf("%s-de_results.tsv.gz", output_file_base), "w", compression = 9)
-  write.table(x= fcHurdle,
-              file = gz_file,
-              sep="\t",
-              col.names=T,
-              row.names=F,
-              quote=F)
-  close(gz_file)
-
-  vol_plot <- plot_volcano_plot(fcHurdle,
-                                'log2fc',
-                                'pval',
-                                1.8,
-                                0.05)
-  # vol_plot <- plot_settings(vol_plot,  46, 20, 30, 30)
-  png(file = sprintf("%s-plot_volcano.png", output_file_base))
-  print(vol_plot)
-  dev.off()
-
-  ma_plot <- plot_ma_plot(fcHurdle,
-                          'mean',
-                          'log2fc',
-                          0.0001,
-                          1.8)
-  # ma_plot <- plot_settings(ma_plot,  46, 20, 30, 30)
-  png(file = sprintf("%s-plot_ma.png", output_file_base))
-  print(ma_plot)
-  dev.off()
-
-  if (verbose) {
-    print("Done.")
-  }
+if (verbose) {
+  print("Done.")
 }
 
-# like python if __name__ == '__main__'
-if (sys.nframe() == 0) {
-  args <- commandArgs(trailingOnly = TRUE)
-
-  # disable strings as factors, but re-enable upon exit
-  ## Need to set the global allowance higher for the amount of data
-  ## Expect cores at end
-  old <- options(stringsAsFactors = FALSE, future.globals.maxSize= 5368709120, mc.cores=as.numeric(args[9]))
-  on.exit(options(old), add = TRUE)
-
-  run_MAST(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
-}
+################################################################################

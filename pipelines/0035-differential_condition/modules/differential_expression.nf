@@ -170,10 +170,13 @@ process run_mast {
         covariate_columns_discrete = model.covariate_discrete
         covariate_columns_continuous = model.covariate_continuous
         covariate_columns = ""  // list of all covariates used in model
+        cmd__covar = ""
         if (covariate_columns_discrete != "") {  // add disc cov call
+            cmd__covar = " --covariate_columns_discrete ${covariate_columns_discrete}"
             covariate_columns = "${covariate_columns_discrete},"
         }
         if (covariate_columns_continuous != "") {  // add contin cov call
+            cmd__covar = "${cmd__covar} --covariate_columns_continuous ${covariate_columns_continuous}"
             covariate_columns = "${covariate_columns}${covariate_columns_continuous}"
         }
         if(covariate_columns.endsWith(",")) {
@@ -184,7 +187,7 @@ process run_mast {
         }
         // cell_label_analyse comes in array-format.
         cell_label_analyse = cell_label_analyse[0] // Get first element.
-        outdir = "${outdir_prev}/${condition_column}/diffxpy/"
+        outdir = "${outdir_prev}/${condition_column}/mast/"
         outdir = "${outdir}cell_label=${cell_label_analyse}"
         outdir = "${outdir}_covariates=${covariate_columns}"
         outdir = "${outdir}_method=${method}"
@@ -198,20 +201,19 @@ process run_mast {
         016-prepare_mast_input.py \
             --h5ad_file ${anndata} \
             --condition_column ${condition_column} \
-            --covariates ${covariate_columns} \
             --cell_label_column ${cell_label_column} \
             --cell_label_analyse ${cell_label_analyse} \
-            --output_dir mast_input
+            --output_dir mast_input \
+            ${cmd__covar}
         016-run_mast.R \
-            mast_input \
-            ${cell_label_column} \
-            ${cell_label_analyse} \
-            ${condition_column} \
-            ${covariate_columns_discrete} \
-            ${covariate_columns_continuous} \
-            ${method} \
-            ${outfile} \
-            ${task.cpus}
+            --mtx_dir mast_input \
+            --cell_label_column ${cell_label_column} \
+            --cell_label_analysed ${cell_label_analyse} \
+            --condition_column ${condition_column} \
+            --method ${method} \
+            --out_file ${outfile} \
+            --cores_available ${task.cpus} \
+            ${cmd__covar}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
