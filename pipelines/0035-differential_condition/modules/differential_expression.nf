@@ -95,11 +95,14 @@ process run_diffxpy {
             cmd__covar = "${cmd__covar} --covariate_columns_continuous ${covariate_columns_continuous}"
             covariate_columns = "${covariate_columns}${covariate_columns_continuous}"
         }
-        if(covariate_columns.endsWith(",")) {
+        if (covariate_columns.endsWith(",")) {
             covariate_columns = covariate_columns.substring(
                 0,
                 covariate_columns.length() - 1
             )
+        }
+        if (covariate_columns == "") {
+            covariate_columns = "none"
         }
         // cell_label_analyse comes in array-format.
         cell_label_analyse = cell_label_analyse[0] // Get first element.
@@ -127,6 +130,7 @@ process run_diffxpy {
         mv *png plots/ 2>/dev/null || true
         """
 }
+
 
 process run_mast {
     // Run MAST
@@ -179,11 +183,14 @@ process run_mast {
             cmd__covar = "${cmd__covar} --covariate_columns_continuous ${covariate_columns_continuous}"
             covariate_columns = "${covariate_columns}${covariate_columns_continuous}"
         }
-        if(covariate_columns.endsWith(",")) {
+        if (covariate_columns.endsWith(",")) {
             covariate_columns = covariate_columns.substring(
                 0,
                 covariate_columns.length() - 1
             )
+        }
+        if (covariate_columns == "") {
+            covariate_columns = "none"
         }
         // cell_label_analyse comes in array-format.
         cell_label_analyse = cell_label_analyse[0] // Get first element.
@@ -219,6 +226,7 @@ process run_mast {
         mv *png plots/ 2>/dev/null || true
         """
 }
+
 
 process merge_dataframes {
     // Merge resulting dataframes from diffxpy
@@ -265,6 +273,7 @@ process merge_dataframes {
         """
 }
 
+
 process plot_de_results {
     // Generate plots from the merged data frames to evaluate
     // ------------------------------------------------------------------------
@@ -282,6 +291,7 @@ process plot_de_results {
             val(condition),
             path(merged_df)
         )
+        each mean_expression_filter
 
     output:
         val(outdir, emit: outdir)
@@ -292,6 +302,8 @@ process plot_de_results {
         runid = random_hex(16)
         outdir = outdir_prev
         outfile = "${condition}-merged"
+        // script automatically adds expression filter
+        // outfile = "${condition}-mean_expr_filt__${mean_expression_filter}"
         process_info = "${runid} (runid)"
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
@@ -300,7 +312,7 @@ process plot_de_results {
         rm -fr plots
         019-compare_de_results.py \
             --dataframe ${merged_df} \
-            --columns_to_compare de_method,covariates \
+            --columns_to_compare de_method,covariates_passed \
             --mean_expression_filter 0.1 \
             --output_file ${outfile}
         mkdir plots
@@ -317,6 +329,7 @@ workflow wf__differential_expression {
         model
         diffxpy_method_config
         mast_method_config
+        plot_config
     main:
         // Get a list of all of the cell types
         get_cell_label_list(
@@ -358,7 +371,8 @@ workflow wf__differential_expression {
                 mast_method_config.value
             )
         }
-        // Run enrichment analysis for each model / celltype (enrichR)
+        // Combine results of all of the models (e.g., different methods like
+        // diffxpy and MAST, different covariate sets)
         if (diffxpy_method_config.run_process & mast_method_config.run_process) {
             de_results = run_diffxpy.out.results.groupTuple(by: 0)
                 .concat(run_mast.out.results.groupTuple(by: 0))
@@ -367,7 +381,6 @@ workflow wf__differential_expression {
         } else if (mast_method_config.run_process) {
             de_results = run_mast.out.results.groupTuple(by: 0)
         }
-        // Combine all of the models (diffxpy, MAST, and all different covars)
         de_results_merged = de_results
             .reduce([:]) { map, tuple ->
                 def dataframe_key = "cell_label=" + tuple[2][0]
@@ -403,8 +416,12 @@ workflow wf__differential_expression {
         // Basic plots of the differential expression results across all models
         plot_de_results(
             outdir,
-            merge_dataframes.out.merged_results
+            merge_dataframes.out.merged_results,
+            plot_config.mean_expression_filter.value
         )
+
+        // TODO: Run enrichment analysis for each model / celltype
+        // TODO: combine and compare all of the enrichment analysis results
 
     emit:
         cell_labels = get_cell_label_list.out.cell_labels

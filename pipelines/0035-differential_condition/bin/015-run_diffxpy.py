@@ -476,13 +476,21 @@ def main():
     df_results = df_results.rename(columns={'coef_mle': 'coef'})
     df_results['de_method'] = 'diffxpy-{}'.format(options.method)
     df_results['condition'] = condition_column
+    coef_names.sort()
     df_results['coef_condition'] = ','.join(coef_names)
-    df_results['covariates_passed'] = ','.join([
-        options.covariate_columns_discrete,
-        options.covariate_columns_continuous
-    ])
+    # covariates_passed = covariates that were passed to this script call.
+    covariates_passed = options.covariate_columns_discrete.split(',')
+    if options.covariate_columns_continuous != '':
+        for i in options.covariate_columns_continuous.split(','):
+            covariates_passed.append(i)
+    covariates_passed.sort()
+    df_results['covariates_passed'] = ','.join(covariates_passed)
+    # covariates = covariates that were actually included in the model since
+    # covariates with only one value are dropped.
+    covariate_columns.sort()
     df_results['covariates'] = ','.join(covariate_columns)
     df_results['cell_label_column'] = cell_label_column
+    cell_label_analyse.sort()
     df_results['cell_label_analysed'] = ','.join(cell_label_analyse)
     df_results = df_results.sort_values(
         by=['pval', 'log2fc', 'mean'],
