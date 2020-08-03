@@ -191,8 +191,6 @@ run_MAST <- function(matrix,
   fcHurdle$reference_condition <- reference_condition
   fcHurdle$coef_condition <- setdiff(levels(condition_data), 
                                      reference_condition)
-  fcHurdle$covariates_passed <- paste(covariates, collapse = ",")
-  fcHurdle$covariates <- paste(covariates, collapse = ",")
   
   ## Order by FDR
   fcHurdle <- fcHurdle[order(fcHurdle$fdr, decreasing = F)]
@@ -315,16 +313,30 @@ logtpm_metadata <- cast_covariates(logtpm_metadata,
                                    "numeric", 
                                    verbose)
 
+## Filter all covariates with a single value
+## MAST throws an error if not
+covariates_passed <- c(discrete_covs, continuous_covs)
+covariates <- covariates_passed[sapply(covariates_passed, function(x) {
+  remove <- length(unique(logtpm_metadata[[x]])) <= 1
+  if (verbose && remove) {
+    print(sprintf("Covariate `%s` only has one value, removing from MAST list.",
+                  x))
+  }
+  return(!remove)
+})]
+
 # Run MAST
 de_results <- run_MAST(matrix = logtpm_matrix,
                        cell_data = logtpm_metadata,
                        feature_data = logtpm_features,
                        condition_col = arguments$options$condition_column,
-                       covariates = c(discrete_covs, continuous_covs),
+                       covariates = covariates,
                        de_method = arguments$options$method,
                        verbose = verbose)
 
 # Fit dataframe to match diffxpy
+de_results$covariates_passed <- paste(covariates_passed, collapse = ",")
+de_results$covariates <- paste(covariates, collapse = ",")
 de_results$cell_label_column <- arguments$options$cell_label_column
 de_results$cell_label_analysed <- arguments$options$cell_label_analysed
 names(de_results)[names(de_results) == "primerid"] <- "gene"
