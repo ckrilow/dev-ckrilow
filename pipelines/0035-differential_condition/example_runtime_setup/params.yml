@@ -39,3 +39,9 @@ differential_expression:
             value:
                 - 0.0
                 - 0.25
+    rna_enrich:
+        description: 'List of differential parameters to run RNA enrich on.'
+        value:
+            - pval_cutoff: 1
+              database: 'KEGG'
+              min_counts: 0

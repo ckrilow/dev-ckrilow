@@ -86,7 +86,8 @@ workflow {
             params.differential_expression.models.value,
             params.differential_expression.diffxpy_method,
             params.differential_expression.mast_method,
-            params.differential_expression.plot_config
+            params.differential_expression.plot_config,
+            params.differential_expression.rna_enrich.value
         )
     // NOTE: One could do publishing in the workflow like so, however
     //       that will not allow one to build the directory structure

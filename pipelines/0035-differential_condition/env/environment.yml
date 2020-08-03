@@ -14,6 +14,10 @@ dependencies:
   - joblib=0.15.1
   - tensorflow-gpu=1.15.0+db2
   - bioconductor-mast=1.14.0
+  - bioconductor-org.hs.eg.db=3.11.4
+  - r-rms=6.0_1
+  - bioconductor-annotate=1.66.0
+  - bioconductor-kegg.db=3.2.4
   - r-optparse=1.6.6
   - pip
   - pip:

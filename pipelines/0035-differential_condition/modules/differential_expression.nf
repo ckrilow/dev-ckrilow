@@ -73,6 +73,7 @@ process run_diffxpy {
             val(covariate_columns),
             val(method),
             path("${outfile}-de_results.tsv.gz"),
+            val(outdir),
             emit: results
         )
         path("${outfile}-de_results_obj.joblib.gz")
@@ -162,6 +163,7 @@ process run_mast {
             val(covariate_columns),
             val(method),
             path("${outfile}-de_results.tsv.gz"),
+            val(outdir),
             emit: results
         )
         path("plots/*.png") optional true
@@ -321,6 +323,76 @@ process plot_de_results {
         """
 }
 
+
+process run_rna_enrich {
+    // Run RNA Enrich for each DE result
+    // ------------------------------------------------------------------------
+    scratch false        // use tmp directory
+    echo echo_mode       // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        tuple(
+            val(runid),
+            val(condition_column),
+            val(cell_label_analyse),
+            val(covariate_columns),
+            val(method),
+            path(de_results),
+            val(outdir_prev)
+        )
+        each rna_enrich_config
+
+    output:
+        val(outdir, emit: outdir)
+        tuple(
+            val(runid),
+            val(condition_column),
+            val(cell_label_analyse),
+            val(covariate_columns),
+            val(method),
+            path("${outfile}-rna_enrich_results.tsv"),
+            val(outdir),
+            emit: results
+        )
+        path("${outfile}-ensembl_entrez_mapping.tsv.gz", emit: mappings)
+        path("plots/*.jpg") optional true
+
+    script:
+        runid = random_hex(16)
+        // Inputs besides `runid` come in array format
+        cell_label_analyse = cell_label_analyse[0]
+        outdir = outdir_prev[0]
+        outdir = "${outdir}/rna_enrich-"
+        outdir = "${outdir}pval=${rna_enrich_config.pval_cutoff}"
+        outdir = "${outdir}_database=${rna_enrich_config.database}"
+        outdir = "${outdir}_min_counts=${rna_enrich_config.min_counts}/"
+        outfile = "cell_label__${cell_label_analyse}"
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
+        echo "plot_de_results: ${process_info}"
+        rm -fr plots
+        031-run_rna_enrich.R \
+            --de_file ${de_results} \
+            --rna_enrich_script $baseDir/bin/legacy/rna_enrich.R \
+            --min_gene_to_test 10 \
+            --max_gene_to_test 99999 \
+            --p_val_cutoff ${rna_enrich_config.pval_cutoff} \
+            --database ${rna_enrich_config.database} \
+            --min_counts ${rna_enrich_config.min_counts} \
+            --output_file ${outfile} \
+            --verbose
+        mkdir plots
+        mv *jpg plots/ 2>/dev/null || true
+        """
+}
+
 workflow wf__differential_expression {
     take:
         outdir
@@ -330,6 +402,7 @@ workflow wf__differential_expression {
         diffxpy_method_config
         mast_method_config
         plot_config
+        rna_enrich_config
     main:
         // Get a list of all of the cell types
         get_cell_label_list(
@@ -420,7 +493,11 @@ workflow wf__differential_expression {
             plot_config.mean_expression_filter.value
         )
 
-        // TODO: Run enrichment analysis for each model / celltype
+        // Run RNA_enrich on DE results
+        run_rna_enrich(
+            de_results,
+            rna_enrich_config
+        )
         // TODO: combine and compare all of the enrichment analysis results
 
     emit:
