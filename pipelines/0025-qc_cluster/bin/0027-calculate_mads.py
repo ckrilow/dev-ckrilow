@@ -248,7 +248,7 @@ def main():
         '-qck', '--qc_key',
         action='store',
         dest='qc_key',
-        default='pct_counts_mito_gene',
+        default='pct_counts_gene_group__mito_transcript',
         help='QC key for MADs calculation.'
     )
 

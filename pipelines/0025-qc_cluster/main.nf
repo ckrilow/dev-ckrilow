@@ -56,14 +56,17 @@ params.metadata_key_column = [
 params.plots_qc = [
     facet_columns: [value: ["experiment_id"]],
     variable_columns_distribution_plots: [value: [
-        "total_counts,pct_counts_mito_gene"
+        "total_counts,pct_counts_gene_group__mito_transcript"
     ]]
 ]
 // Default parameters for reduced dimension calculations.
 // run_downstream_analysis: If false don't run clustering or umaps
 params.reduced_dims = [
     run_downstream_analysis: false,
-    vars_to_regress: [value: ["", "total_counts,pct_counts_mito_gene"]],
+    vars_to_regress: [value: [
+        "",
+        "total_counts,pct_counts_gene_group__mito_transcript"
+    ]],
     n_dims: [value: [15, 30]]
 ]
 // Default parameters for harmony.
@@ -89,7 +92,9 @@ params.cluster = [
     number_neighbors: [value: [15, 20]],
     methods: [value: ["leiden"]],
     resolutions: [value: [1.0, 3.0]],
-    variables_boxplot: [value: ["total_reads,pct_counts_mito_gene"]],
+    variables_boxplot: [value: [
+        "total_reads,pct_counts_gene_group__mito_transcript"
+    ]],
     known_markers: [run_process: false]
 ]
 // Default parameters for cluster resolution validation.

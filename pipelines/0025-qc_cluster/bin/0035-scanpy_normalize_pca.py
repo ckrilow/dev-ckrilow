@@ -474,7 +474,7 @@ def scanpy_normalize_and_pca(
     # Exclude mitocondrial genes from highly variable gene set.
     # if exclude_mito_highly_variable_genes:
     #     n_highly_variable_mito = adata.var.loc[
-    #         adata.var['mito_gene'],
+    #         adata.var['gene_group__mito_transcript'],
     #         ['highly_variable']
     #     ].sum()
     #     if verbose:
@@ -482,7 +482,7 @@ def scanpy_normalize_and_pca(
     #             n_highly_variable_mito
     #         ))
     #     adata.var.loc[
-    #         adata.var['mito_gene'],
+    #         adata.var['gene_group__mito_transcript'],
     #         ['highly_variable']
     #     ] = False
     # Exclude other genes from highly variable gene set.
@@ -771,7 +771,7 @@ def main():
         dest='vr',
         default='',
         help='Comma seperated list of metadata variables to regress prior to\
-            calculating PCs. Example: mito_gene,n_count.\
+            calculating PCs. Example: gene_group__mito_transcript,n_count.\
             (default: "" and sc.pp.regress_out is not called)'
     )
 
@@ -833,7 +833,12 @@ def main():
         obs_prior = adata.obs.copy()
         sc.pp.calculate_qc_metrics(
             adata,
-            qc_vars=['mito_gene'],
+            qc_vars=[
+                'gene_group__mito_transcript',
+                'gene_group__mito_protein',
+                'gene_group__ribo_protein',
+                'gene_group__ribo_rna'
+            ],
             inplace=True
         )
         adata.obs = obs_prior

@@ -51,7 +51,7 @@ def plot_umi_ngene_mt(
     df_plot,
     output_file='plot_umi_ngene_mt',
     facet_column='none',
-    color_var='pct_counts_mito_gene',
+    color_var='pct_counts_gene_group__mito_transcript',
     density_contour=False
 ):
     """Plot plot_umi_ngene_mt to png.
@@ -60,7 +60,7 @@ def plot_umi_ngene_mt(
     ----------
     df_plot : pandas.DataFrame
         DataFrame with the followig keys 'total_counts', 'n_genes_by_counts',
-        'pct_counts_mito_gene'.
+        'pct_counts_gene_group__mito_transcript'.
     output_file : string
         Basename of output file.
     facet_column : string
@@ -70,7 +70,7 @@ def plot_umi_ngene_mt(
     -------
     NULL
     """
-    if color_var == 'pct_counts_mito_gene':
+    if color_var == 'pct_counts_gene_group__mito_transcript':
         color_title = '% MT\n'
     elif color_var == 'cell_passes_qc':
         color_title = 'Cell passed QC\n'
@@ -101,7 +101,7 @@ def plot_umi_ngene_mt(
         labels=comma_labels,
         minor_breaks=0
     )
-    if color_var == 'pct_counts_mito_gene':
+    if color_var == 'pct_counts_gene_group__mito_transcript':
         gplt = gplt + plt9.scale_color_gradient2(
             low='#3B9AB2',
             mid='#EBCC2A',
@@ -158,7 +158,7 @@ def plot_umi_ngene_mt(
     # sns.set_palette(sns.color_palette(palette_zissou1))
     #
     # fig, ax = plt.subplots(figsize=(3, 3.5))
-    # df_plt['% MT'] = df_plt['pct_counts_mito_gene']
+    # df_plt['% MT'] = df_plt['pct_counts_gene_group__mito_transcript']
     # ax = sns.scatterplot(
     #     data=df_plt,
     #     ax=ax,
@@ -278,7 +278,7 @@ def main():
                 options.of
             ),
             facet_column=facet,
-            color_var='pct_counts_mito_gene',
+            color_var='pct_counts_gene_group__mito_transcript',
             density_contour=False
         )
         plot_umi_ngene_mt(
