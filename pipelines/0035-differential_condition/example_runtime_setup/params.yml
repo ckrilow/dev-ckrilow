@@ -8,7 +8,7 @@ differential_expression:
         value:
             - 'wald'
     mast_method:
-        run_process: true
+        run_process: false
         description: 'MAST method to use.'
         value:
             - 'bayesglm'

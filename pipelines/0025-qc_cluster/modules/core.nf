@@ -230,7 +230,7 @@ process plot_qc {
         ${cmd__anndataobs_ecdf}
         0027-calculate_mads.py \
             --h5_anndata ${file__anndata} \
-            --qc_key 'pct_counts_mito_gene,total_counts,n_genes_by_counts' \
+            --qc_key 'pct_counts_gene_group__mito_transcript,pct_counts_gene_group__mito_protein,pct_counts_gene_group__ribo_protein,pct_counts_gene_group__ribo_rna,total_counts,n_genes_by_counts' \
             --output_file ${outfile}-mads
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
@@ -524,7 +524,7 @@ process plot_pcs {
             --num_pcs ${n_pcs} \
             ${cmd__colors_quant} \
             ${cmd__colors_cat} \
-            --output_file ${runid}-${outfile} 
+            --output_file ${runid}-${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
