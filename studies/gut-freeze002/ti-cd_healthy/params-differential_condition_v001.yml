@@ -8,7 +8,7 @@ differential_expression:
         value:
             - 'wald'
     mast_method:
-        run_process: false
+        run_process: true
         description: 'MAST method to use.'
         value:
             - 'bayesglm'
@@ -21,7 +21,7 @@ differential_expression:
             no covariates use - "".'
         value:
             - variable: 'disease_status'
-              covariate_discrete: 'sex,smoking_status,experimentalist,bead_version'
+              covariate_discrete: 'sex,smoking_status,experimentalist,bead_version,n_genes_by_counts'
               covariate_continuous: 'age'
             - variable: 'disease_status'
               covariate_discrete: ''
@@ -32,3 +32,13 @@ differential_expression:
             - variable: 'disease_status'
               covariate_discrete: 'sex,smoking_status'
               covariate_continuous: 'age'
+    plot_config:
+        mean_expression_filter:
+            description: 'For comparison plots, drop genes whose mean
+                expression for a group in anndata_cell_label is < this value.
+                Example: if gene A expression is 0 counts in cluster 1 and 10
+                in cluster 2, it will be dropped from cluster 1 but not cluster
+                2.'
+            value:
+                - 0.0
+                - 0.25
