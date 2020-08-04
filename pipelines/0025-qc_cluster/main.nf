@@ -14,6 +14,7 @@ include {
     merge_samples;
     plot_predicted_sex;
     plot_qc;
+    plot_distributions;
     estimate_pca_elbow;
     normalize_and_pca;
     subset_pcs;
@@ -275,6 +276,11 @@ workflow {
         )
         // Make QC plots of the merged data.
         plot_qc(
+            params.output_dir,
+            merge_samples.out.anndata,
+            params.plots_qc.facet_columns.value
+        )
+        plot_distributions(
             params.output_dir,
             merge_samples.out.anndata,
             params.plots_qc.facet_columns.value,
