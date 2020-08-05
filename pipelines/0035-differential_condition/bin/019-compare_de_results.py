@@ -58,7 +58,8 @@ def calculate_expected_pval(df):
 def plot_qq(
     df,
     color_var,
-    facet_var=None
+    facet_var=None,
+    title=''
 ):
     """
     Inspired by https://www.cureffi.org/2012/08/15/qq-plots-with-matplotlib/
@@ -98,8 +99,9 @@ def plot_qq(
         )
     qqplot = qqplot + plt9.labs(
         x='Expected (-log10 p-value)',
-        y='Observed (-log10 p-value)'
-        # title=''
+        y='Observed (-log10 p-value)',
+        title=title,
+        color=''
     )
     qqplot = qqplot + plt9.lims(
         x=(0, axis_max),
@@ -110,10 +112,13 @@ def plot_qq(
             '~ {}'.format(facet_var),
             ncol=5
         )
-
     qqplot = qqplot + plt9.theme(
         strip_text=plt9.element_text(size=5),
         axis_text_x=plt9.element_text(angle=-45, hjust=0)
+    )
+    # set guide legend alpha to 1
+    qqplot = qqplot + plt9.guides(
+        color=plt9.guide_legend(override_aes={'size': 2.0, 'alpha': 1.0})
     )
     return(qqplot)
 
@@ -139,7 +144,7 @@ def main():
         '-compare_columns', '--columns_to_compare',
         action='store',
         dest='columns_to_compare',
-        default='de_method,covariates',
+        default='de_method,covariates_passed',
         help='Comma separated list of columns to use to aggregate results to \
             compare.'
     )
@@ -183,12 +188,12 @@ def main():
     df = pd.read_csv(file, sep='\t', low_memory=False)
 
     # Filter out tests based on mean expression
+    output_file = '{}-expression_filter__{}'.format(
+        output_file,
+        str(mean_expression_filter).replace('.', 'pt')
+    )
     if mean_expression_filter != 0.0:
         df = df.loc[(df['mean'] > mean_expression_filter), :]
-        output_file = '{}-expression_filter__{}'.format(
-            output_file,
-            str(mean_expression_filter).replace('.', 'pt')
-        )
 
     # Add a key based on columns to compare (e.g., differential expression
     # method, condition, covariates)
@@ -265,7 +270,8 @@ def main():
         qq_plot = plot_qq(
             df_group,
             facet_column,
-            None
+            None,
+            title='cell label: {}'.format(group_name)
         )
         qq_plot.save(
             '{}-qq-cell_label__{}.png'.format(output_file, group_name),
@@ -296,8 +302,8 @@ def main():
     qq_plot.save(
         '{}-qq-split_cell_label.png'.format(output_file),
         dpi=300,
-        width=6,
-        height=4,
+        width=10,
+        height=8,
         limitsize=False
     )
 

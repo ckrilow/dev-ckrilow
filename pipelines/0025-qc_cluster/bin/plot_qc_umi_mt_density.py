@@ -27,7 +27,7 @@ def calculate_density(df_plot, facet_column):
     if facet_column == 'none':
         den_array = np.vstack([
             np.log10(df_plot['total_counts']),
-            df_plot['pct_counts_mito_gene']
+            df_plot['pct_counts_gene_group__mito_transcript']
         ])
         return(stat.gaussian_kde(den_array)(den_array))
 
@@ -52,7 +52,7 @@ def plot_umi_mt_density(
     Parameters
     ----------
     df_plot : pandas.DataFrame
-        DataFrame with the followig keys 'total_counts', 'pct_counts_mito_gene'.
+        DataFrame with the followig keys 'total_counts', 'pct_counts_gene_group__mito_transcript'.
     output_file : string
         Basename of output file.
     facet_column : string
@@ -68,7 +68,7 @@ def plot_umi_mt_density(
         # name for plot column
         color_var = "1251234_density"
         df_plot[color_var] = calculate_density(df_plot, facet_column)
-    elif color_var == 'pct_counts_mito_gene':
+    elif color_var == 'pct_counts_gene_group__mito_transcript':
         color_title = '% MT\n'
     elif color_var == 'cell_passes_qc':
         color_title = 'Cell passed QC\n'
@@ -76,7 +76,7 @@ def plot_umi_mt_density(
         color_title = color_var
     gplt = plt9.ggplot(df_plot, plt9.aes(
         x='total_counts',
-        y='pct_counts_mito_gene',
+        y='pct_counts_gene_group__mito_transcript',
         color=color_var
     ))
     gplt = gplt + plt9.theme_bw()
@@ -86,7 +86,7 @@ def plot_umi_mt_density(
         labels=comma_labels,
         minor_breaks=0
     )
-    if color_var == 'pct_counts_mito_gene':
+    if color_var == 'pct_counts_gene_group__mito_transcript':
         gplt = gplt + plt9.scale_color_gradient2(
             low='#3B9AB2',
             mid='#EBCC2A',

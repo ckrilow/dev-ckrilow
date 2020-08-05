@@ -134,12 +134,20 @@ def main():
             'pct_counts_in_top_100_genes',
             'pct_counts_in_top_200_genes',
             'pct_counts_in_top_500_genes',
-            'total_counts_mito_gene',
-            'log1p_total_counts_mito_gene',
-            # 'pct_counts_mito_gene',
+            'total_counts_gene_group__mito_transcript',
+            'log1p_total_counts_gene_group__mito_transcript',
+            # 'pct_counts_gene_group__mito_transcript',
+            'total_counts_gene_group__mito_protein',
+            'log1p_total_counts_gene_group__mito_protein',
+            # 'pct_counts_gene_group__mito_protein',
+            'total_counts_gene_group__ribo_protein',
+            'log1p_total_counts_gene_group__ribo_protein',
+            # 'pct_counts_gene_group__ribo_protein',
+            'total_counts_gene_group__ribo_rna',
+            'log1p_total_counts_gene_group__ribo_rna',
+            # 'pct_counts_gene_group__ribo_rna',
             'normalization_factor'
         ]))
-
         # Drop any duplicate clusters, assuming main clusters stored in
         # 'clusters'
         if 'cluster' in adata.obs.columns:
@@ -195,7 +203,10 @@ def main():
 
         # NOTE: could remove extra columns from var
         cols_drop_var = set([
-            'mito_gene',
+            'gene_group__mito_transcript',
+            'gene_group__mito_protein',
+            'gene_group__ribo_protein',
+            'gene_group__ribo_rna',
             'n_cells_by_counts',
             'mean_counts',
             'log1p_mean_counts',

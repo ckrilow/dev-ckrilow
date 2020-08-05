@@ -18,7 +18,7 @@ plots_qc:
             ecdf).'
         value:
             - 'total_counts'
-            - 'pct_counts_mito_gene'
+            - 'pct_counts_gene_group__mito_transcript'
 reduced_dims:
     run_downstream_analysis: false
     description: 'Parameters for dimensionality reduction (principal component
@@ -90,7 +90,7 @@ cluster:
     variables_boxplot:
         decription: 'Generate boxplots of these variables for each cluster.'
         value:
-            - 'total_reads,pct_counts_mito_gene'
+            - 'total_reads,pct_counts_gene_group__mito_transcript'
     known_markers:
         run_process: true
         description: 'Files with markers that will be used to generate
@@ -137,7 +137,7 @@ umap:
     colors_quantitative:
         description: 'Comma separated string of quantitative variables that
             will be used to color points.'
-        value: 'total_reads,age,pct_counts_mito_gene,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
+        value: 'total_reads,age,pct_counts_gene_group__mito_transcript,scrublet__multiplet_zscores,S_score,G2M_score,colon_compartment__epithelial,colon_compartment__immune,colon_compartment__stromal'
     colors_categorical:
         description: 'Comma separated string of categorical variables that
             will be used to color points.'

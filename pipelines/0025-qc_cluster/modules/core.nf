@@ -162,7 +162,7 @@ process plot_predicted_sex {
 }
 
 
-process plot_qc {
+process plot_distributions {
     // Takes annData object, generates basic qc plots
     // ------------------------------------------------------------------------
     //tag { output_dir }
@@ -216,6 +216,59 @@ process plot_qc {
         process_info = "${process_info}, ${task.cpus} (cpus)"
         process_info = "${process_info}, ${task.memory} (memory)"
         """
+        echo "plot_distributions: ${process_info}"
+        rm -fr plots
+        ${cmd__anndataobs}
+        ${cmd__anndataobs_ecdf}
+        mkdir plots
+        mv *pdf plots/ 2>/dev/null || true
+        mv *png plots/ 2>/dev/null || true
+        """
+}
+
+
+process plot_qc {
+    // Takes annData object, generates basic qc plots
+    // ------------------------------------------------------------------------
+    //tag { output_dir }
+    //cache false        // cache results from run
+    scratch false      // use tmp directory
+    echo echo_mode          // echo output from script
+
+    publishDir  path: "${outdir}",
+                saveAs: {filename -> filename.replaceAll("${runid}-", "")},
+                mode: "${task.publish_mode}",
+                overwrite: "true"
+
+    input:
+        val(outdir_prev)
+        path(file__anndata)
+        each facet_columns
+
+    output:
+        val(outdir, emit: outdir)
+        path("plots/*.png")
+        path("plots/*.pdf") optional true
+        path("*.tsv") optional true
+
+    script:
+        runid = random_hex(16)
+        outdir = "${outdir_prev}"
+        // For output file, use anndata name. First need to drop the runid
+        // from the file__anndata job.
+        outfile = "${file__anndata}".minus(".h5ad")
+            .split("-").drop(1).join("-")
+        // Append run_id to output file.
+        outfile = "${runid}-${outfile}"
+        // Figure out if we are facetting the plot and update accordingly.
+        cmd__facet_columns = ""
+        if (facet_columns != "") {
+            cmd__facet_columns = "--facet_columns ${facet_columns}"
+        }
+        process_info = "${runid} (runid)"
+        process_info = "${process_info}, ${task.cpus} (cpus)"
+        process_info = "${process_info}, ${task.memory} (memory)"
+        """
         echo "plot_qc: ${process_info}"
         rm -fr plots
         plot_qc_umi_nfeature_mt.py \
@@ -226,11 +279,9 @@ process plot_qc {
             --h5_anndata ${file__anndata} \
             --output_file ${outfile} \
             ${cmd__facet_columns}
-        ${cmd__anndataobs}
-        ${cmd__anndataobs_ecdf}
         0027-calculate_mads.py \
             --h5_anndata ${file__anndata} \
-            --qc_key 'pct_counts_mito_gene,total_counts,n_genes_by_counts' \
+            --qc_key 'pct_counts_gene_group__mito_transcript,pct_counts_gene_group__mito_protein,pct_counts_gene_group__ribo_protein,pct_counts_gene_group__ribo_rna,total_counts,n_genes_by_counts' \
             --output_file ${outfile}-mads
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
@@ -524,7 +575,7 @@ process plot_pcs {
             --num_pcs ${n_pcs} \
             ${cmd__colors_quant} \
             ${cmd__colors_cat} \
-            --output_file ${runid}-${outfile} 
+            --output_file ${runid}-${outfile}
         mkdir plots
         mv *pdf plots/ 2>/dev/null || true
         mv *png plots/ 2>/dev/null || true
