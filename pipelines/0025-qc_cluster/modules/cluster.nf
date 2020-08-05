@@ -187,8 +187,9 @@ process plot_known_markers {
     // ------------------------------------------------------------------------
     //tag { output_dir }
     //cache false        // cache results from run
-    scratch false      // use tmp directory
-    echo echo_mode          // echo output from script
+    label 'long_job'     // use GPU
+    scratch false        // use tmp directory
+    echo echo_mode       // echo output from script
 
     //saveAs: {filename -> filename.replaceAll("${runid}-", "")},
     publishDir  path: "${outdir}",
